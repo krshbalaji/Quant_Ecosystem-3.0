@@ -56,6 +56,8 @@ class LiveStrategyEngine:
                     "confidence": confidence,
                     "volatility": snapshot["volatility"],
                     "trend": snapshot["trend"],
+                    "candle_angle": snapshot.get("candle_angle", 0.0),
+                    "candle_patterns": snapshot.get("candle_patterns", []),
                 }
             )
         return signals

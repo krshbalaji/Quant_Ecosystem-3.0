@@ -18,8 +18,11 @@ class InstrumentPolicyEngine:
         confidence = float(candidate.get("confidence", 0.0))
         volatility = float(candidate.get("volatility", 0.0))
         trend = float(candidate.get("trend", 0.0))
+        angle = float(candidate.get("candle_angle", 0.0))
+        patterns = set(candidate.get("candle_patterns", []))
         side = str(candidate.get("side", "HOLD")).upper()
         symbol = str(candidate.get("symbol", "")).upper()
+        candidate_trade_type = str(candidate.get("trade_type", trade_type)).upper()
 
         score = confidence
 
@@ -44,5 +47,15 @@ class InstrumentPolicyEngine:
             score += 0.03 if volatility > 0.25 else -0.02
         elif trade_type == "SWING":
             score += 0.03 if abs(trend) > 0 else -0.01
+        if candidate_trade_type == "SCALP":
+            score += 0.02 if volatility >= 0.9 else -0.02
+        if candidate_trade_type == "SWING":
+            score += 0.03 if abs(angle) > 0.05 else -0.01
+        if "DOJI" in patterns and regime == "MEAN_REVERSION":
+            score += 0.02
+        if "BULL_ENGULF" in patterns and side == "BUY":
+            score += 0.03
+        if "BEAR_ENGULF" in patterns and side == "SELL":
+            score += 0.03
 
         return score

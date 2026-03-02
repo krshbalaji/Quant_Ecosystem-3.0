@@ -2,6 +2,8 @@ import random
 
 from core.config_loader import Config
 from execution.instrument_policy_engine import InstrumentPolicyEngine
+from intelligence.candle_angle_engine import CandleAngleEngine
+from intelligence.candle_pattern_engine import CandlePatternEngine
 from utils.decimal_utils import quantize
 
 
@@ -33,6 +35,8 @@ class ExecutionRouter:
         self.telegram = None
         self.config = Config()
         self.instrument_policy = InstrumentPolicyEngine()
+        self.candle_pattern = CandlePatternEngine()
+        self.candle_angle = CandleAngleEngine()
 
     async def execute(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
         result = self.run_cycle(signal=signal, market_bias=market_bias, regime=regime)
@@ -47,8 +51,11 @@ class ExecutionRouter:
             return {"status": "SKIP", "reason": "TRADING_DISABLED"}
         if not self.state.auto_mode and signal is None:
             return {"status": "SKIP", "reason": "AUTO_DISABLED"}
+        if self.state.cooldown > 0:
+            self.state.cooldown -= 1
+            return {"status": "SKIP", "reason": "COOLDOWN"}
 
-        snapshots = self._build_snapshots()
+        snapshots = self._build_snapshots(regime=regime)
         if not snapshots:
             return {"status": "SKIP", "reason": "NO_MARKET_DATA"}
 
@@ -97,7 +104,7 @@ class ExecutionRouter:
             fee=fee,
             meta={
                 "strategy_id": candidate_signal["strategy_id"],
-                "trade_type": self._trade_type(candidate_signal),
+                "trade_type": candidate_signal.get("trade_type") or self._trade_type(candidate_signal),
                 "regime": regime,
             },
         )
@@ -137,7 +144,7 @@ class ExecutionRouter:
             "symbol": order["symbol"],
             "asset_class": self._asset_class(order["symbol"]),
             "regime": regime,
-            "trade_type": self._trade_type(candidate_signal),
+            "trade_type": candidate_signal.get("trade_type") or self._trade_type(candidate_signal),
             "side": order["side"],
             "qty": order["qty"],
             "status": order.get("status", "UNKNOWN"),
@@ -291,10 +298,15 @@ class ExecutionRouter:
             f"{last_line}"
         )
 
-    def _build_snapshots(self):
+    def _build_snapshots(self, regime):
         if not self.market_data:
             return []
-        return [self.market_data.get_snapshot(symbol=symbol, lookback=60) for symbol in self.symbols]
+        symbols = self._dynamic_symbols(regime)
+        snapshots = []
+        for symbol in symbols:
+            raw = self.market_data.get_snapshot(symbol=symbol, lookback=60)
+            snapshots.append(self._enrich_snapshot(raw))
+        return snapshots
 
     def _select_signal(self, snapshots, market_bias, regime):
         if not self.strategy_engine:
@@ -311,6 +323,7 @@ class ExecutionRouter:
         for candidate in candidates:
             symbol_penalty = self._symbol_exposure_pct(candidate["symbol"]) / 100.0
             candidate["rank_score"] = candidate.get("confidence", 0.0) - (0.2 * symbol_penalty)
+            candidate["trade_type"] = self._determine_trade_type(candidate, regime)
 
         threshold = self._profile_threshold()
         filtered = [item for item in candidates if item.get("confidence", 0.0) >= threshold]
@@ -336,6 +349,55 @@ class ExecutionRouter:
         if signal["price"] <= 0:
             return False
         return True
+
+    def _dynamic_symbols(self, regime):
+        base = list(self.symbols)
+        if regime == "CRISIS":
+            extra = ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ"]
+        elif regime == "HIGH_VOLATILITY":
+            extra = ["NSE:SBIN-EQ", "NSE:ICICIBANK-EQ", "NSE:TCS-EQ"]
+        elif regime == "LOW_VOLATILITY":
+            extra = ["NSE:RELIANCE-EQ", "NSE:INFY-EQ", "NSE:HDFCBANK-EQ"]
+        elif regime == "TREND":
+            extra = ["NSE:RELIANCE-EQ", "NSE:TCS-EQ", "NSE:LT-EQ"]
+        else:
+            extra = ["NSE:SBIN-EQ", "NSE:INFY-EQ", "NSE:ITC-EQ"]
+
+        merged = []
+        for symbol in base + extra:
+            if symbol not in merged:
+                merged.append(symbol)
+        return merged[:8]
+
+    def _enrich_snapshot(self, snapshot):
+        closes = snapshot.get("close", [])
+        if len(closes) < 3:
+            snapshot["candle_angle"] = 0.0
+            snapshot["candle_patterns"] = []
+            return snapshot
+
+        candle = {
+            "open": float(closes[-2]),
+            "close": float(closes[-1]),
+            "high": max(float(closes[-1]), float(closes[-2])),
+            "low": min(float(closes[-1]), float(closes[-2])),
+        }
+        snapshot["candle_angle"] = quantize(self.candle_angle.calculate(closes[-20:]), 6)
+        snapshot["candle_patterns"] = self.candle_pattern.detect(candle)
+        return snapshot
+
+    def _determine_trade_type(self, signal, regime):
+        patterns = set(signal.get("candle_patterns", []))
+        angle = float(signal.get("candle_angle", 0.0))
+        volatility = float(signal.get("volatility", 0.0))
+
+        if regime in {"CRISIS", "HIGH_VOLATILITY"}:
+            return "SCALP"
+        if "DOJI" in patterns and regime == "MEAN_REVERSION":
+            return "INTRADAY"
+        if abs(angle) > 0.08 and volatility < 0.8:
+            return "SWING"
+        return self._trade_type(signal)
 
     def _allocate_quantity(self, signal):
         price = signal["price"]
