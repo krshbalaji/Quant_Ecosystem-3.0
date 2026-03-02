@@ -37,6 +37,8 @@ class ExecutionRouter:
         self.instrument_policy = InstrumentPolicyEngine()
         self.candle_pattern = CandlePatternEngine()
         self.candle_angle = CandleAngleEngine()
+        self._cycle_no = 0
+        self._symbol_cooldown_until = {}
 
     async def execute(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
         result = self.run_cycle(signal=signal, market_bias=market_bias, regime=regime)
@@ -45,6 +47,7 @@ class ExecutionRouter:
         return result
 
     def run_cycle(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
+        self._cycle_no += 1
         if self.state.trading_halted:
             return {"status": "SKIP", "reason": "TRADING_HALTED"}
         if not self.state.trading_enabled:
@@ -75,6 +78,10 @@ class ExecutionRouter:
             return {"status": "SKIP", "reason": "NO_SIGNAL"}
         if not self._is_valid_signal(candidate_signal):
             return {"status": "SKIP", "reason": "INVALID_SIGNAL"}
+        if not self._passes_context_filter(candidate_signal, regime):
+            return {"status": "SKIP", "reason": "WEAK_CONTEXT"}
+        if self._is_symbol_in_cooldown(candidate_signal["symbol"]):
+            return {"status": "SKIP", "reason": "SYMBOL_COOLDOWN"}
 
         exposure_pct = self._portfolio_exposure_pct()
         symbol_exposure_pct = self._symbol_exposure_pct(candidate_signal["symbol"])
@@ -160,6 +167,7 @@ class ExecutionRouter:
             "cash_balance": quantize(self.state.cash_balance, 2),
         }
         self.state.record_trade(trade_record)
+        self._set_symbol_cooldown(order["symbol"], trade_record["trade_type"])
 
         return {
             "status": "TRADE",
@@ -324,6 +332,9 @@ class ExecutionRouter:
             symbol_penalty = self._symbol_exposure_pct(candidate["symbol"]) / 100.0
             candidate["rank_score"] = candidate.get("confidence", 0.0) - (0.2 * symbol_penalty)
             candidate["trade_type"] = self._determine_trade_type(candidate, regime)
+            if candidate.get("shadow_mode"):
+                # Stricter bar in shadow deployment.
+                candidate["rank_score"] -= 0.08
 
         threshold = self._profile_threshold()
         filtered = [item for item in candidates if item.get("confidence", 0.0) >= threshold]
@@ -398,6 +409,44 @@ class ExecutionRouter:
         if abs(angle) > 0.08 and volatility < 0.8:
             return "SWING"
         return self._trade_type(signal)
+
+    def _passes_context_filter(self, signal, regime):
+        confidence = float(signal.get("confidence", 0.0))
+        side = str(signal.get("side", "HOLD")).upper()
+        angle = float(signal.get("candle_angle", 0.0))
+        patterns = set(signal.get("candle_patterns", []))
+        is_shadow = bool(signal.get("shadow_mode", False))
+
+        base_min = 0.58
+        if is_shadow:
+            base_min = 0.70
+        if regime in {"HIGH_VOLATILITY", "CRISIS"}:
+            base_min += 0.04
+        if confidence < base_min:
+            return False
+
+        if side == "BUY" and "BEAR_ENGULF" in patterns:
+            return False
+        if side == "SELL" and "BULL_ENGULF" in patterns:
+            return False
+        if side == "BUY" and angle < -0.06 and regime != "MEAN_REVERSION":
+            return False
+        if side == "SELL" and angle > 0.06 and regime != "MEAN_REVERSION":
+            return False
+        return True
+
+    def _is_symbol_in_cooldown(self, symbol):
+        return self._cycle_no < int(self._symbol_cooldown_until.get(symbol, 0))
+
+    def _set_symbol_cooldown(self, symbol, trade_type):
+        t = str(trade_type).upper()
+        if t == "SCALP":
+            gap = 1
+        elif t == "SWING":
+            gap = 3
+        else:
+            gap = 2
+        self._symbol_cooldown_until[symbol] = self._cycle_no + gap
 
     def _allocate_quantity(self, signal):
         price = signal["price"]
