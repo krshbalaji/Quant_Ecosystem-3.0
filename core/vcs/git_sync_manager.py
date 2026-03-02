@@ -43,6 +43,17 @@ class GitSyncManager:
             print("Git sync skipped: not a git repository.")
             return False
 
+        if not self._has_head_commit():
+            print("Git pull on start: skipped (repository has no commits yet).")
+            return False
+
+        upstream_ok = self._has_upstream()
+        if not upstream_ok:
+            branch = self._current_branch() or "main"
+            if not self._run(["git", "branch", "--set-upstream-to", f"origin/{branch}", branch], "Git set upstream"):
+                print("Git pull on start: skipped (upstream not configured).")
+                return False
+
         stashed = False
         stash_name = f"autosync-{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
         if self._has_uncommitted_changes():
@@ -73,8 +84,15 @@ class GitSyncManager:
                 self.create_eod_tag()
             return True
 
-        self._run(["git", "commit", "-m", self.auto_commit_message], "Git commit")
-        pushed = self._run(["git", "push", "origin", "main"], "Git push on end")
+        if not self._run(["git", "commit", "-m", self.auto_commit_message], "Git commit"):
+            return False
+
+        branch = self._current_branch() or "main"
+        if self._has_upstream():
+            pushed = self._run(["git", "push"], "Git push on end")
+        else:
+            pushed = self._run(["git", "push", "-u", "origin", branch], "Git push on end")
+
         if create_eod_tag:
             self.create_eod_tag()
         return pushed
@@ -82,13 +100,20 @@ class GitSyncManager:
     def create_eod_tag(self):
         if not self._is_git_repo():
             return False
+        if not self._has_head_commit():
+            print("Git tag skipped: repository has no commits yet.")
+            return False
 
         day = datetime.datetime.now().strftime("%Y%m%d")
         base = f"eod-{day}"
         tag_name = self._next_available_tag(base)
         msg = f"EOD signed checkpoint {day}"
 
-        signed = self._run(["git", "tag", "-s", tag_name, "-m", msg], f"Git signed tag {tag_name}")
+        signed = False
+        if self._has_gpg_signing_key():
+            signed = self._run(["git", "tag", "-s", tag_name, "-m", msg], f"Git signed tag {tag_name}")
+        else:
+            print("Git signed tag skipped: no GPG secret key configured.")
         if not signed:
             # Fallback when GPG signing is unavailable
             self._run(["git", "tag", "-a", tag_name, "-m", msg], f"Git annotated tag {tag_name}")
@@ -120,6 +145,30 @@ class GitSyncManager:
     def _has_uncommitted_changes(self):
         out = self._run_capture(["git", "status", "--porcelain"])
         return bool(out and out.strip())
+
+    def _has_head_commit(self):
+        out = self._run_capture(["git", "rev-parse", "--verify", "HEAD"])
+        return bool(out and out.strip())
+
+    def _has_upstream(self):
+        out = self._run_capture(["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+        return bool(out and out.strip())
+
+    def _current_branch(self):
+        out = self._run_capture(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+        if not out:
+            return None
+        return out.strip()
+
+    def _has_gpg_signing_key(self):
+        key = self._run_capture(["git", "config", "--get", "user.signingkey"])
+        if not key:
+            return False
+        key_value = key.strip()
+        if not key_value:
+            return False
+        listed = self._run_capture(["gpg", "--list-secret-keys", key_value])
+        return bool(listed and listed.strip())
 
     def _is_git_repo(self):
         out = self._run_capture(["git", "rev-parse", "--is-inside-work-tree"])

@@ -243,7 +243,7 @@ class ExecutionRouter:
         else:
             ids = [item["id"] for item in strategies]
         if not ids:
-            ids = ["core_trend_follow_v1"]
+            return "Active strategies: none (all rejected/disabled)"
         return "Active strategies: " + ", ".join(ids)
 
     def get_dashboard_report(self):

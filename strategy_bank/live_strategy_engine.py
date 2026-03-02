@@ -75,6 +75,9 @@ class LiveStrategyEngine:
         return best
 
     def _fallback_signal(self, trend, volatility, market_bias):
+        if self.active_ids is not None and self.fallback_id not in self.active_ids:
+            return "HOLD", 0.0, self.fallback_id
+
         if market_bias == "RISK_OFF":
             return "HOLD", 0.0, self.fallback_id
 
