@@ -65,6 +65,7 @@ class Config:
         self.base_slippage_bps = float(os.getenv("BASE_SLIPPAGE_BPS", 1.5))
         self.max_slippage_bps = float(os.getenv("MAX_SLIPPAGE_BPS", 8.0))
         self.capital_cap_multiplier = float(os.getenv("CAPITAL_CAP_MULTIPLIER", 2.0))
+        self.allow_paper_shadow = os.getenv("ALLOW_PAPER_SHADOW", "true").lower() == "true"
 
     def _pick_env(self, *keys):
         placeholders = {"", "your_bot_token", "your_chat_id", "none", "null"}

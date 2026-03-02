@@ -55,6 +55,8 @@ class EODReport:
         with csv_path.open("w", newline="", encoding="utf-8") as handle:
             fieldnames = [
                 "strategy_id",
+                "strategy_stage",
+                "shadow_mode",
                 "symbol",
                 "asset_class",
                 "regime",
@@ -181,7 +183,10 @@ class EODReport:
         if compliance:
             print("Targets:")
             for key, value in compliance.items():
-                marker = "[OK]" if value else "[MISS]"
+                if value is None:
+                    marker = "[NA]"
+                else:
+                    marker = "[OK]" if value else "[MISS]"
                 print(f"  {marker} {key}")
 
     def _colored_signed(self, value):
@@ -198,6 +203,14 @@ class EODReport:
         return round(float(value), 2)
 
     def _target_compliance(self, stats, drawdown_pct):
+        if int(stats.get("rolling_window", 0)) < 20:
+            return {
+                "win_rate_45_60": None,
+                "profit_factor_gt_1_5": None,
+                "sharpe_gt_1_8": None,
+                "max_dd_lt_15": float(drawdown_pct) < 15.0,
+                "expectancy_positive": None,
+            }
         return {
             "win_rate_45_60": 45.0 <= stats.get("win_rate_pct", 0.0) <= 60.0,
             "profit_factor_gt_1_5": stats.get("profit_factor", 0.0) > 1.5,

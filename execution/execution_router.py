@@ -132,6 +132,8 @@ class ExecutionRouter:
 
         trade_record = {
             "strategy_id": candidate_signal["strategy_id"],
+            "strategy_stage": candidate_signal.get("strategy_stage", "UNKNOWN"),
+            "shadow_mode": bool(candidate_signal.get("shadow_mode", False)),
             "symbol": order["symbol"],
             "asset_class": self._asset_class(order["symbol"]),
             "regime": regime,
@@ -160,6 +162,8 @@ class ExecutionRouter:
             "pnl": trade_record["cycle_pnl"],
             "equity": trade_record["equity"],
             "strategy_id": trade_record["strategy_id"],
+            "strategy_stage": trade_record["strategy_stage"],
+            "shadow_mode": trade_record["shadow_mode"],
             "trade_type": trade_record["trade_type"],
             "regime": trade_record["regime"],
             "confidence": trade_record["confidence"],
@@ -362,6 +366,10 @@ class ExecutionRouter:
             )
             asset_limit_qty = int(asset_left / price)
             base_qty = min(base_qty, strategy_limit_qty, asset_limit_qty)
+
+        if signal.get("shadow_mode"):
+            # Shadow deployment in PAPER mode to gather evidence safely.
+            base_qty = max(1, int(base_qty * 0.25))
 
         allowed_by_portfolio = int(self._available_portfolio_notional() / price)
         if allowed_by_portfolio <= 0:

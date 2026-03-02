@@ -69,4 +69,13 @@ class StrategyEvaluator:
                 report["stage"] = self.lifecycle.promote(report["metrics"])
 
         reports.sort(key=lambda item: item["score"], reverse=True)
+
+        active = [item for item in reports if item.get("stage") in {"PAPER", "LIVE"}]
+        if not active and self.config.mode.upper() == "PAPER" and self.config.allow_paper_shadow and reports:
+            for report in reports:
+                if report.get("disabled_by_correlation"):
+                    continue
+                report["stage"] = "PAPER_SHADOW"
+                break
+
         return reports

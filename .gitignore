@@ -1,1 +1,7 @@
 .env
+__pycache__/
+*.py[cod]
+*.log
+fyersApi.log
+fyersRequests.log
+reporting/output/

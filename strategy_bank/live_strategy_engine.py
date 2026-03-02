@@ -1,23 +1,41 @@
+from core.config_loader import Config
+
+
 class LiveStrategyEngine:
 
     def __init__(self, strategy_registry):
         self.strategy_registry = strategy_registry
         self.strategies = strategy_registry.load()
         self.active_ids = None
+        self.stage_by_id = {}
+        self.shadow_ids = set()
+        self.config = Config()
         self.fallback_id = "core_trend_follow_v1"
+        if self.strategies:
+            self.fallback_id = self.strategies[0]["id"]
 
     def reload(self):
         self.strategies = self.strategy_registry.load()
         self.active_ids = None
+        self.stage_by_id = {}
+        self.shadow_ids = set()
+        if self.strategies:
+            self.fallback_id = self.strategies[0]["id"]
         return self.strategies
 
     def apply_policy(self, strategy_reports):
         approved = {
             report["id"]
             for report in strategy_reports
-            if report.get("stage") in {"PAPER", "LIVE"}
+            if report.get("stage") in {"PAPER", "LIVE", "PAPER_SHADOW"}
         }
         self.active_ids = approved
+        self.stage_by_id = {report["id"]: report.get("stage", "REJECTED") for report in strategy_reports}
+        self.shadow_ids = {
+            report["id"]
+            for report in strategy_reports
+            if report.get("stage") == "PAPER_SHADOW"
+        }
 
     def evaluate(self, snapshots, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
         signals = []
@@ -30,6 +48,8 @@ class LiveStrategyEngine:
             signals.append(
                 {
                     "strategy_id": strategy_id,
+                    "strategy_stage": self.stage_by_id.get(strategy_id, "UNKNOWN"),
+                    "shadow_mode": strategy_id in self.shadow_ids,
                     "symbol": symbol,
                     "side": side,
                     "price": snapshot["price"],

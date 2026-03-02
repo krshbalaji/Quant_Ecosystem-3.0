@@ -124,11 +124,21 @@ class GitSyncManager:
         if not self._is_git_repo():
             return ""
         out = self._run_capture(["git", "status", "--short"])
-        return out or ""
+        if not out:
+            return ""
+        ignored_tokens = ["__pycache__", ".pyc", "reporting/output/", "fyersApi.log", "fyersRequests.log"]
+        lines = []
+        for line in out.splitlines():
+            if any(token in line for token in ignored_tokens):
+                continue
+            lines.append(line)
+        return "\n".join(lines)
 
     def _stage_selected_paths(self):
         for path in self.include_paths:
             self._run(["git", "add", "-A", "--", path], f"Git add {path}")
+        self._run(["git", "reset", "-q", "HEAD", "--", ":(glob)**/__pycache__/**"], "Git unstage __pycache__")
+        self._run(["git", "reset", "-q", "HEAD", "--", ":(glob)**/*.pyc"], "Git unstage .pyc")
         for path in self.exclude_paths:
             self._run(["git", "reset", "-q", "HEAD", "--", path], f"Git unstage {path}")
 
