@@ -42,6 +42,9 @@ class ExecutionRouter:
         self._cycle_no = 0
         self._symbol_cooldown_until = {}
         self._symbol_strategy_owner = {}
+        self._risk_block_streak = 0
+        self._last_risk_block_reason = ""
+        self._liquidation_cooldown_until = 0
 
     async def execute(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
         result = self.run_cycle(signal=signal, market_bias=market_bias, regime=regime)
@@ -81,10 +84,13 @@ class ExecutionRouter:
         if not candidate_signal:
             return {"status": "SKIP", "reason": "NO_SIGNAL"}
         if not self._is_valid_signal(candidate_signal):
+            self._reset_risk_block_state()
             return {"status": "SKIP", "reason": "INVALID_SIGNAL"}
         if not self._passes_context_filter(candidate_signal, regime):
+            self._reset_risk_block_state()
             return {"status": "SKIP", "reason": "WEAK_CONTEXT"}
         if self._is_symbol_in_cooldown(candidate_signal["symbol"]):
+            self._reset_risk_block_state()
             return {"status": "SKIP", "reason": "SYMBOL_COOLDOWN"}
 
         exposure_pct = self._portfolio_exposure_pct()
@@ -96,6 +102,7 @@ class ExecutionRouter:
         strategy_exposure_pct = self._strategy_exposure_pct(candidate_signal.get("strategy_id"))
         sector_exposure_pct = self._sector_exposure_pct(symbol)
         exposure_reducing = self._is_exposure_reducing_signal(candidate_signal)
+        active_strategy_count = self._active_strategy_count()
         allowed, reason = self.risk_engine.allow_trade(
             self.state,
             portfolio_exposure_pct=exposure_pct,
@@ -106,9 +113,18 @@ class ExecutionRouter:
             strategy_exposure_pct=strategy_exposure_pct,
             asset_exposure_pct=asset_exposure_pct,
             exposure_reducing=exposure_reducing,
+            active_strategy_count=active_strategy_count,
         )
         if not allowed:
+            if self._is_exposure_block(reason):
+                self._track_risk_block(reason)
+                liquidation = self._maybe_liquidation_assist(trigger_reason=reason, regime=regime)
+                if liquidation:
+                    return liquidation
+            else:
+                self._reset_risk_block_state()
             return {"status": "SKIP", "reason": reason}
+        self._reset_risk_block_state()
 
         qty, size_reason = self._allocate_quantity(candidate_signal)
         if qty <= 0:
@@ -205,6 +221,7 @@ class ExecutionRouter:
             "regime": trade_record["regime"],
             "confidence": trade_record["confidence"],
             "price": trade_record["price"],
+            "liquidation_assist": False,
         }
 
     def start_trading(self):
@@ -569,6 +586,14 @@ class ExecutionRouter:
             notional += abs(float(pos.get("net_qty", 0.0)) * float(px))
         return quantize((notional / self.state.equity) * 100.0, 4)
 
+    def _active_strategy_count(self):
+        if not self.strategy_engine:
+            return 1
+        ids = getattr(self.strategy_engine, "active_ids", None)
+        if ids is None:
+            return max(len(getattr(self.strategy_engine, "strategies", []) or []), 1)
+        return max(len(ids), 1)
+
     def _asset_exposure_pct(self, asset_class):
         if self.state.equity <= 0:
             return 100.0
@@ -666,3 +691,136 @@ class ExecutionRouter:
         if net_qty < 0 and side == "BUY":
             return True
         return False
+
+    def _is_exposure_block(self, reason):
+        return reason in {
+            "MAX_STRATEGY_EXPOSURE",
+            "MAX_PORTFOLIO_EXPOSURE",
+            "MAX_SYMBOL_EXPOSURE",
+            "MAX_SECTOR_EXPOSURE",
+            "MAX_ASSET_EXPOSURE",
+        }
+
+    def _track_risk_block(self, reason):
+        if self._last_risk_block_reason == reason:
+            self._risk_block_streak += 1
+        else:
+            self._last_risk_block_reason = reason
+            self._risk_block_streak = 1
+
+    def _reset_risk_block_state(self):
+        self._risk_block_streak = 0
+        self._last_risk_block_reason = ""
+
+    def _maybe_liquidation_assist(self, trigger_reason, regime):
+        if not self.config.liquidation_assist_enabled:
+            return None
+        if self._cycle_no < self._liquidation_cooldown_until:
+            return None
+        if self._risk_block_streak < max(1, self.config.liquidation_assist_trigger_streak):
+            return None
+
+        positions = self.portfolio_engine.snapshot()
+        if not positions:
+            return None
+
+        symbol, pos = max(
+            positions.items(),
+            key=lambda kv: self.portfolio_engine.symbol_exposure_notional(kv[0], self.state.latest_prices),
+        )
+        net_qty = int(pos.get("net_qty", 0))
+        if net_qty == 0:
+            return None
+
+        close_fraction = max(0.05, min(self.config.liquidation_assist_close_fraction, 1.0))
+        qty = max(1, int(abs(net_qty) * close_fraction))
+        qty = min(qty, abs(net_qty))
+        side = "SELL" if net_qty > 0 else "BUY"
+        intended_price = float(self.state.latest_prices.get(symbol, pos.get("avg_price", 0.0)))
+        if intended_price <= 0:
+            return None
+
+        prev_equity = self.state.equity
+        prev_realized = float(self.state.realized_pnl)
+        volatility = 0.5
+        slippage_bps = self._compute_slippage_bps({"volatility": volatility})
+        fill_price = self._apply_slippage(intended_price, side, slippage_bps)
+        fill_notional = quantize(fill_price * qty, 4)
+        fee = quantize(fill_notional * (self.config.broker_fee_bps / 10000.0), 4)
+
+        order = self.broker.place_order(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price=fill_price,
+            fee=fee,
+            meta={
+                "strategy_id": "liquidation_assist_v1",
+                "trade_type": "RISK_REDUCTION",
+                "regime": regime,
+                "trigger_reason": trigger_reason,
+            },
+        )
+
+        if self.reconciler:
+            self.reconciler.reconcile(latest_prices=self.state.latest_prices)
+            realized_pnl = float(self.state.realized_pnl) - prev_realized
+            if abs(realized_pnl) < 1e-8:
+                realized_pnl = float(order.get("realized_pnl", 0.0))
+        else:
+            fill_result = self.portfolio_engine.apply_fill(symbol=symbol, side=side, qty=qty, price=fill_price)
+            realized_pnl = float(fill_result["realized_pnl"])
+            self.state.apply_fill_accounting(
+                side=side,
+                fill_notional=fill_notional,
+                fee=fee,
+                realized_pnl=realized_pnl,
+            )
+            self.state.mark_to_market(self.portfolio_engine)
+
+        cycle_pnl = quantize(self.state.equity - prev_equity, 4)
+        trade_record = {
+            "strategy_id": "liquidation_assist_v1",
+            "strategy_stage": "RISK_REDUCTION",
+            "shadow_mode": False,
+            "symbol": symbol,
+            "asset_class": self._asset_class(symbol),
+            "regime": regime,
+            "trade_type": "RISK_REDUCTION",
+            "side": side,
+            "qty": qty,
+            "status": order.get("status", "FILLED"),
+            "price": quantize(fill_price, 4),
+            "intended_price": quantize(intended_price, 4),
+            "slippage_bps": quantize(slippage_bps, 4),
+            "confidence": 1.0,
+            "memory_bias": 0.0,
+            "fee": fee,
+            "realized_pnl": quantize(realized_pnl, 4),
+            "closed_trade": bool(abs(realized_pnl) > 0.0),
+            "unrealized_pnl": quantize(self.state.unrealized_pnl, 4),
+            "cycle_pnl": cycle_pnl,
+            "equity": quantize(self.state.equity, 2),
+            "cash_balance": quantize(self.state.cash_balance, 2),
+            "liquidation_trigger": trigger_reason,
+        }
+        self.state.record_trade(trade_record)
+        self._liquidation_cooldown_until = self._cycle_no + 3
+        self._reset_risk_block_state()
+
+        return {
+            "status": "TRADE",
+            "symbol": symbol,
+            "side": side,
+            "qty": qty,
+            "pnl": cycle_pnl,
+            "equity": trade_record["equity"],
+            "strategy_id": "liquidation_assist_v1",
+            "strategy_stage": "RISK_REDUCTION",
+            "shadow_mode": False,
+            "trade_type": "RISK_REDUCTION",
+            "regime": regime,
+            "confidence": 1.0,
+            "price": trade_record["price"],
+            "liquidation_assist": True,
+        }

@@ -102,9 +102,22 @@ class EODReport:
         return report
 
     def _compute_realized_stats(self, trades):
-        pnl_values = [float(item.get("cycle_pnl", item.get("pnl_pct", 0.0))) for item in trades]
-        sample = pnl_values[-100:] if len(pnl_values) >= 100 else pnl_values
-        sample_equity = trades[-len(sample) :] if sample else []
+        realized_closed = [
+            float(item.get("realized_pnl", 0.0))
+            for item in trades
+            if bool(item.get("closed_trade", False)) and abs(float(item.get("realized_pnl", 0.0))) > 0.0
+        ]
+        if realized_closed:
+            pnl_values = realized_closed
+            sample = pnl_values[-100:] if len(pnl_values) >= 100 else pnl_values
+            sample_equity = [
+                item for item in trades
+                if bool(item.get("closed_trade", False)) and abs(float(item.get("realized_pnl", 0.0))) > 0.0
+            ][-len(sample):]
+        else:
+            pnl_values = [float(item.get("cycle_pnl", item.get("pnl_pct", 0.0))) for item in trades]
+            sample = pnl_values[-100:] if len(pnl_values) >= 100 else pnl_values
+            sample_equity = trades[-len(sample) :] if sample else []
         pnl_bps = []
         for item in sample_equity:
             pnl_abs = float(item.get("cycle_pnl", item.get("pnl_pct", 0.0)))
@@ -151,6 +164,7 @@ class EODReport:
             "profit_factor": self._r2(profit_factor),
             "sharpe": self._r2(sharpe),
             "rolling_window": len(sample),
+            "basis": "REALIZED_CLOSED" if realized_closed else "CYCLE_MTM",
             "warnings": warnings,
         }
 
@@ -174,6 +188,7 @@ class EODReport:
         print(f"Win Rate %: {self._plain(summary['realized_stats']['win_rate_pct'])}")
         print(f"Expectancy: {self._colored_signed(summary['realized_stats']['expectancy_abs'])}")
         print(f"Profit Factor: {self._plain(summary['realized_stats']['profit_factor'])}")
+        print(f"Stats Basis: {summary['realized_stats'].get('basis', 'UNKNOWN')}")
 
         warnings = summary["realized_stats"].get("warnings", [])
         if warnings:

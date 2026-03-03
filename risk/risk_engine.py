@@ -31,6 +31,7 @@ class RiskEngine:
         strategy_exposure_pct=0.0,
         asset_exposure_pct=0.0,
         exposure_reducing=False,
+        active_strategy_count=1,
     ):
         if state.trading_halted:
             return False, "TRADING_HALTED"
@@ -60,7 +61,11 @@ class RiskEngine:
         if (not exposure_reducing) and float(sector_exposure_pct) >= self.max_sector_exposure_pct:
             return False, "MAX_SECTOR_EXPOSURE"
 
-        if (not exposure_reducing) and float(strategy_exposure_pct) >= self.max_strategy_exposure_pct:
+        if (
+            (not exposure_reducing)
+            and int(active_strategy_count) > 1
+            and float(strategy_exposure_pct) >= self.max_strategy_exposure_pct
+        ):
             return False, "MAX_STRATEGY_EXPOSURE"
 
         if (not exposure_reducing) and float(asset_exposure_pct) >= self.max_asset_exposure_pct:

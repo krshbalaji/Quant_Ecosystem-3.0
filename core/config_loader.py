@@ -79,6 +79,9 @@ class Config:
         self.live_min_sharpe = float(os.getenv("LIVE_MIN_SHARPE", "1.80"))
         self.sizer_min_volatility = float(os.getenv("SIZER_MIN_VOLATILITY", "0.25"))
         self.sizer_max_notional_pct = float(os.getenv("SIZER_MAX_NOTIONAL_PCT", "8.0"))
+        self.liquidation_assist_enabled = os.getenv("LIQUIDATION_ASSIST_ENABLED", "true").lower() == "true"
+        self.liquidation_assist_trigger_streak = int(os.getenv("LIQUIDATION_ASSIST_TRIGGER_STREAK", "4"))
+        self.liquidation_assist_close_fraction = float(os.getenv("LIQUIDATION_ASSIST_CLOSE_FRACTION", "0.25"))
 
     def _pick_env(self, *keys):
         placeholders = {"", "your_bot_token", "your_chat_id", "none", "null"}
