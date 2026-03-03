@@ -82,11 +82,15 @@ class MasterOrchestrator:
         market_bias = intelligence_report.get("bias", "NEUTRAL")
         regime_advanced = intelligence_report.get("regime_advanced", intelligence_report.get("regime", "LOW_VOLATILITY"))
         regime = self._map_regime_to_execution(regime_advanced)
+        print("Global intelligence:", intelligence_report)
 
         bank_engine = getattr(router, "strategy_bank_engine", None)
         if bank_engine and getattr(bank_engine, "enabled", False):
             strategy_reports = bank_engine.ingest_reports(strategy_reports, intelligence_report=intelligence_report)
             router.strategy_engine.apply_policy(strategy_reports)
+        selector_allocator = self._run_selector_allocator(router, regime_advanced)
+        if selector_allocator:
+            print(f"Selector/Allocator: {selector_allocator}")
 
         if getattr(router.config, "enable_global_session_fallback", True):
             classes = self.universe.asset_classes_for_session()
@@ -107,6 +111,10 @@ class MasterOrchestrator:
                     market_bias = intelligence_report.get("bias", market_bias)
                     regime_advanced = intelligence_report.get("regime_advanced", intelligence_report.get("regime", regime_advanced))
                     regime = self._map_regime_to_execution(regime_advanced)
+                    print("Global intelligence:", intelligence_report)
+                    selector_allocator = self._run_selector_allocator(router, regime_advanced)
+                    if selector_allocator:
+                        print(f"Selector/Allocator: {selector_allocator}")
 
                 if getattr(router.config, "enable_global_session_fallback", True):
                     classes = self.universe.asset_classes_for_session()
@@ -326,3 +334,32 @@ class MasterOrchestrator:
         }
         key = str(regime_advanced).upper()
         return mapping.get(key, "MEAN_REVERSION")
+
+    def _run_selector_allocator(self, router, regime_advanced):
+        selector = getattr(router, "strategy_selector", None)
+        allocator = getattr(router, "capital_allocator_engine", None)
+        if not selector or not allocator:
+            return None
+
+        try:
+            selection = selector.select(
+                market_regime=str(regime_advanced).upper(),
+                risk_limits={"max_drawdown": 20.0, "min_profit_factor": 0.9, "min_sharpe": -2.0},
+                capital_available_pct=100.0,
+            )
+            allocation = allocator.rebalance(
+                regime=str(regime_advanced).upper(),
+                strategy_rows=selection.get("selected", []),
+                capital_available_pct=100.0,
+                current_drawdown_pct=float(getattr(router.state, "total_drawdown_pct", 0.0)),
+            )
+            return {
+                "regime": str(regime_advanced).upper(),
+                "active_ids": selection.get("activation", {}).get("active_ids", []),
+                "activated": selection.get("activation", {}).get("activated", []),
+                "deactivated": selection.get("activation", {}).get("deactivated", []),
+                "alloc": allocation.get("allocation", {}),
+                "rebalanced": allocation.get("rebalanced", False),
+            }
+        except Exception as exc:
+            return {"regime": str(regime_advanced).upper(), "error": str(exc)}
