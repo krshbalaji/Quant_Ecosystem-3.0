@@ -5,7 +5,7 @@ load_dotenv()
 
 class Env:
 
-    FYERS_CLIENT_ID = os.getenv("FYERS_CLIENT_ID")
+    FYERS_CLIENT_ID = os.getenv("FYERS_CLIENT_ID") or os.getenv("FYERS_APP_ID")
     FYERS_SECRET_KEY = os.getenv("FYERS_SECRET_KEY")
     FYERS_REDIRECT_URI = os.getenv("FYERS_REDIRECT_URI")
 
