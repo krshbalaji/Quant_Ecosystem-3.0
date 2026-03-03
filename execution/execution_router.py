@@ -41,6 +41,7 @@ class ExecutionRouter:
         self.candle_angle = CandleAngleEngine()
         self._cycle_no = 0
         self._symbol_cooldown_until = {}
+        self._symbol_strategy_owner = {}
 
     async def execute(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
         result = self.run_cycle(signal=signal, market_bias=market_bias, regime=regime)
@@ -187,6 +188,7 @@ class ExecutionRouter:
             "cash_balance": quantize(self.state.cash_balance, 2),
         }
         self.state.record_trade(trade_record)
+        self._symbol_strategy_owner[order["symbol"]] = candidate_signal["strategy_id"]
         self._set_symbol_cooldown(order["symbol"], trade_record["trade_type"])
 
         return {
@@ -555,12 +557,16 @@ class ExecutionRouter:
 
     def _strategy_exposure_pct(self, strategy_id):
         if self.state.equity <= 0 or not strategy_id:
-            return 100.0
+            return 0.0
         notional = 0.0
-        for item in self.state.trade_history[-30:]:
-            if item.get("strategy_id") != strategy_id:
+        for sym, pos in self.portfolio_engine.positions.items():
+            owner = self._symbol_strategy_owner.get(sym)
+            if owner != strategy_id:
                 continue
-            notional += abs(float(item.get("qty", 0.0)) * float(item.get("price", 0.0)))
+            px = self.state.latest_prices.get(sym)
+            if px is None:
+                continue
+            notional += abs(float(pos.get("net_qty", 0.0)) * float(px))
         return quantize((notional / self.state.equity) * 100.0, 4)
 
     def _asset_exposure_pct(self, asset_class):
