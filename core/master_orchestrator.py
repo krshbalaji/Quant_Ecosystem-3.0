@@ -76,20 +76,23 @@ class MasterOrchestrator:
             strategy_reports = []
 
         intelligence_report = self.intelligence_engine.analyze()
+        detected = self._detect_and_broadcast_regime(router, intelligence_report)
+        if detected:
+            intelligence_report["regime_advanced"] = detected.get("regime", intelligence_report.get("regime_advanced"))
         market_bias = intelligence_report.get("bias", "NEUTRAL")
-        regime = intelligence_report.get("regime", "MEAN_REVERSION")
-        regime_advanced = intelligence_report.get("regime_advanced", regime)
+        regime_advanced = intelligence_report.get("regime_advanced", intelligence_report.get("regime", "LOW_VOLATILITY"))
+        regime = self._map_regime_to_execution(regime_advanced)
 
         bank_engine = getattr(router, "strategy_bank_engine", None)
         if bank_engine and getattr(bank_engine, "enabled", False):
             strategy_reports = bank_engine.ingest_reports(strategy_reports, intelligence_report=intelligence_report)
             router.strategy_engine.apply_policy(strategy_reports)
 
-        router.symbols = self.universe.symbols(
-            asset_classes=["stocks", "indices"],
-            regime=regime_advanced,
-            limit=8,
-        )
+        if getattr(router.config, "enable_global_session_fallback", True):
+            classes = self.universe.asset_classes_for_session()
+        else:
+            classes = ["stocks", "indices"]
+        router.symbols = self.universe.symbols(asset_classes=classes, regime=regime_advanced, limit=8)
         command_task = asyncio.create_task(self._poll_telegram_commands(router))
 
         try:
@@ -98,15 +101,19 @@ class MasterOrchestrator:
                 refresh_every = max(1, int(getattr(router.config, "intelligence_refresh_cycles", 5)))
                 if i > 1 and (i % refresh_every == 0):
                     intelligence_report = self.intelligence_engine.analyze()
+                    detected = self._detect_and_broadcast_regime(router, intelligence_report)
+                    if detected:
+                        intelligence_report["regime_advanced"] = detected.get("regime", intelligence_report.get("regime_advanced"))
                     market_bias = intelligence_report.get("bias", market_bias)
-                    regime = intelligence_report.get("regime", regime)
-                    regime_advanced = intelligence_report.get("regime_advanced", regime)
+                    regime_advanced = intelligence_report.get("regime_advanced", intelligence_report.get("regime", regime_advanced))
+                    regime = self._map_regime_to_execution(regime_advanced)
+                    print("Global intelligence:", intelligence_report)
 
-                router.symbols = self.universe.symbols(
-                    asset_classes=["stocks", "indices"],
-                    regime=regime_advanced,
-                    limit=8,
-                )
+                if getattr(router.config, "enable_global_session_fallback", True):
+                    classes = self.universe.asset_classes_for_session()
+                else:
+                    classes = ["stocks", "indices"]
+                router.symbols = self.universe.symbols(asset_classes=classes, regime=regime_advanced, limit=8)
                 result = await router.execute(market_bias=market_bias, regime=regime)
 
                 if result["status"] == "TRADE":
@@ -258,3 +265,65 @@ class MasterOrchestrator:
             "retired": "RETIRED",
         }
         return mapping.get(value, "REJECTED")
+
+    def _detect_and_broadcast_regime(self, router, intelligence_report):
+        detector = getattr(router, "market_regime_detector", None)
+        if not detector:
+            return None
+        timeframe_data = self._build_regime_timeframe_data(router)
+        if not timeframe_data:
+            return None
+        extra = {
+            "market_breadth": intelligence_report.get("market_breadth", 0.0),
+            "vix": intelligence_report.get("vix"),
+        }
+        state = detector.detect_regime(timeframe_data=timeframe_data, extra_signals=extra)
+        detector.broadcast_regime(
+            state,
+            strategy_bank_layer=getattr(router, "strategy_bank_layer", None),
+            autonomous_controller=getattr(router, "autonomous_controller", None),
+        )
+        return state
+
+    def _build_regime_timeframe_data(self, router):
+        if not getattr(router, "market_data", None):
+            return {}
+        symbols = list(getattr(router, "symbols", []) or [])
+        if not symbols:
+            symbols = ["NSE:NIFTY50-INDEX"]
+        symbol = symbols[0]
+
+        def make_tf(lookback, vol_base):
+            close = router.market_data.get_close_series(symbol, lookback=lookback)
+            if len(close) < 20:
+                return {}
+            high = [round(value * 1.0015, 6) for value in close]
+            low = [round(value * 0.9985, 6) for value in close]
+            volume = [vol_base + ((idx % 7) * (vol_base * 0.02)) for idx in range(len(close))]
+            spread = [0.05 if "NSE:" in symbol else 0.0002 for _ in close]
+            return {
+                "close": close,
+                "high": high,
+                "low": low,
+                "volume": volume,
+                "spread": spread,
+            }
+
+        return {
+            "5m": make_tf(80, 1000.0),
+            "15m": make_tf(120, 1800.0),
+            "1h": make_tf(160, 3000.0),
+            "1d": make_tf(200, 5500.0),
+        }
+
+    def _map_regime_to_execution(self, regime_advanced):
+        mapping = {
+            "TRENDING_BULL": "TREND",
+            "TRENDING_BEAR": "TREND",
+            "RANGE_BOUND": "MEAN_REVERSION",
+            "HIGH_VOLATILITY": "HIGH_VOLATILITY",
+            "LOW_VOLATILITY": "LOW_VOLATILITY",
+            "CRASH_EVENT": "CRISIS",
+        }
+        key = str(regime_advanced).upper()
+        return mapping.get(key, "MEAN_REVERSION")

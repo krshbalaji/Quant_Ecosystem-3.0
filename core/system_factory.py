@@ -14,6 +14,7 @@ from quant_ecosystem.autonomous_controller.controller import AutonomousControlle
 from quant_ecosystem.capital_allocator.layer import CapitalAllocatorLayer
 from quant_ecosystem.execution_router.layer import ExecutionRouterLayer
 from quant_ecosystem.market_intelligence.layer import MarketIntelligenceLayer
+from quant_ecosystem.market_regime import MarketRegimeDetector
 from quant_ecosystem.mutation_engine.layer import MutationEngineLayer
 from quant_ecosystem.risk_engine.layer import RiskEngineLayer
 from quant_ecosystem.strategy_bank.layer import StrategyBankLayer
@@ -73,6 +74,7 @@ def build_router():
     execution.risk_layer = RiskEngineLayer(risk_engine=risk_engine)
     execution.strategy_bank_layer = StrategyBankLayer(bank_engine=execution.strategy_bank_engine)
     execution.mutation_layer = MutationEngineLayer(mutation_engine=execution.mutation_engine)
+    execution.market_regime_detector = MarketRegimeDetector()
     execution.autonomous_controller.set_mode(execution, config.operation_mode)
 
     telegram = TelegramController()

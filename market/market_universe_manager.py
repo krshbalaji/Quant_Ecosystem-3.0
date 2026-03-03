@@ -1,3 +1,7 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
 class MarketUniverseManager:
 
     def __init__(self):
@@ -46,7 +50,28 @@ class MarketUniverseManager:
 
     def _regime_filter(self, symbols, regime):
         if regime in {"PANIC", "HIGH_VOLATILITY", "CRISIS"}:
-            return [s for s in symbols if s.startswith("NSE:") or s.startswith("FX:")]
+            return [s for s in symbols if s.startswith("NSE:") or s.startswith("FX:") or s.startswith("CRYPTO:")]
         if regime in {"LOW_VOLATILITY", "RANGE"}:
-            return [s for s in symbols if "-EQ" in s or s.endswith("INDEX")]
+            return [
+                s
+                for s in symbols
+                if ("-EQ" in s) or s.endswith("INDEX") or s.startswith("FX:") or s.startswith("CRYPTO:")
+            ]
         return symbols
+
+    def asset_classes_for_session(self, now_utc=None):
+        """
+        Returns preferred asset classes for the current session.
+        If India cash session is closed, pivots to globally active classes.
+        """
+        now_utc = now_utc or datetime.utcnow().replace(tzinfo=ZoneInfo("UTC"))
+        ist_now = now_utc.astimezone(ZoneInfo("Asia/Kolkata"))
+        weekday = ist_now.weekday()  # 0=Mon ... 6=Sun
+        minutes = ist_now.hour * 60 + ist_now.minute
+
+        india_cash_open = weekday < 5 and ((9 * 60 + 15) <= minutes <= (15 * 60 + 30))
+        if india_cash_open:
+            return ["stocks", "indices"]
+
+        # India closed: keep trading alive via globally active markets.
+        return ["forex", "crypto", "indices", "commodities"]

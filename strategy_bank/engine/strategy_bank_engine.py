@@ -93,6 +93,16 @@ class StrategyBankEngine:
             )
 
         ranked = sorted(normalized, key=lambda item: float(item.get("score", 0.0)), reverse=True)
+        # If all strategies are retired/rejected, keep one shadow candidate alive in PAPER mode.
+        if self.config.mode.upper() == "PAPER" and (not any(item.get("active") for item in ranked)):
+            for row in ranked:
+                if row.get("stage") == "RETIRED":
+                    continue
+                row["stage"] = "SHADOW"
+                row["active"] = True
+                row["disabled_by_correlation"] = False
+                break
+
         self._allocation_map = self.allocator.allocate(ranked)
         for row in ranked:
             row["allocation_pct"] = float(self._allocation_map.get(row["id"], 0.0))

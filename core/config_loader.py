@@ -43,6 +43,7 @@ class Config:
         self.auto_dependency_install = os.getenv("AUTO_DEP_INSTALL", "true").lower() == "true"
         self.auto_update_probability = float(os.getenv("AUTO_UPDATE_PROBABILITY", "0.25"))
         self.intelligence_refresh_cycles = int(os.getenv("INTELLIGENCE_REFRESH_CYCLES", "5"))
+        self.enable_global_session_fallback = os.getenv("ENABLE_GLOBAL_SESSION_FALLBACK", "true").lower() == "true"
 
         # Institutional strategy bank / mutation flags
         self.enable_strategy_bank = os.getenv("ENABLE_STRATEGY_BANK", "true").lower() == "true"
