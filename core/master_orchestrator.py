@@ -91,6 +91,12 @@ class MasterOrchestrator:
         selector_allocator = self._run_selector_allocator(router, regime_advanced)
         if selector_allocator:
             print(f"Selector/Allocator: {selector_allocator}")
+        diversity_report = self._run_strategy_diversity(router)
+        if diversity_report:
+            print(f"StrategyDiversity: {diversity_report}")
+        survival_engine_report = self._run_strategy_survival(router)
+        if survival_engine_report:
+            print(f"StrategySurvival: {survival_engine_report}")
         meta_decision = self._run_meta_brain(
             router=router,
             regime_advanced=regime_advanced,
@@ -126,6 +132,12 @@ class MasterOrchestrator:
                     selector_allocator = self._run_selector_allocator(router, regime_advanced)
                     if selector_allocator:
                         print(f"Selector/Allocator: {selector_allocator}")
+                    diversity_report = self._run_strategy_diversity(router)
+                    if diversity_report:
+                        print(f"StrategyDiversity: {diversity_report}")
+                    survival_engine_report = self._run_strategy_survival(router)
+                    if survival_engine_report:
+                        print(f"StrategySurvival: {survival_engine_report}")
                     meta_decision = self._run_meta_brain(
                         router=router,
                         regime_advanced=regime_advanced,
@@ -439,6 +451,75 @@ class MasterOrchestrator:
                 "reduced": decisions.get("REDUCED_STRATEGIES", []),
                 "retired": decisions.get("RETIRED_STRATEGIES", []),
                 "promoted": decisions.get("PROMOTED_STRATEGIES", []),
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    def _run_strategy_diversity(self, router):
+        engine = getattr(router, "strategy_diversity_engine", None)
+        if not engine:
+            return None
+        try:
+            result = engine.run_cycle(
+                strategy_bank_layer=getattr(router, "strategy_bank_layer", None),
+                meta_strategy_brain=getattr(router, "meta_strategy_brain", None),
+                portfolio_ai=getattr(router, "portfolio_ai_engine", None),
+                max_active=max(1, int(getattr(router.config, "meta_max_active_strategies", 5))),
+            )
+            constraints = result.get("constraints", {})
+            allowed_ids = constraints.get("allowed_ids", [])
+            blocked_ids = constraints.get("blocked_ids", [])
+            selector = getattr(router, "strategy_selector", None)
+            if selector and hasattr(selector, "activation_manager"):
+                try:
+                    rows = []
+                    layer = getattr(router, "strategy_bank_layer", None)
+                    if layer and hasattr(layer, "registry_rows"):
+                        rows = layer.registry_rows()
+                    available_ids = [str(row.get("id")) for row in rows if row.get("id")]
+                    selector.activation_manager.apply_selection(
+                        selected_ids=allowed_ids,
+                        available_ids=available_ids,
+                    )
+                except Exception:
+                    pass
+            return {
+                "allowed": allowed_ids,
+                "blocked": blocked_ids,
+                "updated": result.get("strategy_bank", {}).get("updated", 0),
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    def _run_strategy_survival(self, router):
+        engine = getattr(router, "strategy_survival_engine", None)
+        if not engine:
+            return None
+        try:
+            result = engine.run_cycle()
+            # Keep selector activation aligned after retire/reduce/replace outcomes.
+            selector = getattr(router, "strategy_selector", None)
+            layer = getattr(router, "strategy_bank_layer", None)
+            if selector and hasattr(selector, "activation_manager") and layer and hasattr(layer, "registry_rows"):
+                try:
+                    rows = layer.registry_rows()
+                    active_ids = [
+                        str(row.get("id"))
+                        for row in rows
+                        if row.get("id") and bool(row.get("active", False))
+                    ]
+                    available_ids = [str(row.get("id")) for row in rows if row.get("id")]
+                    selector.activation_manager.apply_selection(
+                        selected_ids=active_ids,
+                        available_ids=available_ids,
+                    )
+                except Exception:
+                    pass
+            return {
+                "decaying": result.get("decaying", []),
+                "reduced": result.get("reduced", []),
+                "retired": result.get("retired", []),
+                "replacements": result.get("replacements", []),
             }
         except Exception as exc:
             return {"error": str(exc)}

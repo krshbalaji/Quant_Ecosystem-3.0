@@ -71,7 +71,17 @@ class Config:
         self.enable_portfolio_ai = os.getenv("ENABLE_PORTFOLIO_AI", "false").lower() == "true"
         self.portfolio_ai_interval_sec = int(os.getenv("PORTFOLIO_AI_INTERVAL_SEC", "300"))
         self.portfolio_ai_capital_pct = float(os.getenv("PORTFOLIO_AI_CAPITAL_PCT", "100"))
+        self.enable_strategy_diversity = os.getenv("ENABLE_STRATEGY_DIVERSITY", "false").lower() == "true"
+        self.strategy_diversity_max_per_category = int(os.getenv("STRATEGY_DIVERSITY_MAX_PER_CATEGORY", "3"))
+        self.strategy_diversity_max_correlation = float(os.getenv("STRATEGY_DIVERSITY_MAX_CORRELATION", "0.75"))
+        self.strategy_diversity_max_per_asset_class = int(os.getenv("STRATEGY_DIVERSITY_MAX_PER_ASSET_CLASS", "4"))
+        self.strategy_diversity_max_per_timeframe = int(os.getenv("STRATEGY_DIVERSITY_MAX_PER_TIMEFRAME", "4"))
+        self.enable_strategy_survival = os.getenv("ENABLE_STRATEGY_SURVIVAL", "false").lower() == "true"
         self.enable_execution_intelligence = os.getenv("ENABLE_EXECUTION_INTELLIGENCE", "false").lower() == "true"
+        self.enable_microstructure_simulation = os.getenv("ENABLE_MICROSTRUCTURE_SIMULATION", "false").lower() == "true"
+        self.microstructure_base_delay_ms = float(os.getenv("MICROSTRUCTURE_BASE_DELAY_MS", "120"))
+        self.microstructure_spread_multiplier = float(os.getenv("MICROSTRUCTURE_SPREAD_MULTIPLIER", "1.0"))
+        self.microstructure_slippage_multiplier = float(os.getenv("MICROSTRUCTURE_SLIPPAGE_MULTIPLIER", "1.0"))
         self.enable_regime_ai = os.getenv("ENABLE_REGIME_AI", "false").lower() == "true"
         self.regime_ai_model_path = os.getenv("REGIME_AI_MODEL_PATH", "quant_ecosystem/regime_ai/models/regime_model.pkl")
         self.regime_ai_min_confidence = float(os.getenv("REGIME_AI_MIN_CONFIDENCE", "0.45"))

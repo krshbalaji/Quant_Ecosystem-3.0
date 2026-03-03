@@ -19,12 +19,16 @@ from quant_ecosystem.execution_router.layer import ExecutionRouterLayer
 from quant_ecosystem.execution_intelligence import ExecutionBrain
 from quant_ecosystem.market_intelligence.layer import MarketIntelligenceLayer
 from quant_ecosystem.market_regime import MarketRegimeDetector
+from quant_ecosystem.microstructure import MicrostructureSimulator, SlippageModel, SpreadModel
 from quant_ecosystem.regime_ai import AdaptiveRegimeEngine
 from quant_ecosystem.meta_strategy import MetaStrategyBrain
 from quant_ecosystem.mutation_engine.layer import MutationEngineLayer
 from quant_ecosystem.portfolio_ai import PortfolioAI
 from quant_ecosystem.risk_engine.layer import RiskEngineLayer
+from quant_ecosystem.strategy_diversity import StrategyDiversityEngine
+from quant_ecosystem.strategy_lab import BacktestEngine as StrategyLabBacktestEngine
 from quant_ecosystem.strategy_lab import StrategyLabController
+from quant_ecosystem.strategy_survival import StrategySurvivalEngine
 from quant_ecosystem.strategy_selector.selector_core import AutonomousStrategySelector
 from quant_ecosystem.strategy_bank.layer import StrategyBankLayer
 from risk.risk_engine import RiskEngine
@@ -155,11 +159,44 @@ def build_router():
         if config.enable_portfolio_ai
         else None
     )
+    execution.strategy_diversity_engine = (
+        StrategyDiversityEngine(
+            max_strategies_per_category=max(1, int(getattr(config, "strategy_diversity_max_per_category", 3))),
+            max_correlation=float(getattr(config, "strategy_diversity_max_correlation", 0.75)),
+            max_per_asset_class=max(1, int(getattr(config, "strategy_diversity_max_per_asset_class", 4))),
+            max_per_timeframe=max(1, int(getattr(config, "strategy_diversity_max_per_timeframe", 4))),
+        )
+        if bool(getattr(config, "enable_strategy_diversity", False))
+        else None
+    )
+    execution.strategy_survival_engine = (
+        StrategySurvivalEngine(
+            strategy_bank_layer=execution.strategy_bank_layer,
+            meta_strategy_brain=execution.meta_strategy_brain,
+            portfolio_ai=execution.portfolio_ai_engine,
+            strategy_lab_controller=execution.strategy_lab_controller,
+        )
+        if bool(getattr(config, "enable_strategy_survival", False))
+        else None
+    )
+    execution.microstructure_simulator = (
+        MicrostructureSimulator(
+            spread_model=SpreadModel(multiplier=float(getattr(config, "microstructure_spread_multiplier", 1.0))),
+            slippage_model=SlippageModel(multiplier=float(getattr(config, "microstructure_slippage_multiplier", 1.0))),
+            base_delay_ms=float(getattr(config, "microstructure_base_delay_ms", 120.0)),
+        )
+        if bool(getattr(config, "enable_microstructure_simulation", False))
+        else None
+    )
     execution.execution_brain = (
-        ExecutionBrain()
+        ExecutionBrain(microstructure_simulator=execution.microstructure_simulator)
         if config.enable_execution_intelligence
         else None
     )
+    if execution.strategy_lab_controller and execution.microstructure_simulator:
+        execution.strategy_lab_controller.backtest_engine = StrategyLabBacktestEngine(
+            microstructure_simulator=execution.microstructure_simulator
+        )
     execution.autonomous_controller.set_mode(execution, config.operation_mode)
 
     telegram = TelegramController()
