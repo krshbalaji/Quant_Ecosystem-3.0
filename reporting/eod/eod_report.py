@@ -3,12 +3,14 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from core.config_loader import Config
 from reporting.analytics.institutional_report_engine import InstitutionalReportEngine
 
 
 class EODReport:
 
     def __init__(self, output_dir="reporting/output"):
+        self.config = Config()
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.green = "\033[92m"
@@ -203,7 +205,7 @@ class EODReport:
         return round(float(value), 2)
 
     def _target_compliance(self, stats, drawdown_pct):
-        if int(stats.get("rolling_window", 0)) < 20:
+        if int(stats.get("rolling_window", 0)) < self.config.min_target_trades:
             return {
                 "win_rate_45_60": None,
                 "profit_factor_gt_1_5": None,

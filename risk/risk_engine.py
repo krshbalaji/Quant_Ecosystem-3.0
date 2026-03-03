@@ -13,9 +13,18 @@ class RiskEngine:
         self.max_trade_risk_cap = min(2.0, max(config.max_position_pct, 2.0))
         self.max_portfolio_risk = config.max_portfolio_exposure_pct
         self.max_symbol_risk = config.max_symbol_exposure_pct
+        self.max_daily_trades = max(1, config.max_daily_trades)
+        self.max_symbol_daily_loss_pct = max(0.1, config.max_symbol_daily_loss_pct)
         self.cooldown_after_loss = config.cooldown_after_loss
 
-    def allow_trade(self, state, portfolio_exposure_pct=0.0, symbol_exposure_pct=0.0):
+    def allow_trade(
+        self,
+        state,
+        portfolio_exposure_pct=0.0,
+        symbol_exposure_pct=0.0,
+        daily_trade_count=0,
+        symbol_daily_loss_pct=0.0,
+    ):
         if state.trading_halted:
             return False, "TRADING_HALTED"
 
@@ -34,6 +43,12 @@ class RiskEngine:
 
         if state.cooldown > 0:
             return False, "COOLDOWN"
+
+        if int(daily_trade_count) >= self.max_daily_trades:
+            return False, "MAX_DAILY_TRADES"
+
+        if float(symbol_daily_loss_pct) >= self.max_symbol_daily_loss_pct:
+            return False, "MAX_SYMBOL_DAILY_LOSS"
 
         if portfolio_exposure_pct >= self.max_portfolio_risk:
             return False, "MAX_PORTFOLIO_EXPOSURE"

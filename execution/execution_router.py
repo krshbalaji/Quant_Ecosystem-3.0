@@ -84,11 +84,16 @@ class ExecutionRouter:
             return {"status": "SKIP", "reason": "SYMBOL_COOLDOWN"}
 
         exposure_pct = self._portfolio_exposure_pct()
-        symbol_exposure_pct = self._symbol_exposure_pct(candidate_signal["symbol"])
+        symbol = candidate_signal["symbol"]
+        symbol_exposure_pct = self._symbol_exposure_pct(symbol)
+        daily_trade_count = self._daily_trade_count()
+        symbol_daily_loss_pct = self._symbol_daily_loss_pct(symbol)
         allowed, reason = self.risk_engine.allow_trade(
             self.state,
             portfolio_exposure_pct=exposure_pct,
             symbol_exposure_pct=symbol_exposure_pct,
+            daily_trade_count=daily_trade_count,
+            symbol_daily_loss_pct=symbol_daily_loss_pct,
         )
         if not allowed:
             return {"status": "SKIP", "reason": reason}
@@ -243,6 +248,7 @@ class ExecutionRouter:
             f"fees={quantize(self.state.fees_paid, 2)} "
             f"drawdown={quantize(self.state.total_drawdown_pct, 2)}% "
             f"exposure={quantize(self._portfolio_exposure_pct(), 2)}% "
+            f"day_trades={self._daily_trade_count()}/{self.risk_engine.max_daily_trades} "
             f"sync={self.state.last_reconciled_at or 'NA'} "
             f"cooldown={self.state.cooldown} "
             f"consecutive_losses={self.state.consecutive_losses} "
@@ -456,6 +462,7 @@ class ExecutionRouter:
                 equity=self.state.equity,
                 price=price,
                 volatility=max(signal.get("volatility", 1.0), 0.01),
+                risk_pct=self.risk_engine.max_trade_risk,
             )
             base_qty = max(int(qty), 0)
         else:
@@ -504,6 +511,21 @@ class ExecutionRouter:
         if self.state.equity <= 0:
             return 100.0
         return quantize((notional / self.state.equity) * 100.0, 4)
+
+    def _daily_trade_count(self):
+        return len(self.state.trade_history)
+
+    def _symbol_daily_loss_pct(self, symbol):
+        if self.state.equity <= 0:
+            return 100.0
+        losses = 0.0
+        for item in self.state.trade_history:
+            if item.get("symbol") != symbol:
+                continue
+            pnl = float(item.get("cycle_pnl", 0.0))
+            if pnl < 0:
+                losses += abs(pnl)
+        return quantize((losses / self.state.equity) * 100.0, 4)
 
     def _available_portfolio_notional(self):
         max_notional = self.state.equity * (self.risk_engine.max_portfolio_risk / 100.0)

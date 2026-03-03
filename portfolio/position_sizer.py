@@ -1,9 +1,23 @@
+from core.config_loader import Config
+
+
 class PositionSizer:
 
-    def size(self, equity, price, volatility):
+    def __init__(self):
+        self.config = Config()
 
-        risk_per_trade = equity * 0.01
+    def size(self, equity, price, volatility, risk_pct=1.0):
+        if equity <= 0 or price <= 0:
+            return 0
 
-        position = risk_per_trade / (price * volatility)
+        vol = max(float(volatility), self.config.sizer_min_volatility)
+        risk_per_trade = float(equity) * (max(float(risk_pct), 0.1) / 100.0)
+        raw_position = risk_per_trade / (float(price) * vol)
 
-        return int(position)
+        max_notional = float(equity) * (self.config.sizer_max_notional_pct / 100.0)
+        max_qty = int(max_notional / float(price))
+        sized_qty = int(raw_position)
+
+        if max_qty <= 0:
+            return 0
+        return max(0, min(sized_qty, max_qty))

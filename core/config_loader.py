@@ -56,6 +56,8 @@ class Config:
         self.cooldown_after_loss = int(os.getenv("COOLDOWN_AFTER_LOSS", 3))
         self.max_portfolio_exposure_pct = float(os.getenv("MAX_PORTFOLIO_EXPOSURE_PCT", 40))
         self.max_symbol_exposure_pct = float(os.getenv("MAX_SYMBOL_EXPOSURE_PCT", 20))
+        self.max_daily_trades = int(os.getenv("MAX_DAILY_TRADES", "18"))
+        self.max_symbol_daily_loss_pct = float(os.getenv("MAX_SYMBOL_DAILY_LOSS_PCT", "1.25"))
         self.max_strategy_capital_pct = min(float(os.getenv("MAX_STRATEGY_CAPITAL_PCT", 30)), 30.0)
         self.max_asset_class_capital_pct = min(float(os.getenv("MAX_ASSET_CLASS_CAPITAL_PCT", 50)), 50.0)
         self.diversification_correlation_threshold = float(os.getenv("DIVERSIFICATION_CORRELATION_THRESHOLD", 0.75))
@@ -67,10 +69,13 @@ class Config:
         self.capital_cap_multiplier = float(os.getenv("CAPITAL_CAP_MULTIPLIER", 2.0))
         self.allow_paper_shadow = os.getenv("ALLOW_PAPER_SHADOW", "true").lower() == "true"
         self.min_adaptation_trades = int(os.getenv("MIN_ADAPTATION_TRADES", "20"))
+        self.min_target_trades = int(os.getenv("MIN_TARGET_TRADES", "20"))
         self.paper_min_profit_factor = float(os.getenv("PAPER_MIN_PROFIT_FACTOR", "1.02"))
         self.paper_min_sharpe = float(os.getenv("PAPER_MIN_SHARPE", "0.0"))
         self.live_min_profit_factor = float(os.getenv("LIVE_MIN_PROFIT_FACTOR", "1.50"))
         self.live_min_sharpe = float(os.getenv("LIVE_MIN_SHARPE", "1.80"))
+        self.sizer_min_volatility = float(os.getenv("SIZER_MIN_VOLATILITY", "0.25"))
+        self.sizer_max_notional_pct = float(os.getenv("SIZER_MAX_NOTIONAL_PCT", "8.0"))
 
     def _pick_env(self, *keys):
         placeholders = {"", "your_bot_token", "your_chat_id", "none", "null"}
