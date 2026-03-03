@@ -96,6 +96,11 @@ class TelegramController:
                 {"command": "kill", "description": "Emergency stop"},
                 {"command": "close_all", "description": "Close all positions"},
                 {"command": "report", "description": "Dashboard report"},
+                {"command": "allocate", "description": "Allocate strategy capital"},
+                {"command": "deploy_strategy", "description": "Deploy strategy by id"},
+                {"command": "manual", "description": "Set MANUAL mode"},
+                {"command": "assisted", "description": "Set ASSISTED mode"},
+                {"command": "autonomous", "description": "Set AUTONOMOUS mode"},
                 {"command": "help", "description": "Show command help"},
             ]
         }

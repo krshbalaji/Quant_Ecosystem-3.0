@@ -42,9 +42,23 @@ class Config:
         self.git_exclude_paths = self._parse_paths("GIT_EXCLUDE_PATHS", exclude_default)
         self.auto_dependency_install = os.getenv("AUTO_DEP_INSTALL", "true").lower() == "true"
         self.auto_update_probability = float(os.getenv("AUTO_UPDATE_PROBABILITY", "0.25"))
+        self.intelligence_refresh_cycles = int(os.getenv("INTELLIGENCE_REFRESH_CYCLES", "5"))
+
+        # Institutional strategy bank / mutation flags
+        self.enable_strategy_bank = os.getenv("ENABLE_STRATEGY_BANK", "true").lower() == "true"
+        self.enable_strategy_mutation = os.getenv("ENABLE_STRATEGY_MUTATION", "false").lower() == "true"
+        self.correlation_threshold = float(os.getenv("CORRELATION_THRESHOLD", "0.7"))
+        self.min_trades_for_promotion = int(os.getenv("MIN_TRADES_FOR_PROMOTION", "100"))
+        self.mutation_rate_per_day = int(os.getenv("MUTATION_RATE_PER_DAY", "2"))
+        self.mutation_batch_size = int(os.getenv("MUTATION_BATCH_SIZE", "8"))
+        self.mutation_min_sharpe = float(os.getenv("MUTATION_MIN_SHARPE", "1.2"))
+        self.mutation_min_profit_factor = float(os.getenv("MUTATION_MIN_PROFIT_FACTOR", "1.3"))
+        self.mutation_max_drawdown = float(os.getenv("MUTATION_MAX_DRAWDOWN", "15"))
+        self.mutation_max_capital_exposure_pct = float(os.getenv("MUTATION_MAX_CAPITAL_EXPOSURE_PCT", "30"))
 
         # Mode
         self.mode = os.getenv("MODE", "PAPER")
+        self.operation_mode = os.getenv("OPERATION_MODE", "AUTONOMOUS")
         self.auto_start = os.getenv("AUTO_START", "false").lower() == "true"
         symbols = os.getenv("TRADE_SYMBOLS", "NSE:SBIN-EQ,NSE:RELIANCE-EQ,NSE:INFY-EQ")
         self.trade_symbols = [item.strip() for item in symbols.split(",") if item.strip()]
@@ -108,3 +122,4 @@ class Config:
         if not raw:
             return []
         return [item.strip() for item in raw.split(",") if item.strip()]
+

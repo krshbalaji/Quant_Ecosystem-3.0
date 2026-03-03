@@ -10,8 +10,17 @@ from execution.execution_router import ExecutionRouter
 from market.market_data_engine import MarketDataEngine
 from portfolio.portfolio_engine import PortfolioEngine
 from portfolio.position_sizer import PositionSizer
+from quant_ecosystem.autonomous_controller.controller import AutonomousController
+from quant_ecosystem.capital_allocator.layer import CapitalAllocatorLayer
+from quant_ecosystem.execution_router.layer import ExecutionRouterLayer
+from quant_ecosystem.market_intelligence.layer import MarketIntelligenceLayer
+from quant_ecosystem.mutation_engine.layer import MutationEngineLayer
+from quant_ecosystem.risk_engine.layer import RiskEngineLayer
+from quant_ecosystem.strategy_bank.layer import StrategyBankLayer
 from risk.risk_engine import RiskEngine
+from strategy_bank.engine.strategy_bank_engine import StrategyBankEngine
 from strategy_bank.live_strategy_engine import LiveStrategyEngine
+from strategy_bank.mutation.mutation_engine import MutationEngine
 from strategy_bank.strategy_registry import StrategyRegistry
 
 
@@ -53,6 +62,18 @@ def build_router():
         outcome_memory=outcome_memory,
     )
     execution.survival_mode = "NORMAL"
+
+    # Optional additive engines (no changes to execution/risk core flow).
+    execution.strategy_bank_engine = StrategyBankEngine(config=config) if config.enable_strategy_bank else None
+    execution.mutation_engine = MutationEngine(config=config) if config.enable_strategy_mutation else None
+    execution.autonomous_controller = AutonomousController()
+    execution.capital_allocator_layer = CapitalAllocatorLayer()
+    execution.market_intelligence_layer = MarketIntelligenceLayer()
+    execution.execution_layer = ExecutionRouterLayer(router=execution)
+    execution.risk_layer = RiskEngineLayer(risk_engine=risk_engine)
+    execution.strategy_bank_layer = StrategyBankLayer(bank_engine=execution.strategy_bank_engine)
+    execution.mutation_layer = MutationEngineLayer(mutation_engine=execution.mutation_engine)
+    execution.autonomous_controller.set_mode(execution, config.operation_mode)
 
     telegram = TelegramController()
     telegram.bind_router(execution)

@@ -55,12 +55,23 @@ class MasterOrchestrator:
             router.strategy_engine.reload()
             strategy_reports = self.strategy_evaluator.evaluate(router.strategy_engine.strategies)
             strategy_reports = self._apply_lifecycle(strategy_reports)
+
+            bank_engine = getattr(router, "strategy_bank_engine", None)
+            if bank_engine and getattr(bank_engine, "enabled", False):
+                strategy_reports = bank_engine.ingest_reports(strategy_reports)
+
             portfolio_plan = self.strategy_portfolio.build_portfolio(strategy_reports)
             strategy_reports = portfolio_plan["reports"]
             router.strategy_engine.apply_policy(strategy_reports)
             top = strategy_reports[:3]
             print(f"Strategy evaluation top-3: {top}")
             print(f"Active strategy ids: {portfolio_plan['active_ids']}")
+            if bank_engine and getattr(bank_engine, "enabled", False):
+                allocation_snapshot = {
+                    sid: bank_engine.get_allocation(sid)
+                    for sid in bank_engine.get_active_strategies()
+                }
+                print(f"Strategy bank allocations: {allocation_snapshot}")
         else:
             strategy_reports = []
 
@@ -68,6 +79,12 @@ class MasterOrchestrator:
         market_bias = intelligence_report.get("bias", "NEUTRAL")
         regime = intelligence_report.get("regime", "MEAN_REVERSION")
         regime_advanced = intelligence_report.get("regime_advanced", regime)
+
+        bank_engine = getattr(router, "strategy_bank_engine", None)
+        if bank_engine and getattr(bank_engine, "enabled", False):
+            strategy_reports = bank_engine.ingest_reports(strategy_reports, intelligence_report=intelligence_report)
+            router.strategy_engine.apply_policy(strategy_reports)
+
         router.symbols = self.universe.symbols(
             asset_classes=["stocks", "indices"],
             regime=regime_advanced,
@@ -78,6 +95,13 @@ class MasterOrchestrator:
         try:
             for i in range(1, self.cycles + 1):
                 print(f"Cycle {i}")
+                refresh_every = max(1, int(getattr(router.config, "intelligence_refresh_cycles", 5)))
+                if i > 1 and (i % refresh_every == 0):
+                    intelligence_report = self.intelligence_engine.analyze()
+                    market_bias = intelligence_report.get("bias", market_bias)
+                    regime = intelligence_report.get("regime", regime)
+                    regime_advanced = intelligence_report.get("regime_advanced", regime)
+
                 router.symbols = self.universe.symbols(
                     asset_classes=["stocks", "indices"],
                     regime=regime_advanced,
@@ -104,6 +128,26 @@ class MasterOrchestrator:
                     result=result,
                     state=router.state,
                 )
+
+                if result.get("status") == "TRADE" and bank_engine and getattr(bank_engine, "enabled", False):
+                    sid = str(result.get("strategy_id", ""))
+                    if sid:
+                        strategy_trades = [
+                            t for t in router.state.trade_history if str(t.get("strategy", "")) == sid
+                        ]
+                        closed = [t for t in strategy_trades if t.get("closed_trade")]
+                        win_rate = (len([t for t in closed if float(t.get("realized_pnl", 0.0)) > 0]) / len(closed) * 100.0) if closed else 0.0
+                        expectancy = 0.0
+                        if closed:
+                            expectancy = sum(float(t.get("realized_pnl", 0.0)) for t in closed) / len(closed)
+                        bank_engine.update_performance(
+                            sid,
+                            {
+                                "sample_size": len(strategy_trades),
+                                "win_rate": round(win_rate, 4),
+                                "expectancy": round(expectancy, 4),
+                            },
+                        )
 
                 swan = self.black_swan.evaluate(
                     intelligence_report=intelligence_report,
@@ -165,6 +209,12 @@ class MasterOrchestrator:
 
         if getattr(router, "outcome_memory", None):
             router.outcome_memory.update_from_trades(router.state.trade_history)
+
+        mutation_engine = getattr(router, "mutation_engine", None)
+        if mutation_engine and getattr(mutation_engine, "enabled", False):
+            mutated = mutation_engine.run_daily(strategy_reports)
+            if mutated:
+                print(f"Mutation engine accepted candidates: {len(mutated)}")
 
         self.reporter.generate(
             state=router.state,
