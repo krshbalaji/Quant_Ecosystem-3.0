@@ -67,6 +67,10 @@ class Config:
         self.capital_cap_multiplier = float(os.getenv("CAPITAL_CAP_MULTIPLIER", 2.0))
         self.allow_paper_shadow = os.getenv("ALLOW_PAPER_SHADOW", "true").lower() == "true"
         self.min_adaptation_trades = int(os.getenv("MIN_ADAPTATION_TRADES", "20"))
+        self.paper_min_profit_factor = float(os.getenv("PAPER_MIN_PROFIT_FACTOR", "1.02"))
+        self.paper_min_sharpe = float(os.getenv("PAPER_MIN_SHARPE", "0.0"))
+        self.live_min_profit_factor = float(os.getenv("LIVE_MIN_PROFIT_FACTOR", "1.50"))
+        self.live_min_sharpe = float(os.getenv("LIVE_MIN_SHARPE", "1.80"))
 
     def _pick_env(self, *keys):
         placeholders = {"", "your_bot_token", "your_chat_id", "none", "null"}
