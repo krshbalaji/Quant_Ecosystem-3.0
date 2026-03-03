@@ -46,6 +46,19 @@ class FirstTimeOnboarding:
 
             token_label = "FYERS_ACCESS_TOKEN (required for LIVE)" if mode == "LIVE" else "FYERS_ACCESS_TOKEN (optional in PAPER)"
             updates["FYERS_ACCESS_TOKEN"] = self._ask(token_label, existing.get("FYERS_ACCESS_TOKEN", ""))
+        elif broker == "COINSWITCH":
+            print("\nCoinSwitch details guide:")
+            print("1) Open CoinSwitch developer/API settings.")
+            print("2) Create API key and secret for trading.")
+            print("3) Keep live disabled initially; test in PAPER first.\n")
+            updates["COINSWITCH_API_KEY"] = self._ask("COINSWITCH_API_KEY", existing.get("COINSWITCH_API_KEY", ""))
+            updates["COINSWITCH_API_SECRET"] = self._ask("COINSWITCH_API_SECRET", existing.get("COINSWITCH_API_SECRET", ""))
+            updates["COINSWITCH_BASE_URL"] = self._ask(
+                "COINSWITCH_BASE_URL",
+                existing.get("COINSWITCH_BASE_URL", "https://api.coinswitch.co"),
+            )
+            live_default = existing.get("COINSWITCH_ENABLE_LIVE", "false")
+            updates["COINSWITCH_ENABLE_LIVE"] = self._ask("COINSWITCH_ENABLE_LIVE [true/false]", live_default).lower()
 
         use_telegram = self._ask("Enable Telegram alerts? [Y/N]", "Y").upper() == "Y"
         if use_telegram:
@@ -176,6 +189,10 @@ class FirstTimeOnboarding:
             "FYERS_SECRET_KEY",
             "FYERS_REDIRECT_URI",
             "FYERS_ACCESS_TOKEN",
+            "COINSWITCH_API_KEY",
+            "COINSWITCH_API_SECRET",
+            "COINSWITCH_BASE_URL",
+            "COINSWITCH_ENABLE_LIVE",
             "TELEGRAM_TOKEN",
             "TELEGRAM_CHAT_ID",
             "TRADE_SYMBOLS",

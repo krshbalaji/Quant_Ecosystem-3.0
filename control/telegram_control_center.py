@@ -8,6 +8,8 @@ class TelegramControlCenter:
         raw = str(command).strip()
         parts = raw.lstrip("/").split()
         cmd = (parts[0] if parts else "").lower()
+        if "@" in cmd:
+            cmd = cmd.split("@", 1)[0]
         args = parts[1:]
 
         if cmd == "status":
@@ -24,6 +26,8 @@ class TelegramControlCenter:
             )
         if cmd == "strategies":
             return self._strategies_report(router)
+        if cmd == "broker":
+            return self._broker_report(router)
         if cmd == "allocate":
             return self._allocate(router, args)
         if cmd == "deploy_strategy":
@@ -101,6 +105,27 @@ class TelegramControlCenter:
         if len(rows) > len(top):
             lines.append(f"... +{len(rows) - len(top)} more")
         return "\n".join(lines)
+
+    def _broker_report(self, router):
+        state = getattr(router, "state", None)
+        broker_router = getattr(router, "broker", None)
+        broker_impl = getattr(broker_router, "broker", None) if broker_router else None
+
+        broker_name = broker_impl.__class__.__name__ if broker_impl else "UnknownBroker"
+        connected = bool(getattr(broker_impl, "connected", False)) if broker_impl else False
+        source = str(getattr(state, "account_source", "UNKNOWN")) if state else "UNKNOWN"
+        mode = str(getattr(state, "trading_mode", "UNKNOWN")) if state else "UNKNOWN"
+        symbols = ",".join(list(getattr(router, "symbols", []) or [])[:4])
+        if not symbols:
+            symbols = "-"
+
+        return (
+            f"Broker={broker_name} "
+            f"connected={connected} "
+            f"source={source} "
+            f"mode={mode} "
+            f"symbols={symbols}"
+        )
 
     def _allocate(self, router, args):
         if len(args) < 2:

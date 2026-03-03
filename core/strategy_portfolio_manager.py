@@ -11,7 +11,7 @@ class StrategyPortfolioManager:
 
         for report in ranked:
             stage = str(report.get("stage", "")).lower()
-            if stage not in {"paper", "shadow", "live"}:
+            if stage not in {"paper", "shadow", "paper_shadow", "live"}:
                 active_reports.append({**report, "active": False, "allocation_pct": 0.0})
                 continue
 

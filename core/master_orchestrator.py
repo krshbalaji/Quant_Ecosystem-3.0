@@ -65,7 +65,7 @@ class MasterOrchestrator:
             router.strategy_engine.apply_policy(strategy_reports)
             top = strategy_reports[:3]
             print(f"Strategy evaluation top-3: {top}")
-            print(f"Active strategy ids: {portfolio_plan['active_ids']}")
+            print(f"Active strategy ids: {list(getattr(router.strategy_engine, 'active_ids', []) or [])}")
             if bank_engine and getattr(bank_engine, "enabled", False):
                 allocation_snapshot = {
                     sid: bank_engine.get_allocation(sid)
@@ -107,7 +107,6 @@ class MasterOrchestrator:
                     market_bias = intelligence_report.get("bias", market_bias)
                     regime_advanced = intelligence_report.get("regime_advanced", intelligence_report.get("regime", regime_advanced))
                     regime = self._map_regime_to_execution(regime_advanced)
-                    print("Global intelligence:", intelligence_report)
 
                 if getattr(router.config, "enable_global_session_fallback", True):
                     classes = self.universe.asset_classes_for_session()

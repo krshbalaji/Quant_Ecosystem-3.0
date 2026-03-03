@@ -14,6 +14,10 @@ class Config:
         self.fyers_secret = os.getenv("FYERS_SECRET_KEY")
         self.fyers_redirect_uri = os.getenv("FYERS_REDIRECT_URI")
         self.fyers_token = os.getenv("FYERS_ACCESS_TOKEN")
+        self.coinswitch_api_key = os.getenv("COINSWITCH_API_KEY", "")
+        self.coinswitch_api_secret = os.getenv("COINSWITCH_API_SECRET", "")
+        self.coinswitch_base_url = os.getenv("COINSWITCH_BASE_URL", "https://api.coinswitch.co")
+        self.coinswitch_enable_live = os.getenv("COINSWITCH_ENABLE_LIVE", "false").lower() == "true"
 
         # Telegram
         self.telegram_token = self._pick_env("TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN")

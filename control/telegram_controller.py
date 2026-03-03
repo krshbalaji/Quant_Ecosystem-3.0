@@ -89,6 +89,7 @@ class TelegramController:
                 {"command": "dashboard", "description": "Inline control panel"},
                 {"command": "status", "description": "System status"},
                 {"command": "positions", "description": "Open positions"},
+                {"command": "broker", "description": "Broker/source status"},
                 {"command": "pnl", "description": "PnL snapshot"},
                 {"command": "strategies", "description": "Active strategies"},
                 {"command": "pause", "description": "Pause trading"},
@@ -143,8 +144,10 @@ class TelegramController:
                 data = callback.get("data", "")
                 chat_id = str(callback.get("message", {}).get("chat", {}).get("id", ""))
                 actor_id = str(callback.get("from", {}).get("id", ""))
+                print(f"Telegram callback received | actor={actor_id} chat={chat_id} data={data}")
                 self._handle_incoming_chat(chat_id)
-                if not self._is_chat_allowed(chat_id):
+                if not self._is_chat_allowed(chat_id, actor_id):
+                    print(f"Telegram callback rejected | actor={actor_id} chat={chat_id}")
                     continue
                 role = self._role_for_actor(actor_id)
                 self._active_role = role
@@ -167,8 +170,10 @@ class TelegramController:
             text = str(message.get("text", "")).strip()
             chat_id = str(message.get("chat", {}).get("id", ""))
             actor_id = str(message.get("from", {}).get("id", ""))
+            print(f"Telegram message received | actor={actor_id} chat={chat_id} text={text}")
             self._handle_incoming_chat(chat_id)
-            if not self._is_chat_allowed(chat_id):
+            if not self._is_chat_allowed(chat_id, actor_id):
+                print(f"Telegram message rejected | actor={actor_id} chat={chat_id}")
                 continue
             if text:
                 role = self._role_for_actor(actor_id)
@@ -193,6 +198,8 @@ class TelegramController:
             return "Router not attached."
 
         normalized = command.strip().lower().lstrip("/")
+        if "@" in normalized:
+            normalized = normalized.split("@", 1)[0]
         role = self._role_for_actor(actor_id)
 
         if normalized.startswith("page:"):
@@ -325,8 +332,15 @@ class TelegramController:
             self._persist_chat_id(chat_id)
             print(f"Telegram auto-bound chat id: {chat_id}")
 
-    def _is_chat_allowed(self, chat_id):
+    def _is_chat_allowed(self, chat_id, actor_id=""):
         if self._is_valid_chat_id(self.chat_id) and chat_id and str(self.chat_id) != chat_id:
+            # Allow trusted actors to rebind chat automatically when they move between chats/devices.
+            role = self._role_for_actor(actor_id)
+            if role in {"admin", "operator"}:
+                self.chat_id = chat_id
+                self._persist_chat_id(chat_id)
+                print(f"Telegram chat id re-bound by trusted actor: {chat_id}")
+                return True
             return False
         return True
 

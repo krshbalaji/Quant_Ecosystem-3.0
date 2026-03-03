@@ -1,4 +1,5 @@
 from broker.broker_router import BrokerRouter
+from broker.coinswitch_broker import CoinSwitchBroker
 from broker.fyers_broker import FyersBroker
 from broker.reconciliation.broker_reconciler import BrokerReconciler
 from control.telegram_controller import TelegramController
@@ -31,7 +32,11 @@ def build_router():
     state.trading_mode = config.mode.upper()
     state.capital_cap = state.initial_equity * config.capital_cap_multiplier
 
-    broker = FyersBroker()
+    broker_name = str(config.broker_name or "FYERS").upper().strip()
+    if broker_name == "COINSWITCH":
+        broker = CoinSwitchBroker()
+    else:
+        broker = FyersBroker()
     broker.connect()
     broker_router = BrokerRouter(broker)
 
