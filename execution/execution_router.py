@@ -82,11 +82,16 @@ class ExecutionRouter:
             regime=regime,
         )
         if not candidate_signal:
+            rebalance_signal = self._maybe_rebalance_signal(regime=regime)
+            if rebalance_signal:
+                candidate_signal = rebalance_signal
+        if not candidate_signal:
             return {"status": "SKIP", "reason": "NO_SIGNAL"}
         if not self._is_valid_signal(candidate_signal):
             self._reset_risk_block_state()
             return {"status": "SKIP", "reason": "INVALID_SIGNAL"}
-        if not self._passes_context_filter(candidate_signal, regime):
+        is_rebalance = bool(candidate_signal.get("rebalance_assist", False))
+        if (not is_rebalance) and (not self._passes_context_filter(candidate_signal, regime)):
             self._reset_risk_block_state()
             return {"status": "SKIP", "reason": "WEAK_CONTEXT"}
         if self._is_symbol_in_cooldown(candidate_signal["symbol"]):
@@ -146,6 +151,7 @@ class ExecutionRouter:
                 "strategy_id": candidate_signal["strategy_id"],
                 "trade_type": candidate_signal.get("trade_type") or self._trade_type(candidate_signal),
                 "regime": regime,
+                "rebalance_assist": bool(candidate_signal.get("rebalance_assist", False)),
             },
         )
         if self.reconciler:
@@ -195,6 +201,7 @@ class ExecutionRouter:
             "slippage_bps": quantize(slippage_bps, 4),
             "confidence": quantize(candidate_signal.get("confidence", 0.0), 4),
             "memory_bias": quantize(candidate_signal.get("memory_bias", 0.0), 6),
+            "rebalance_assist": bool(candidate_signal.get("rebalance_assist", False)),
             "fee": fee,
             "realized_pnl": quantize(realized_pnl, 4),
             "closed_trade": bool(abs(realized_pnl) > 0.0),
@@ -222,6 +229,7 @@ class ExecutionRouter:
             "confidence": trade_record["confidence"],
             "price": trade_record["price"],
             "liquidation_assist": False,
+            "rebalance_assist": trade_record["rebalance_assist"],
         }
 
     def start_trading(self):
@@ -501,6 +509,12 @@ class ExecutionRouter:
 
     def _allocate_quantity(self, signal):
         price = signal["price"]
+        forced_qty = signal.get("forced_qty")
+        if forced_qty is not None:
+            qty = max(0, int(forced_qty))
+            if qty <= 0:
+                return 0, "ZERO_SIZE"
+            return qty, "OK"
 
         if self.position_sizer:
             qty = self.position_sizer.size(
@@ -699,6 +713,54 @@ class ExecutionRouter:
             "MAX_SYMBOL_EXPOSURE",
             "MAX_SECTOR_EXPOSURE",
             "MAX_ASSET_EXPOSURE",
+        }
+
+    def _maybe_rebalance_signal(self, regime):
+        if not self.config.liquidation_assist_enabled:
+            return None
+        if self._cycle_no < self._liquidation_cooldown_until:
+            return None
+
+        positions = self.portfolio_engine.snapshot()
+        if not positions:
+            return None
+
+        # Trigger when exposure pressure already exists from recent blocks or current portfolio saturation.
+        exposure_pressure = (
+            self._risk_block_streak >= 1
+            and self._is_exposure_block(self._last_risk_block_reason)
+        ) or (self._portfolio_exposure_pct() >= max(1.0, self.risk_engine.max_portfolio_risk * 0.9))
+        if not exposure_pressure:
+            return None
+
+        symbol, pos = max(
+            positions.items(),
+            key=lambda kv: self.portfolio_engine.symbol_exposure_notional(kv[0], self.state.latest_prices),
+        )
+        net_qty = int(pos.get("net_qty", 0))
+        if net_qty == 0:
+            return None
+        price = float(self.state.latest_prices.get(symbol, pos.get("avg_price", 0.0)))
+        if price <= 0:
+            return None
+
+        side = "SELL" if net_qty > 0 else "BUY"
+        qty = max(1, int(abs(net_qty) * max(0.05, min(self.config.liquidation_assist_close_fraction, 1.0))))
+        qty = min(qty, abs(net_qty))
+        return {
+            "strategy_id": "rebalance_assist_v1",
+            "strategy_stage": "RISK_REDUCTION",
+            "shadow_mode": False,
+            "symbol": symbol,
+            "side": side,
+            "price": price,
+            "confidence": 1.0,
+            "volatility": 0.5,
+            "trade_type": "RISK_REBALANCE",
+            "memory_bias": 0.0,
+            "forced_qty": qty,
+            "rebalance_assist": True,
+            "regime": regime,
         }
 
     def _track_risk_block(self, reason):

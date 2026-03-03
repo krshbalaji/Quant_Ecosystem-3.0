@@ -104,6 +104,8 @@ class TelegramController:
     def notify_trade(self, result):
         if result["status"] == "TRADE":
             assist_line = "[LIQUIDATION_ASSIST]\n" if result.get("liquidation_assist") else ""
+            if result.get("rebalance_assist"):
+                assist_line = "[REBALANCE_ASSIST]\n"
             msg = (
                 f"Trade executed\n"
                 f"{assist_line}"
