@@ -60,6 +60,9 @@ class Config:
         self.max_symbol_daily_loss_pct = float(os.getenv("MAX_SYMBOL_DAILY_LOSS_PCT", "1.25"))
         self.max_strategy_capital_pct = min(float(os.getenv("MAX_STRATEGY_CAPITAL_PCT", 30)), 30.0)
         self.max_asset_class_capital_pct = min(float(os.getenv("MAX_ASSET_CLASS_CAPITAL_PCT", 50)), 50.0)
+        self.max_sector_exposure_pct = float(os.getenv("MAX_SECTOR_EXPOSURE_PCT", 35))
+        self.max_strategy_exposure_pct = float(os.getenv("MAX_STRATEGY_EXPOSURE_PCT", 30))
+        self.max_asset_exposure_pct = float(os.getenv("MAX_ASSET_EXPOSURE_PCT", 50))
         self.diversification_correlation_threshold = float(os.getenv("DIVERSIFICATION_CORRELATION_THRESHOLD", 0.75))
 
         # Execution realism

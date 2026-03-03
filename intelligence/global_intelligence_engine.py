@@ -11,6 +11,7 @@ class GlobalIntelligenceEngine:
     def analyze(self):
         volatility = self.market_data.get_volatility()
         trend = self.market_data.get_trend()
+        regime_advanced = self.regime_detector.detect_advanced(volatility=volatility, trend=trend)
         regime = self.regime_detector.detect(volatility=volatility, trend=trend)
         bias = self._bias_from_regime(regime)
 
@@ -18,6 +19,7 @@ class GlobalIntelligenceEngine:
             "volatility": round(volatility, 4),
             "trend": trend,
             "regime": regime,
+            "regime_advanced": regime_advanced,
             "bias": bias,
         }
         print(f"Global intelligence: {report}")

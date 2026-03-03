@@ -1,5 +1,6 @@
 import requests
 
+from control.telegram_control_center import TelegramControlCenter
 from control.telegram.audit_logger import TelegramAuditLogger
 from control.telegram.webhook_server import TelegramWebhookServer
 from control.telegram.webhook_watchdog import WebhookWatchdog
@@ -17,7 +18,10 @@ class TelegramController:
         self._current_page = "trading"
         self._webhook_server = None
         self._webhook_enabled = False
+        self._polling_fallback = False
+        self._update_offset = 0
         self._active_role = "operator"
+        self.control_center = TelegramControlCenter()
         self.audit = TelegramAuditLogger(secret=self.config.telegram_audit_secret)
         self.watchdog = WebhookWatchdog(timeout_sec=self.config.telegram_webhook_timeout_sec)
 
@@ -85,7 +89,13 @@ class TelegramController:
                 {"command": "dashboard", "description": "Inline control panel"},
                 {"command": "status", "description": "System status"},
                 {"command": "positions", "description": "Open positions"},
+                {"command": "pnl", "description": "PnL snapshot"},
                 {"command": "strategies", "description": "Active strategies"},
+                {"command": "pause", "description": "Pause trading"},
+                {"command": "resume", "description": "Resume trading"},
+                {"command": "kill", "description": "Emergency stop"},
+                {"command": "close_all", "description": "Close all positions"},
+                {"command": "report", "description": "Dashboard report"},
                 {"command": "help", "description": "Show command help"},
             ]
         }
@@ -111,10 +121,12 @@ class TelegramController:
         self.send_message(f"Skipped: {result['reason']}")
 
     def consume_webhook_events(self):
-        if not self._webhook_server:
-            return []
+        updates = []
+        if self._webhook_server:
+            updates.extend(self._webhook_server.consume())
+        if self._polling_fallback:
+            updates.extend(self._fetch_polling_updates())
 
-        updates = self._webhook_server.consume()
         actions = []
         for item in updates:
             if "callback_query" in item:
@@ -177,6 +189,17 @@ class TelegramController:
         if normalized.startswith("page:"):
             self._current_page = normalized.split(":", 1)[1]
             return f"Switched to {self._current_page.title()} page."
+
+        controlled = self.control_center.execute(normalized, self.router)
+        if controlled is not None:
+            required_role = "viewer"
+            if normalized in {"pause", "resume"}:
+                required_role = "operator"
+            if normalized in {"kill", "close_all"}:
+                required_role = "admin"
+            if not self._can_execute(role, required_role):
+                return f"Denied: {required_role} role required."
+            return controlled
 
         action_map = {
             "status": ("viewer", self.router.get_status_report),
@@ -313,7 +336,8 @@ class TelegramController:
 
         webhook_url = self.config.telegram_webhook_url
         if not webhook_url:
-            print("Telegram webhook URL missing. Set TELEGRAM_WEBHOOK_URL for callback mode.")
+            self._polling_fallback = True
+            print("Telegram webhook URL missing. Running in polling fallback mode.")
             return
 
         set_url = f"https://api.telegram.org/bot{self.token}/setWebhook"
@@ -326,8 +350,10 @@ class TelegramController:
         if ok:
             print(f"Telegram webhook configured: {payload['url']}")
             self._webhook_enabled = True
+            self._polling_fallback = False
         else:
             print("Telegram webhook setup failed.")
+            self._polling_fallback = True
 
     def watchdog_tick(self, router):
         if not self._webhook_enabled:
@@ -398,3 +424,28 @@ class TelegramController:
         except (requests.RequestException, ValueError):
             print("Telegram API failed: network/API error.")
             return False, {}
+
+    def _fetch_polling_updates(self):
+        if not self.token:
+            return []
+        url = f"https://api.telegram.org/bot{self.token}/getUpdates"
+        params = {
+            "timeout": 1,
+            "offset": self._update_offset + 1,
+            "allowed_updates": ["message", "callback_query"],
+        }
+        try:
+            response = requests.get(url, params=params, timeout=3)
+            data = response.json()
+        except (requests.RequestException, ValueError):
+            return []
+
+        if not data.get("ok"):
+            return []
+
+        items = data.get("result", [])
+        for item in items:
+            update_id = int(item.get("update_id", 0))
+            if update_id > self._update_offset:
+                self._update_offset = update_id
+        return items

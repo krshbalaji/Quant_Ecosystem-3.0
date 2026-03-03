@@ -88,12 +88,18 @@ class ExecutionRouter:
         symbol_exposure_pct = self._symbol_exposure_pct(symbol)
         daily_trade_count = self._daily_trade_count()
         symbol_daily_loss_pct = self._symbol_daily_loss_pct(symbol)
+        asset_exposure_pct = self._asset_exposure_pct(self._asset_class(symbol))
+        strategy_exposure_pct = self._strategy_exposure_pct(candidate_signal.get("strategy_id"))
+        sector_exposure_pct = self._sector_exposure_pct(symbol)
         allowed, reason = self.risk_engine.allow_trade(
             self.state,
             portfolio_exposure_pct=exposure_pct,
             symbol_exposure_pct=symbol_exposure_pct,
             daily_trade_count=daily_trade_count,
             symbol_daily_loss_pct=symbol_daily_loss_pct,
+            sector_exposure_pct=sector_exposure_pct,
+            strategy_exposure_pct=strategy_exposure_pct,
+            asset_exposure_pct=asset_exposure_pct,
         )
         if not allowed:
             return {"status": "SKIP", "reason": reason}
@@ -526,6 +532,39 @@ class ExecutionRouter:
             if pnl < 0:
                 losses += abs(pnl)
         return quantize((losses / self.state.equity) * 100.0, 4)
+
+    def _strategy_exposure_pct(self, strategy_id):
+        if self.state.equity <= 0 or not strategy_id:
+            return 100.0
+        notional = 0.0
+        for item in self.state.trade_history[-30:]:
+            if item.get("strategy_id") != strategy_id:
+                continue
+            notional += abs(float(item.get("qty", 0.0)) * float(item.get("price", 0.0)))
+        return quantize((notional / self.state.equity) * 100.0, 4)
+
+    def _asset_exposure_pct(self, asset_class):
+        if self.state.equity <= 0:
+            return 100.0
+        notional = self._asset_class_exposure_notional(asset_class)
+        return quantize((notional / self.state.equity) * 100.0, 4)
+
+    def _sector_exposure_pct(self, symbol):
+        # Basic proxy until explicit sector master is integrated.
+        # Banking bucket is monitored more tightly because concentration spikes faster.
+        sector = "BANKING" if "BANK" in str(symbol).upper() else "GENERAL"
+        if self.state.equity <= 0:
+            return 100.0
+        notional = 0.0
+        for sym, pos in self.portfolio_engine.positions.items():
+            sym_sector = "BANKING" if "BANK" in str(sym).upper() else "GENERAL"
+            if sym_sector != sector:
+                continue
+            px = self.state.latest_prices.get(sym)
+            if px is None:
+                continue
+            notional += abs(float(pos.get("net_qty", 0.0)) * float(px))
+        return quantize((notional / self.state.equity) * 100.0, 4)
 
     def _available_portfolio_notional(self):
         max_notional = self.state.equity * (self.risk_engine.max_portfolio_risk / 100.0)

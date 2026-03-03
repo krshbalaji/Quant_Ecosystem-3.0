@@ -1,11 +1,16 @@
 import asyncio
 
+from control.telegram_control_center import TelegramControlCenter
 from core.health.health_check import HealthCheck
 from core.persistence.runtime_store import RuntimeStore
 from core.scheduler import Scheduler
+from core.strategy_lifecycle_manager import StrategyLifecycleManager
+from core.strategy_portfolio_manager import StrategyPortfolioManager
 from intelligence.adaptation_engine import AdaptationEngine
 from intelligence.global_intelligence_engine import GlobalIntelligenceEngine
+from market.market_universe_manager import MarketUniverseManager
 from reporting.eod.eod_report import EODReport
+from risk.black_swan_guard import BlackSwanGuard
 from risk.safety_layer import SafetyLayer
 from strategy_bank.strategy_evaluator import StrategyEvaluator
 
@@ -19,9 +24,14 @@ class MasterOrchestrator:
         self.adaptation_engine = AdaptationEngine()
         self.intelligence_engine = GlobalIntelligenceEngine()
         self.strategy_evaluator = StrategyEvaluator()
+        self.strategy_portfolio = StrategyPortfolioManager()
+        self.strategy_lifecycle = StrategyLifecycleManager()
+        self.universe = MarketUniverseManager()
         self.reporter = EODReport()
         self.runtime_store = RuntimeStore()
         self.safety = SafetyLayer()
+        self.black_swan = BlackSwanGuard()
+        self.control_center = TelegramControlCenter()
 
     async def start(self, router, git_sync=None, auto_push_end=True, auto_tag_end=True):
         print("Quant Ecosystem 3.0 booting...")
@@ -42,20 +52,35 @@ class MasterOrchestrator:
         if router.strategy_engine:
             router.strategy_engine.reload()
             strategy_reports = self.strategy_evaluator.evaluate(router.strategy_engine.strategies)
+            strategy_reports = self._apply_lifecycle(strategy_reports)
+            portfolio_plan = self.strategy_portfolio.build_portfolio(strategy_reports)
+            strategy_reports = portfolio_plan["reports"]
             router.strategy_engine.apply_policy(strategy_reports)
             top = strategy_reports[:3]
             print(f"Strategy evaluation top-3: {top}")
+            print(f"Active strategy ids: {portfolio_plan['active_ids']}")
         else:
             strategy_reports = []
 
         intelligence_report = self.intelligence_engine.analyze()
         market_bias = intelligence_report.get("bias", "NEUTRAL")
         regime = intelligence_report.get("regime", "MEAN_REVERSION")
+        regime_advanced = intelligence_report.get("regime_advanced", regime)
+        router.symbols = self.universe.symbols(
+            asset_classes=["stocks", "indices"],
+            regime=regime_advanced,
+            limit=8,
+        )
         command_task = asyncio.create_task(self._poll_telegram_commands(router))
 
         try:
             for i in range(1, self.cycles + 1):
                 print(f"Cycle {i}")
+                router.symbols = self.universe.symbols(
+                    asset_classes=["stocks", "indices"],
+                    regime=regime_advanced,
+                    limit=8,
+                )
                 result = await router.execute(market_bias=market_bias, regime=regime)
 
                 if result["status"] == "TRADE":
@@ -77,6 +102,28 @@ class MasterOrchestrator:
                     result=result,
                     state=router.state,
                 )
+
+                swan = self.black_swan.evaluate(
+                    intelligence_report=intelligence_report,
+                    snapshots=[],
+                )
+                if swan["action"] == "REDUCE_RISK":
+                    router.risk_engine.set_trade_risk_pct(router.risk_engine.max_trade_risk * 0.9)
+                    if router.telegram:
+                        router.telegram.send_message(f"Black swan guard: {swan['reason']} -> risk reduced.")
+                elif swan["action"] == "PAUSE":
+                    router.stop_trading()
+                    router.set_auto_mode(False)
+                    if router.telegram:
+                        router.telegram.send_message(f"Black swan guard: {swan['reason']} -> trading paused.")
+                    break
+                elif swan["action"] == "CLOSE_EXPOSURE":
+                    self.control_center.execute("close_all", router)
+                    router.stop_trading()
+                    router.set_auto_mode(False)
+                    if router.telegram:
+                        router.telegram.send_message(f"Black swan guard: {swan['reason']} -> exposure closed.")
+                    break
 
                 if router.telegram:
                     router.telegram.update_dashboard(role=router.telegram._active_role)
@@ -127,3 +174,23 @@ class MasterOrchestrator:
                 if not str(command).startswith("button:"):
                     router.telegram.send_message(response)
             await asyncio.sleep(1)
+
+    def _apply_lifecycle(self, strategy_reports):
+        out = []
+        for report in strategy_reports:
+            metrics = report.get("metrics", {})
+            stage = self.strategy_lifecycle.assess(metrics=metrics, current_stage="candidate")
+            mapped = self._stage_map(stage)
+            out.append({**report, "stage": mapped})
+        return out
+
+    def _stage_map(self, stage):
+        value = str(stage).lower()
+        mapping = {
+            "candidate": "REJECTED",
+            "paper": "PAPER",
+            "shadow": "PAPER_SHADOW",
+            "live": "LIVE",
+            "retired": "RETIRED",
+        }
+        return mapping.get(value, "REJECTED")
