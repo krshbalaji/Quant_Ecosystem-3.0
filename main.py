@@ -5,6 +5,7 @@ from core.dependency_manager import DependencyManager
 from core.maintenance_manager import MaintenanceManager
 from core.master_orchestrator import MasterOrchestrator
 from core.onboarding import FirstTimeOnboarding
+from core.scheduler import Scheduler
 from core.system_factory import build_router
 from core.vcs.git_sync_manager import GitSyncManager
 
@@ -28,7 +29,8 @@ async def main():
         deps.install_from_file()
     if config.auto_git_sync:
         git_sync.pull_on_start()
-    maintenance.run_random_checks()
+    phase = Scheduler().current_phase()
+    maintenance.run_random_checks(phase=phase)
 
     FirstTimeOnboarding().ensure()
 
