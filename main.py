@@ -44,6 +44,18 @@ async def main():
         auto_tag_end=config.auto_git_tag_end,
     )
 
+    if config.telegram_always_on and getattr(router, "telegram", None):
+        print("Telegram standby listener active (idle mode). Press Ctrl+C to stop.")
+        poll_sec = max(0.2, float(config.telegram_idle_poll_sec))
+        while True:
+            commands = router.telegram.consume_webhook_events()
+            for command, result in commands:
+                response = f"Command {command}: {result}"
+                print(response)
+                if not str(command).startswith("button:"):
+                    router.telegram.send_message(response)
+            await asyncio.sleep(poll_sec)
+
 
 if __name__ == "__main__":
 

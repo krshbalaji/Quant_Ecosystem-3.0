@@ -31,6 +31,9 @@ class Config:
         self.telegram_audit_secret = self._pick_env("TELEGRAM_AUDIT_SECRET", "TELEGRAM_WEBHOOK_SECRET")
         self.telegram_admin_ids = self._parse_ids("TELEGRAM_ADMIN_IDS")
         self.telegram_operator_ids = self._parse_ids("TELEGRAM_OPERATOR_IDS")
+        self.telegram_startup_alert = os.getenv("TELEGRAM_STARTUP_ALERT", "true").lower() == "true"
+        self.telegram_always_on = os.getenv("TELEGRAM_ALWAYS_ON", "false").lower() == "true"
+        self.telegram_idle_poll_sec = float(os.getenv("TELEGRAM_IDLE_POLL_SEC", "1.0"))
 
         # VCS + dependency automation
         self.auto_git_sync = os.getenv("AUTO_GIT_SYNC", "true").lower() == "true"

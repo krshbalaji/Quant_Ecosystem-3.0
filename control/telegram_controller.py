@@ -36,6 +36,8 @@ class TelegramController:
         self.router = router
 
     def send_startup_ping(self):
+        if not bool(getattr(self.config, "telegram_startup_alert", True)):
+            return False
         if not self.token:
             return False
         if not self._is_valid_chat_id(self.chat_id):
