@@ -21,6 +21,7 @@ class ExecutionRouter:
         capital_governance=None,
         position_sizer=None,
         symbols=None,
+        outcome_memory=None,
     ):
         self.broker = broker
         self.risk_engine = risk_engine
@@ -32,6 +33,7 @@ class ExecutionRouter:
         self.capital_governance = capital_governance
         self.position_sizer = position_sizer
         self.symbols = symbols or ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ", "NSE:INFY-EQ"]
+        self.outcome_memory = outcome_memory
         self.telegram = None
         self.config = Config()
         self.instrument_policy = InstrumentPolicyEngine()
@@ -64,6 +66,7 @@ class ExecutionRouter:
 
         self.state.latest_prices = {snap["symbol"]: snap["price"] for snap in snapshots}
         prev_equity = self.state.equity
+        prev_realized_account = float(self.state.realized_pnl)
         if self.reconciler:
             self.reconciler.reconcile(latest_prices=self.state.latest_prices)
         else:
@@ -91,6 +94,7 @@ class ExecutionRouter:
         asset_exposure_pct = self._asset_exposure_pct(self._asset_class(symbol))
         strategy_exposure_pct = self._strategy_exposure_pct(candidate_signal.get("strategy_id"))
         sector_exposure_pct = self._sector_exposure_pct(symbol)
+        exposure_reducing = self._is_exposure_reducing_signal(candidate_signal)
         allowed, reason = self.risk_engine.allow_trade(
             self.state,
             portfolio_exposure_pct=exposure_pct,
@@ -100,6 +104,7 @@ class ExecutionRouter:
             sector_exposure_pct=sector_exposure_pct,
             strategy_exposure_pct=strategy_exposure_pct,
             asset_exposure_pct=asset_exposure_pct,
+            exposure_reducing=exposure_reducing,
         )
         if not allowed:
             return {"status": "SKIP", "reason": reason}
@@ -128,7 +133,9 @@ class ExecutionRouter:
         )
         if self.reconciler:
             snapshot = self.reconciler.reconcile(latest_prices=self.state.latest_prices)
-            realized_pnl = float(order.get("realized_pnl", 0.0))
+            realized_pnl = float(self.state.realized_pnl) - prev_realized_account
+            if abs(realized_pnl) < 1e-8:
+                realized_pnl = float(order.get("realized_pnl", 0.0))
             broker_orders = snapshot.get("orders", [])
             if broker_orders:
                 self.state.turnover = quantize(
@@ -170,8 +177,10 @@ class ExecutionRouter:
             "intended_price": quantize(intended_price, 4),
             "slippage_bps": quantize(slippage_bps, 4),
             "confidence": quantize(candidate_signal.get("confidence", 0.0), 4),
+            "memory_bias": quantize(candidate_signal.get("memory_bias", 0.0), 6),
             "fee": fee,
             "realized_pnl": quantize(realized_pnl, 4),
+            "closed_trade": bool(abs(realized_pnl) > 0.0),
             "unrealized_pnl": quantize(self.state.unrealized_pnl, 4),
             "cycle_pnl": cycle_pnl,
             "equity": quantize(self.state.equity, 2),
@@ -255,6 +264,7 @@ class ExecutionRouter:
             f"drawdown={quantize(self.state.total_drawdown_pct, 2)}% "
             f"exposure={quantize(self._portfolio_exposure_pct(), 2)}% "
             f"day_trades={self._daily_trade_count()}/{self.risk_engine.max_daily_trades} "
+            f"survival_mode={getattr(self, 'survival_mode', 'NORMAL')} "
             f"sync={self.state.last_reconciled_at or 'NA'} "
             f"cooldown={self.state.cooldown} "
             f"consecutive_losses={self.state.consecutive_losses} "
@@ -344,6 +354,16 @@ class ExecutionRouter:
             symbol_penalty = self._symbol_exposure_pct(candidate["symbol"]) / 100.0
             candidate["rank_score"] = candidate.get("confidence", 0.0) - (0.2 * symbol_penalty)
             candidate["trade_type"] = self._determine_trade_type(candidate, regime)
+            if self.outcome_memory:
+                candidate["memory_bias"] = self.outcome_memory.signal_bias(
+                    strategy_id=candidate.get("strategy_id"),
+                    symbol=candidate.get("symbol"),
+                    regime=regime,
+                    trade_type=candidate.get("trade_type"),
+                )
+                candidate["rank_score"] += float(candidate["memory_bias"])
+            else:
+                candidate["memory_bias"] = 0.0
             if candidate.get("shadow_mode"):
                 # Stricter bar in shadow deployment.
                 candidate["rank_score"] -= 0.08
@@ -627,3 +647,16 @@ class ExecutionRouter:
                 continue
             total += abs(pos["net_qty"] * price)
         return quantize(total, 4)
+
+    def _is_exposure_reducing_signal(self, signal):
+        symbol = signal.get("symbol")
+        side = str(signal.get("side", "")).upper()
+        pos = self.portfolio_engine.positions.get(symbol)
+        if not pos:
+            return False
+        net_qty = float(pos.get("net_qty", 0.0))
+        if net_qty > 0 and side == "SELL":
+            return True
+        if net_qty < 0 and side == "BUY":
+            return True
+        return False

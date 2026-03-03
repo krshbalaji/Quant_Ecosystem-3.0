@@ -5,3 +5,4 @@ __pycache__/
 fyersApi.log
 fyersRequests.log
 reporting/output/
+core/persistence/outcome_memory.json

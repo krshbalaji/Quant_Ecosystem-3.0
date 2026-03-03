@@ -30,6 +30,7 @@ class RiskEngine:
         sector_exposure_pct=0.0,
         strategy_exposure_pct=0.0,
         asset_exposure_pct=0.0,
+        exposure_reducing=False,
     ):
         if state.trading_halted:
             return False, "TRADING_HALTED"
@@ -56,19 +57,19 @@ class RiskEngine:
         if float(symbol_daily_loss_pct) >= self.max_symbol_daily_loss_pct:
             return False, "MAX_SYMBOL_DAILY_LOSS"
 
-        if float(sector_exposure_pct) >= self.max_sector_exposure_pct:
+        if (not exposure_reducing) and float(sector_exposure_pct) >= self.max_sector_exposure_pct:
             return False, "MAX_SECTOR_EXPOSURE"
 
-        if float(strategy_exposure_pct) >= self.max_strategy_exposure_pct:
+        if (not exposure_reducing) and float(strategy_exposure_pct) >= self.max_strategy_exposure_pct:
             return False, "MAX_STRATEGY_EXPOSURE"
 
-        if float(asset_exposure_pct) >= self.max_asset_exposure_pct:
+        if (not exposure_reducing) and float(asset_exposure_pct) >= self.max_asset_exposure_pct:
             return False, "MAX_ASSET_EXPOSURE"
 
-        if portfolio_exposure_pct >= self.max_portfolio_risk:
+        if (not exposure_reducing) and portfolio_exposure_pct >= self.max_portfolio_risk:
             return False, "MAX_PORTFOLIO_EXPOSURE"
 
-        if symbol_exposure_pct >= self.max_symbol_risk:
+        if (not exposure_reducing) and symbol_exposure_pct >= self.max_symbol_risk:
             return False, "MAX_SYMBOL_EXPOSURE"
 
         return True, "OK"

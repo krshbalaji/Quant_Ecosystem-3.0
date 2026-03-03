@@ -42,7 +42,8 @@ class FyersBroker:
             print(f"Placing order via Fyers API | {side} {symbol} {qty}")
             fill_price = quantize(float(price or 0.0), 4)
             fee_q = quantize(float(fee or 0.0), 4)
-            realized = self._paper_apply_fill(symbol=symbol, side=side, qty=int(qty), price=fill_price)
+            fill_meta = self._paper_apply_fill(symbol=symbol, side=side, qty=int(qty), price=fill_price)
+            realized = float(fill_meta.get("realized_pnl", 0.0))
             notional = fill_price * int(qty)
             if side == "BUY":
                 self._paper_cash -= notional + fee_q
@@ -60,6 +61,8 @@ class FyersBroker:
                 "fee": fee_q,
                 "status": "FILLED",
                 "realized_pnl": quantize(realized, 4),
+                "closing_qty": int(fill_meta.get("closing_qty", 0)),
+                "opening_qty": int(fill_meta.get("opening_qty", 0)),
                 "meta": meta or {},
             }
             self._paper_orders.append(order)
@@ -261,17 +264,31 @@ class FyersBroker:
         signed_fill = qty if side == "BUY" else -qty
         new_qty = current_qty + signed_fill
         realized = 0.0
+        closing_qty = 0
+        opening_qty = 0
 
         if current_qty == 0:
             self._paper_positions[symbol] = {"net_qty": new_qty, "avg_price": price}
-            return 0.0
+            return {
+                "realized_pnl": 0.0,
+                "closing_qty": 0,
+                "opening_qty": abs(signed_fill),
+                "prev_qty": current_qty,
+                "new_qty": new_qty,
+            }
 
         same_dir = (current_qty > 0 and signed_fill > 0) or (current_qty < 0 and signed_fill < 0)
         if same_dir:
             total_qty = abs(current_qty) + abs(signed_fill)
             weighted = (abs(current_qty) * current_avg) + (abs(signed_fill) * price)
             self._paper_positions[symbol] = {"net_qty": new_qty, "avg_price": quantize(weighted / total_qty, 4)}
-            return 0.0
+            return {
+                "realized_pnl": 0.0,
+                "closing_qty": 0,
+                "opening_qty": abs(signed_fill),
+                "prev_qty": current_qty,
+                "new_qty": new_qty,
+            }
 
         closing_qty = min(abs(current_qty), abs(signed_fill))
         direction = 1 if current_qty > 0 else -1
@@ -283,5 +300,12 @@ class FyersBroker:
             self._paper_positions[symbol] = {"net_qty": new_qty, "avg_price": quantize(current_avg, 4)}
         else:
             self._paper_positions[symbol] = {"net_qty": new_qty, "avg_price": price}
+            opening_qty = abs(new_qty)
 
-        return realized
+        return {
+            "realized_pnl": realized,
+            "closing_qty": int(closing_qty),
+            "opening_qty": int(opening_qty),
+            "prev_qty": current_qty,
+            "new_qty": new_qty,
+        }

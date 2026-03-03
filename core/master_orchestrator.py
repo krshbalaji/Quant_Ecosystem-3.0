@@ -12,6 +12,7 @@ from market.market_universe_manager import MarketUniverseManager
 from reporting.eod.eod_report import EODReport
 from risk.black_swan_guard import BlackSwanGuard
 from risk.safety_layer import SafetyLayer
+from risk.survival_playbook import SurvivalPlaybook
 from strategy_bank.strategy_evaluator import StrategyEvaluator
 
 
@@ -31,6 +32,7 @@ class MasterOrchestrator:
         self.runtime_store = RuntimeStore()
         self.safety = SafetyLayer()
         self.black_swan = BlackSwanGuard()
+        self.survival = SurvivalPlaybook()
         self.control_center = TelegramControlCenter()
 
     async def start(self, router, git_sync=None, auto_push_end=True, auto_tag_end=True):
@@ -125,6 +127,15 @@ class MasterOrchestrator:
                         router.telegram.send_message(f"Black swan guard: {swan['reason']} -> exposure closed.")
                     break
 
+                survival_decision = self.survival.evaluate(router, result, intelligence_report)
+                survival_msg = self.survival.apply(router, self.control_center, survival_decision)
+                if survival_msg:
+                    print("Survival:", survival_msg)
+                    if router.telegram:
+                        router.telegram.send_message(f"Survival: {survival_msg}")
+                    if self.survival.mode == "PAUSED":
+                        break
+
                 if router.telegram:
                     router.telegram.update_dashboard(role=router.telegram._active_role)
 
@@ -151,6 +162,9 @@ class MasterOrchestrator:
 
         adaptation_report = self.adaptation_engine.apply(router.state, router.risk_engine)
         print(f"Adaptation: {adaptation_report}")
+
+        if getattr(router, "outcome_memory", None):
+            router.outcome_memory.update_from_trades(router.state.trade_history)
 
         self.reporter.generate(
             state=router.state,
