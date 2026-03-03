@@ -91,6 +91,14 @@ class MasterOrchestrator:
         selector_allocator = self._run_selector_allocator(router, regime_advanced)
         if selector_allocator:
             print(f"Selector/Allocator: {selector_allocator}")
+        meta_decision = self._run_meta_brain(
+            router=router,
+            regime_advanced=regime_advanced,
+            strategy_reports=strategy_reports,
+            mutated_candidates=[],
+        )
+        if meta_decision:
+            print(f"MetaBrain: {meta_decision}")
 
         if getattr(router.config, "enable_global_session_fallback", True):
             classes = self.universe.asset_classes_for_session()
@@ -98,6 +106,9 @@ class MasterOrchestrator:
             classes = ["stocks", "indices"]
         router.symbols = self.universe.symbols(asset_classes=classes, regime=regime_advanced, limit=8)
         command_task = asyncio.create_task(self._poll_telegram_commands(router))
+        alpha_task = self._start_alpha_scanner(router)
+        portfolio_ai_task = self._start_portfolio_ai(router)
+        strategy_lab_task = self._start_strategy_lab_autorun(router)
 
         try:
             for i in range(1, self.cycles + 1):
@@ -115,6 +126,14 @@ class MasterOrchestrator:
                     selector_allocator = self._run_selector_allocator(router, regime_advanced)
                     if selector_allocator:
                         print(f"Selector/Allocator: {selector_allocator}")
+                    meta_decision = self._run_meta_brain(
+                        router=router,
+                        regime_advanced=regime_advanced,
+                        strategy_reports=strategy_reports,
+                        mutated_candidates=[],
+                    )
+                    if meta_decision:
+                        print(f"MetaBrain: {meta_decision}")
 
                 if getattr(router.config, "enable_global_session_fallback", True):
                     classes = self.universe.asset_classes_for_session()
@@ -217,6 +236,24 @@ class MasterOrchestrator:
                 await with_cancel
             except asyncio.CancelledError:
                 pass
+            if alpha_task:
+                alpha_task.cancel()
+                try:
+                    await alpha_task
+                except asyncio.CancelledError:
+                    pass
+            if portfolio_ai_task:
+                portfolio_ai_task.cancel()
+                try:
+                    await portfolio_ai_task
+                except asyncio.CancelledError:
+                    pass
+            if strategy_lab_task:
+                strategy_lab_task.cancel()
+                try:
+                    await strategy_lab_task
+                except asyncio.CancelledError:
+                    pass
 
         adaptation_report = self.adaptation_engine.apply(router.state, router.risk_engine)
         print(f"Adaptation: {adaptation_report}")
@@ -225,10 +262,19 @@ class MasterOrchestrator:
             router.outcome_memory.update_from_trades(router.state.trade_history)
 
         mutation_engine = getattr(router, "mutation_engine", None)
+        mutated = []
         if mutation_engine and getattr(mutation_engine, "enabled", False):
             mutated = mutation_engine.run_daily(strategy_reports)
             if mutated:
                 print(f"Mutation engine accepted candidates: {len(mutated)}")
+        meta_after_mutation = self._run_meta_brain(
+            router=router,
+            regime_advanced=regime_advanced,
+            strategy_reports=strategy_reports,
+            mutated_candidates=mutated,
+        )
+        if meta_after_mutation:
+            print(f"MetaBrain(post-mutation): {meta_after_mutation}")
 
         self.reporter.generate(
             state=router.state,
@@ -274,9 +320,7 @@ class MasterOrchestrator:
         return mapping.get(value, "REJECTED")
 
     def _detect_and_broadcast_regime(self, router, intelligence_report):
-        detector = getattr(router, "market_regime_detector", None)
-        if not detector:
-            return None
+        ai_engine = getattr(router, "regime_ai_engine", None)
         timeframe_data = self._build_regime_timeframe_data(router)
         if not timeframe_data:
             return None
@@ -284,6 +328,21 @@ class MasterOrchestrator:
             "market_breadth": intelligence_report.get("market_breadth", 0.0),
             "vix": intelligence_report.get("vix"),
         }
+        if ai_engine:
+            state = ai_engine.detect_regime(timeframe_data=timeframe_data, extra_signals=extra)
+            ai_engine.broadcast_regime(
+                state,
+                strategy_bank_layer=getattr(router, "strategy_bank_layer", None),
+                strategy_selector=getattr(router, "strategy_selector", None),
+                meta_strategy_brain=getattr(router, "meta_strategy_brain", None),
+                capital_allocator_engine=getattr(router, "capital_allocator_engine", None),
+                autonomous_controller=getattr(router, "autonomous_controller", None),
+            )
+            return state
+
+        detector = getattr(router, "market_regime_detector", None)
+        if not detector:
+            return None
         state = detector.detect_regime(timeframe_data=timeframe_data, extra_signals=extra)
         detector.broadcast_regime(
             state,
@@ -363,3 +422,108 @@ class MasterOrchestrator:
             }
         except Exception as exc:
             return {"regime": str(regime_advanced).upper(), "error": str(exc)}
+
+    def _run_meta_brain(self, router, regime_advanced, strategy_reports, mutated_candidates):
+        meta_brain = getattr(router, "meta_strategy_brain", None)
+        if not meta_brain:
+            return None
+        try:
+            decisions = meta_brain.evaluate_strategy_ecosystem(
+                regime=str(regime_advanced).upper(),
+                strategy_rows=strategy_reports,
+                mutated_candidates=mutated_candidates,
+                max_active=max(1, int(getattr(router.config, "meta_max_active_strategies", 5))),
+            )
+            return {
+                "active": decisions.get("ACTIVE_STRATEGIES", []),
+                "reduced": decisions.get("REDUCED_STRATEGIES", []),
+                "retired": decisions.get("RETIRED_STRATEGIES", []),
+                "promoted": decisions.get("PROMOTED_STRATEGIES", []),
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    def _start_alpha_scanner(self, router):
+        scanner = getattr(router, "alpha_scanner", None)
+        if not scanner:
+            return None
+        if not bool(getattr(router.config, "enable_alpha_scanner", False)):
+            return None
+        top_n = max(10, int(getattr(router.config, "alpha_scanner_top_n", 100)))
+        interval = max(60, int(getattr(router.config, "alpha_scanner_interval_sec", 180)))
+        scanner.cycle_interval_sec = interval
+        print(f"Alpha scanner started: interval={interval}s top_n={top_n}")
+        return asyncio.create_task(scanner.run_forever(top_n=top_n))
+
+    def _start_portfolio_ai(self, router):
+        engine = getattr(router, "portfolio_ai_engine", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_portfolio_ai", False)):
+            return None
+        interval = int(getattr(router.config, "portfolio_ai_interval_sec", 300))
+        interval = max(300, min(600, interval))
+        capital_pct = float(getattr(router.config, "portfolio_ai_capital_pct", 100.0))
+        print(f"Portfolio AI started: interval={interval}s capital_pct={round(capital_pct, 2)}")
+        return asyncio.create_task(self._run_portfolio_ai_loop(router, interval, capital_pct))
+
+    async def _run_portfolio_ai_loop(self, router, interval_sec, capital_pct):
+        engine = getattr(router, "portfolio_ai_engine", None)
+        if not engine:
+            return
+        while True:
+            regime = str(getattr(router.autonomous_controller, "last_regime", "RANGE_BOUND")).upper()
+            try:
+                outcome = engine.run_cycle(regime=regime, capital_pct=capital_pct)
+                alloc = outcome.get("published", {}).get("allocations", {})
+                print(f"PortfolioAI: regime={regime} allocations={alloc}")
+            except Exception as exc:
+                print(f"PortfolioAI error: {exc}")
+            await asyncio.sleep(interval_sec)
+
+    def _start_strategy_lab_autorun(self, router):
+        controller = getattr(router, "strategy_lab_controller", None)
+        if not controller:
+            return None
+        if not bool(getattr(router.config, "enable_strategy_lab_autorun", False)):
+            return None
+
+        interval = int(getattr(router.config, "strategy_lab_autorun_interval_sec", 900))
+        interval = max(300, interval)
+        generate_count = max(1, int(getattr(router.config, "strategy_lab_autorun_generate_count", 8)))
+        variants_per_base = max(1, int(getattr(router.config, "strategy_lab_autorun_variants_per_base", 4)))
+        periods = max(120, int(getattr(router.config, "strategy_lab_autorun_periods", 260)))
+        print(
+            "Strategy Lab autorun started: "
+            f"interval={interval}s gen={generate_count} variants={variants_per_base} periods={periods}"
+        )
+        return asyncio.create_task(
+            self._run_strategy_lab_loop(
+                router=router,
+                interval_sec=interval,
+                generate_count=generate_count,
+                variants_per_base=variants_per_base,
+                periods=periods,
+            )
+        )
+
+    async def _run_strategy_lab_loop(self, router, interval_sec, generate_count, variants_per_base, periods):
+        controller = getattr(router, "strategy_lab_controller", None)
+        if not controller:
+            return
+        while True:
+            try:
+                outcome = controller.run_experiment(
+                    generate_count=generate_count,
+                    variants_per_base=variants_per_base,
+                    periods=periods,
+                )
+                promoted = outcome.get("PROMOTED_STRATEGIES", [])
+                validated = outcome.get("VALIDATED_STRATEGIES", [])
+                print(
+                    "StrategyLab: "
+                    f"validated={len(validated)} promoted={len(promoted)} sandbox={outcome.get('sandbox_mode')}"
+                )
+            except Exception as exc:
+                print(f"StrategyLab error: {exc}")
+            await asyncio.sleep(interval_sec)

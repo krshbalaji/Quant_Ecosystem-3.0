@@ -99,6 +99,8 @@ class TelegramController:
                 {"command": "kill", "description": "Emergency stop"},
                 {"command": "close_all", "description": "Close all positions"},
                 {"command": "report", "description": "Dashboard report"},
+                {"command": "metabrain", "description": "Meta strategy decisions"},
+                {"command": "lab_run", "description": "Run one Strategy Lab batch"},
                 {"command": "allocate", "description": "Allocate strategy capital"},
                 {"command": "deploy_strategy", "description": "Deploy strategy by id"},
                 {"command": "manual", "description": "Set MANUAL mode"},
@@ -214,6 +216,8 @@ class TelegramController:
             if normalized in {"pause", "resume"}:
                 required_role = "operator"
             if normalized in {"kill", "close_all"}:
+                required_role = "admin"
+            if normalized.startswith("lab_run"):
                 required_role = "admin"
             if not self._can_execute(role, required_role):
                 return f"Denied: {required_role} role required."

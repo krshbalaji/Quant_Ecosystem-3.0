@@ -48,6 +48,10 @@ class TelegramControlCenter:
             return self._close_all(router)
         if cmd == "report":
             return router.get_dashboard_report()
+        if cmd == "metabrain":
+            return self._metabrain_report(router)
+        if cmd == "lab_run":
+            return self._lab_run(router, args)
 
         return None
 
@@ -178,3 +182,58 @@ class TelegramControlCenter:
                 reason = str(event.get("reason", ""))
                 return f"{frm}->{to} ({reason})"
         return ""
+
+    def _metabrain_report(self, router):
+        brain = getattr(router, "meta_strategy_brain", None)
+        if not brain:
+            return "Meta Brain unavailable (ENABLE_META_STRATEGY_BRAIN=false)."
+
+        decisions = getattr(brain, "last_decisions", {}) or {}
+        if not decisions:
+            return "Meta Brain active but no decisions yet."
+
+        regime = decisions.get("regime", "UNKNOWN")
+        active = decisions.get("ACTIVE_STRATEGIES", [])
+        reduced = decisions.get("REDUCED_STRATEGIES", [])
+        retired = decisions.get("RETIRED_STRATEGIES", [])
+        promoted = decisions.get("PROMOTED_STRATEGIES", [])
+
+        return (
+            f"Meta Brain | regime={regime}\n"
+            f"active={len(active)} {active}\n"
+            f"reduced={len(reduced)} {reduced}\n"
+            f"retired={len(retired)} {retired}\n"
+            f"promoted={len(promoted)} {promoted}"
+        )
+
+    def _lab_run(self, router, args):
+        controller = getattr(router, "strategy_lab_controller", None)
+        if not controller:
+            return "Strategy Lab unavailable (ENABLE_STRATEGY_LAB=false)."
+
+        # Safe defaults for manual trigger.
+        generate_count = 5
+        variants = 3
+        periods = 260
+        try:
+            if len(args) >= 1:
+                generate_count = max(1, min(50, int(args[0])))
+            if len(args) >= 2:
+                variants = max(1, min(20, int(args[1])))
+            if len(args) >= 3:
+                periods = max(120, min(1000, int(args[2])))
+        except ValueError:
+            return "Usage: /lab_run [generate_count] [variants_per_base] [periods]"
+
+        outcome = controller.run_experiment(
+            generate_count=generate_count,
+            variants_per_base=variants,
+            periods=periods,
+        )
+        return (
+            f"Lab batch complete | sandbox={outcome.get('sandbox_mode')}\n"
+            f"research={len(outcome.get('NEW_RESEARCH_STRATEGIES', []))} "
+            f"validated={len(outcome.get('VALIDATED_STRATEGIES', []))} "
+            f"rejected={len(outcome.get('REJECTED_STRATEGIES', []))} "
+            f"promoted={len(outcome.get('PROMOTED_STRATEGIES', []))}"
+        )

@@ -12,13 +12,19 @@ from market.market_data_engine import MarketDataEngine
 from portfolio.portfolio_engine import PortfolioEngine
 from portfolio.position_sizer import PositionSizer
 from quant_ecosystem.autonomous_controller.controller import AutonomousController
+from quant_ecosystem.alpha_scanner import GlobalAlphaScanner, MarketDataAdapter
 from quant_ecosystem.capital_allocator.layer import CapitalAllocatorLayer
 from quant_ecosystem.capital_allocator.allocation_engine import CapitalAllocator
 from quant_ecosystem.execution_router.layer import ExecutionRouterLayer
+from quant_ecosystem.execution_intelligence import ExecutionBrain
 from quant_ecosystem.market_intelligence.layer import MarketIntelligenceLayer
 from quant_ecosystem.market_regime import MarketRegimeDetector
+from quant_ecosystem.regime_ai import AdaptiveRegimeEngine
+from quant_ecosystem.meta_strategy import MetaStrategyBrain
 from quant_ecosystem.mutation_engine.layer import MutationEngineLayer
+from quant_ecosystem.portfolio_ai import PortfolioAI
 from quant_ecosystem.risk_engine.layer import RiskEngineLayer
+from quant_ecosystem.strategy_lab import StrategyLabController
 from quant_ecosystem.strategy_selector.selector_core import AutonomousStrategySelector
 from quant_ecosystem.strategy_bank.layer import StrategyBankLayer
 from risk.risk_engine import RiskEngine
@@ -92,6 +98,67 @@ def build_router():
     execution.capital_allocator_engine = CapitalAllocator(
         strategy_bank_layer=execution.strategy_bank_layer,
         strategy_selector=execution.strategy_selector,
+    )
+    execution.meta_strategy_brain = (
+        MetaStrategyBrain(
+            strategy_bank_layer=execution.strategy_bank_layer,
+            capital_allocator_engine=execution.capital_allocator_engine,
+            mutation_layer=execution.mutation_layer,
+            strategy_selector=execution.strategy_selector,
+        )
+        if config.enable_meta_strategy_brain
+        else None
+    )
+    execution.strategy_lab_controller = (
+        StrategyLabController(
+            strategy_bank_layer=execution.strategy_bank_layer,
+            mutation_layer=execution.mutation_layer,
+            meta_strategy_brain=execution.meta_strategy_brain,
+            sandbox_mode=bool(getattr(config, "strategy_lab_sandbox", True)),
+        )
+        if (config.enable_strategy_lab or config.enable_alpha_scanner)
+        else None
+    )
+    execution.alpha_scanner = (
+        GlobalAlphaScanner(
+            strategy_lab_controller=execution.strategy_lab_controller,
+            strategy_bank_layer=execution.strategy_bank_layer,
+            meta_strategy_brain=execution.meta_strategy_brain,
+            market_data_adapter=MarketDataAdapter(
+                market_data_engine=market_data,
+                broker_router=broker_router,
+                max_concurrency=96,
+            ),
+            cycle_interval_sec=max(60, int(getattr(config, "alpha_scanner_interval_sec", 180))),
+            max_assets_per_cycle=max(100, int(getattr(config, "alpha_scanner_max_assets", 1200))),
+        )
+        if config.enable_alpha_scanner
+        else None
+    )
+    execution.regime_ai_engine = (
+        AdaptiveRegimeEngine(
+            model_path=getattr(config, "regime_ai_model_path", "quant_ecosystem/regime_ai/models/regime_model.pkl"),
+            min_confidence=float(getattr(config, "regime_ai_min_confidence", 0.45)),
+            rule_detector=execution.market_regime_detector,
+        )
+        if config.enable_regime_ai
+        else None
+    )
+    execution.portfolio_ai_engine = (
+        PortfolioAI(
+            strategy_bank_layer=execution.strategy_bank_layer,
+            capital_allocator_engine=execution.capital_allocator_engine,
+            strategy_selector=execution.strategy_selector,
+            meta_strategy_brain=execution.meta_strategy_brain,
+            risk_engine=risk_engine,
+        )
+        if config.enable_portfolio_ai
+        else None
+    )
+    execution.execution_brain = (
+        ExecutionBrain()
+        if config.enable_execution_intelligence
+        else None
     )
     execution.autonomous_controller.set_mode(execution, config.operation_mode)
 

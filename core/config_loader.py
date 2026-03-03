@@ -42,7 +42,7 @@ class Config:
         self.git_auto_commit_message = os.getenv("GIT_AUTO_COMMIT_MESSAGE", "auto: end-of-session sync")
         include_default = (
             "broker,config,control,core,execution,intelligence,market,portfolio,"
-            "reporting,research,risk,strategy_bank,utils,main.py,launcher.py,requests.txt,.gitignore"
+            "quant_ecosystem,reporting,research,risk,strategy_bank,utils,main.py,launcher.py,requests.txt,.gitignore"
         )
         exclude_default = "reporting/output,reporting/output/runtime,reporting/output/audit"
         self.git_sync_paths = self._parse_paths("GIT_SYNC_PATHS", include_default)
@@ -55,6 +55,26 @@ class Config:
         # Institutional strategy bank / mutation flags
         self.enable_strategy_bank = os.getenv("ENABLE_STRATEGY_BANK", "true").lower() == "true"
         self.enable_strategy_mutation = os.getenv("ENABLE_STRATEGY_MUTATION", "false").lower() == "true"
+        self.enable_meta_strategy_brain = os.getenv("ENABLE_META_STRATEGY_BRAIN", "false").lower() == "true"
+        self.meta_max_active_strategies = int(os.getenv("META_MAX_ACTIVE_STRATEGIES", "5"))
+        self.enable_strategy_lab = os.getenv("ENABLE_STRATEGY_LAB", "false").lower() == "true"
+        self.strategy_lab_sandbox = os.getenv("STRATEGY_LAB_SANDBOX", "true").lower() == "true"
+        self.enable_strategy_lab_autorun = os.getenv("ENABLE_STRATEGY_LAB_AUTORUN", "false").lower() == "true"
+        self.strategy_lab_autorun_interval_sec = int(os.getenv("STRATEGY_LAB_AUTORUN_INTERVAL_SEC", "900"))
+        self.strategy_lab_autorun_generate_count = int(os.getenv("STRATEGY_LAB_AUTORUN_GENERATE_COUNT", "8"))
+        self.strategy_lab_autorun_variants_per_base = int(os.getenv("STRATEGY_LAB_AUTORUN_VARIANTS_PER_BASE", "4"))
+        self.strategy_lab_autorun_periods = int(os.getenv("STRATEGY_LAB_AUTORUN_PERIODS", "260"))
+        self.enable_alpha_scanner = os.getenv("ENABLE_ALPHA_SCANNER", "false").lower() == "true"
+        self.alpha_scanner_interval_sec = int(os.getenv("ALPHA_SCANNER_INTERVAL_SEC", "180"))
+        self.alpha_scanner_top_n = int(os.getenv("ALPHA_SCANNER_TOP_N", "100"))
+        self.alpha_scanner_max_assets = int(os.getenv("ALPHA_SCANNER_MAX_ASSETS", "1200"))
+        self.enable_portfolio_ai = os.getenv("ENABLE_PORTFOLIO_AI", "false").lower() == "true"
+        self.portfolio_ai_interval_sec = int(os.getenv("PORTFOLIO_AI_INTERVAL_SEC", "300"))
+        self.portfolio_ai_capital_pct = float(os.getenv("PORTFOLIO_AI_CAPITAL_PCT", "100"))
+        self.enable_execution_intelligence = os.getenv("ENABLE_EXECUTION_INTELLIGENCE", "false").lower() == "true"
+        self.enable_regime_ai = os.getenv("ENABLE_REGIME_AI", "false").lower() == "true"
+        self.regime_ai_model_path = os.getenv("REGIME_AI_MODEL_PATH", "quant_ecosystem/regime_ai/models/regime_model.pkl")
+        self.regime_ai_min_confidence = float(os.getenv("REGIME_AI_MIN_CONFIDENCE", "0.45"))
         self.correlation_threshold = float(os.getenv("CORRELATION_THRESHOLD", "0.7"))
         self.min_trades_for_promotion = int(os.getenv("MIN_TRADES_FOR_PROMOTION", "100"))
         self.mutation_rate_per_day = int(os.getenv("MUTATION_RATE_PER_DAY", "2"))
