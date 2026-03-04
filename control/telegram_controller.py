@@ -100,6 +100,8 @@ class TelegramController:
                 {"command": "close_all", "description": "Close all positions"},
                 {"command": "report", "description": "Dashboard report"},
                 {"command": "metabrain", "description": "Meta strategy decisions"},
+                {"command": "cognitive", "description": "Cognitive control snapshot"},
+                {"command": "learning", "description": "Adaptive learning snapshot"},
                 {"command": "lab_run", "description": "Run one Strategy Lab batch"},
                 {"command": "allocate", "description": "Allocate strategy capital"},
                 {"command": "deploy_strategy", "description": "Deploy strategy by id"},

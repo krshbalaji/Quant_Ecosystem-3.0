@@ -50,6 +50,10 @@ class TelegramControlCenter:
             return router.get_dashboard_report()
         if cmd == "metabrain":
             return self._metabrain_report(router)
+        if cmd == "cognitive":
+            return self._cognitive_report(router)
+        if cmd == "learning":
+            return self._learning_report(router)
         if cmd == "lab_run":
             return self._lab_run(router, args)
 
@@ -237,3 +241,58 @@ class TelegramControlCenter:
             f"rejected={len(outcome.get('REJECTED_STRATEGIES', []))} "
             f"promoted={len(outcome.get('PROMOTED_STRATEGIES', []))}"
         )
+
+    def _cognitive_report(self, router):
+        controller = getattr(router, "cognitive_controller", None)
+        if not controller:
+            return "Cognitive Control unavailable (ENABLE_COGNITIVE_CONTROL=false)."
+
+        snapshot = getattr(controller, "last_decision", {}) or {}
+        if not snapshot:
+            return "Cognitive Control active but no decision snapshot yet."
+
+        decision = snapshot.get("decision", {}) or {}
+        state = snapshot.get("state", {}) or {}
+        memory = snapshot.get("memory", {}) or {}
+        behavior = snapshot.get("behavior", {}) or {}
+
+        return (
+            f"Cognitive | mode={decision.get('system_mode', 'NA')} "
+            f"risk={decision.get('portfolio_risk_level', 'NA')} "
+            f"pref={decision.get('preferred_strategy_type', 'NA')}\n"
+            f"actions={decision.get('actions', [])}\n"
+            f"state: vol={round(float(state.get('volatility_level', 0.0)), 4)} "
+            f"dd={round(float(state.get('portfolio_drawdown', 0.0)), 4)} "
+            f"active={int(state.get('active_strategies', 0) or 0)} "
+            f"lat_ms={round(float(state.get('execution_latency_ms', 0.0)), 2)}\n"
+            f"memory: stress={int(memory.get('stress_events', 0) or 0)} "
+            f"transitions={int(memory.get('regime_transitions', 0) or 0)}\n"
+            f"behavior={behavior.get('applied', [])}"
+        )
+
+    def _learning_report(self, router):
+        engine = getattr(router, "adaptive_learning_engine", None)
+        if not engine:
+            return "Adaptive Learning unavailable (ENABLE_ADAPTIVE_LEARNING=false)."
+
+        payload = getattr(engine, "last_updates", {}) or {}
+        if not payload:
+            return "Adaptive Learning active but no updates yet."
+
+        updates = list(payload.get("updates", []) or [])
+        if not updates:
+            return "Adaptive Learning: no strategy updates in latest snapshot."
+
+        lines = [f"Learning updates={len(updates)}"]
+        for item in updates[:5]:
+            sid = str(item.get("strategy_id", "?"))
+            score = round(float(item.get("learning_score", 0.0) or 0.0), 4)
+            params = item.get("parameter_updates", {}) or {}
+            regime_perf = item.get("regime_performance", {}) or {}
+            best_regime = regime_perf.get("best_regime", "NA")
+            lines.append(
+                f"{sid} | learning_score={score} | best_regime={best_regime} | param_updates={len(params)}"
+            )
+        if len(updates) > 5:
+            lines.append(f"... +{len(updates) - 5} more")
+        return "\n".join(lines)

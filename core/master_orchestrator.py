@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime
+import time
 
 from control.telegram_control_center import TelegramControlCenter
 from core.health.health_check import HealthCheck
@@ -111,10 +113,30 @@ class MasterOrchestrator:
         else:
             classes = ["stocks", "indices"]
         router.symbols = self.universe.symbols(asset_classes=classes, regime=regime_advanced, limit=8)
+        router.execution_lock = getattr(router, "execution_lock", asyncio.Lock())
         command_task = asyncio.create_task(self._poll_telegram_commands(router))
         alpha_task = self._start_alpha_scanner(router)
         portfolio_ai_task = self._start_portfolio_ai(router)
         strategy_lab_task = self._start_strategy_lab_autorun(router)
+        event_signal_task = self._start_event_signal_engine(router)
+        market_pulse_task = self._start_market_pulse_engine(router)
+        event_orchestrator_task = self._start_event_driven_orchestrator(router)
+        dashboard_task = self._start_dashboard_service(router)
+        cockpit_task = self._start_cockpit_service(router)
+        shadow_task = self._start_shadow_trading_engine(router)
+        alpha_genome_task = self._start_alpha_genome_engine(router)
+        alpha_factory_task = self._start_alpha_factory(router)
+        global_brain_task = self._start_global_market_brain(router)
+        adaptive_batch_interval = max(
+            1,
+            int(getattr(router.config, "adaptive_learning_batch_interval_cycles", 10)),
+        )
+        if getattr(router, "adaptive_learning_engine", None):
+            router._adaptive_last_trade_index = len(getattr(router.state, "trade_history", []) or [])
+            print(f"Adaptive learning enabled: batch_interval_cycles={adaptive_batch_interval}")
+        if getattr(router, "cognitive_controller", None):
+            cc_interval = max(0.5, float(getattr(router.config, "cognitive_control_interval_sec", 2.0)))
+            print(f"Cognitive control enabled: interval={cc_interval}s")
 
         try:
             for i in range(1, self.cycles + 1):
@@ -152,7 +174,8 @@ class MasterOrchestrator:
                 else:
                     classes = ["stocks", "indices"]
                 router.symbols = self.universe.symbols(asset_classes=classes, regime=regime_advanced, limit=8)
-                result = await router.execute(market_bias=market_bias, regime=regime)
+                async with router.execution_lock:
+                    result = await router.execute(market_bias=market_bias, regime=regime)
 
                 if result["status"] == "TRADE":
                     print(
@@ -173,6 +196,35 @@ class MasterOrchestrator:
                     result=result,
                     state=router.state,
                 )
+                adaptive_report = self._run_adaptive_learning(
+                    router=router,
+                    result=result,
+                    intelligence_report=intelligence_report,
+                    cycle_id=i,
+                    batch_interval_cycles=adaptive_batch_interval,
+                )
+                if adaptive_report:
+                    print(f"AdaptiveLearning: {adaptive_report}")
+                cognitive_report = self._run_cognitive_controller(
+                    router=router,
+                    regime_advanced=regime_advanced,
+                )
+                if cognitive_report:
+                    print(f"CognitiveControl: {cognitive_report}")
+                safety_report = self._run_safety_governor(
+                    router=router,
+                    result=result,
+                    intelligence_report=intelligence_report,
+                    regime=regime,
+                )
+                if safety_report and safety_report.get("alert_level") != "NONE":
+                    print(f"SafetyGovernor: {safety_report}")
+                    if router.telegram:
+                        router.telegram.send_message(
+                            f"SafetyGovernor: {safety_report.get('alert_level')} | {safety_report.get('reason')}"
+                        )
+                    if safety_report.get("alert_level") == "EMERGENCY_STOP":
+                        break
 
                 if result.get("status") == "TRADE" and bank_engine and getattr(bank_engine, "enabled", False):
                     sid = str(result.get("strategy_id", ""))
@@ -264,6 +316,60 @@ class MasterOrchestrator:
                 strategy_lab_task.cancel()
                 try:
                     await strategy_lab_task
+                except asyncio.CancelledError:
+                    pass
+            if event_signal_task:
+                event_signal_task.cancel()
+                try:
+                    await event_signal_task
+                except asyncio.CancelledError:
+                    pass
+            if market_pulse_task:
+                market_pulse_task.cancel()
+                try:
+                    await market_pulse_task
+                except asyncio.CancelledError:
+                    pass
+            if event_orchestrator_task:
+                event_orchestrator_task.cancel()
+                try:
+                    await event_orchestrator_task
+                except asyncio.CancelledError:
+                    pass
+            if dashboard_task:
+                dashboard_task.cancel()
+                try:
+                    await dashboard_task
+                except asyncio.CancelledError:
+                    pass
+            if cockpit_task:
+                cockpit_task.cancel()
+                try:
+                    await cockpit_task
+                except asyncio.CancelledError:
+                    pass
+            if shadow_task:
+                shadow_task.cancel()
+                try:
+                    await shadow_task
+                except asyncio.CancelledError:
+                    pass
+            if alpha_genome_task:
+                alpha_genome_task.cancel()
+                try:
+                    await alpha_genome_task
+                except asyncio.CancelledError:
+                    pass
+            if alpha_factory_task:
+                alpha_factory_task.cancel()
+                try:
+                    await alpha_factory_task
+                except asyncio.CancelledError:
+                    pass
+            if global_brain_task:
+                global_brain_task.cancel()
+                try:
+                    await global_brain_task
                 except asyncio.CancelledError:
                     pass
 
@@ -608,3 +714,534 @@ class MasterOrchestrator:
             except Exception as exc:
                 print(f"StrategyLab error: {exc}")
             await asyncio.sleep(interval_sec)
+
+    def _start_event_signal_engine(self, router):
+        engine = getattr(router, "event_signal_engine", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_event_signal_engine", False)):
+            return None
+        cooldown = max(1, int(getattr(router.config, "event_signal_engine_cooldown_sec", 20)))
+        max_executes = max(0, int(getattr(router.config, "event_signal_engine_max_immediate_executes", 3)))
+        # Poll faster than cooldown; cooldown governs event trigger frequency.
+        poll_sec = max(1.0, min(5.0, cooldown / 4.0))
+        print(
+            "Event signal engine started: "
+            f"cooldown={cooldown}s max_immediate_executes={max_executes} poll={poll_sec}s"
+        )
+        return asyncio.create_task(self._run_event_signal_loop(router, poll_sec=poll_sec))
+
+    async def _run_event_signal_loop(self, router, poll_sec):
+        engine = getattr(router, "event_signal_engine", None)
+        if not engine:
+            return
+        while True:
+            try:
+                regime = str(getattr(router.autonomous_controller, "last_regime", "MEAN_REVERSION")).upper()
+                market_bias = "NEUTRAL"
+                if hasattr(router, "_build_snapshots"):
+                    snapshots = router._build_snapshots(regime=regime)
+                else:
+                    snapshots = []
+                if snapshots:
+                    async with router.execution_lock:
+                        outcome = await engine.process_snapshots(
+                            snapshots=snapshots,
+                            router=router,
+                            alpha_scanner=getattr(router, "alpha_scanner", None),
+                            market_bias=market_bias,
+                            regime=regime,
+                            scanner_top_n=max(10, int(getattr(router.config, "alpha_scanner_top_n", 100))),
+                        )
+                    event_count = len(outcome.get("events", []))
+                    executed = len(outcome.get("executed", []))
+                    if event_count > 0:
+                        print(f"EventSignal: events={event_count} executed={executed}")
+            except Exception as exc:
+                print(f"EventSignal error: {exc}")
+            await asyncio.sleep(poll_sec)
+
+    def _start_market_pulse_engine(self, router):
+        engine = getattr(router, "market_pulse_engine", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_market_pulse_engine", False)):
+            return None
+        poll_sec = max(0.5, float(getattr(router.config, "market_pulse_poll_sec", 2.0)))
+        print(f"Market pulse started: poll={poll_sec}s")
+        return asyncio.create_task(self._run_market_pulse_loop(router, poll_sec=poll_sec))
+
+    async def _run_market_pulse_loop(self, router, poll_sec):
+        engine = getattr(router, "market_pulse_engine", None)
+        if not engine:
+            return
+        while True:
+            try:
+                regime = str(getattr(router.autonomous_controller, "last_regime", "MEAN_REVERSION")).upper()
+                snapshots = router._build_snapshots(regime=regime) if hasattr(router, "_build_snapshots") else []
+                if snapshots:
+                    events = engine.detect_events(snapshots)
+                    if events:
+                        published = engine.publish_events(
+                            events=events,
+                            event_bus=getattr(router, "event_bus", None),
+                            signal_engine=getattr(router, "event_signal_engine", None),
+                            strategy_selector=getattr(router, "strategy_selector", None),
+                            execution_engine=router,
+                            meta_strategy_brain=getattr(router, "meta_strategy_brain", None),
+                        )
+                        print(f"MarketPulse: events={len(events)} published={published}")
+            except Exception as exc:
+                print(f"MarketPulse error: {exc}")
+            await asyncio.sleep(poll_sec)
+
+    def _start_event_driven_orchestrator(self, router):
+        orchestrator = getattr(router, "event_driven_orchestrator", None)
+        if not orchestrator:
+            return None
+        if not bool(getattr(router.config, "enable_event_driven_engine", False)):
+            return None
+        print("Event-driven orchestrator started.")
+        return asyncio.create_task(orchestrator.run_forever())
+
+    def _start_dashboard_service(self, router):
+        cfg = getattr(router, "dashboard_service_config", {}) or {}
+        if not bool(cfg.get("enabled", False)):
+            return None
+        host = str(cfg.get("host", "127.0.0.1"))
+        port = int(cfg.get("port", 8090))
+        interval = max(0.1, float(cfg.get("update_interval_sec", 0.25)))
+        print(f"Dashboard service starting: http://{host}:{port} interval={interval}s")
+        return asyncio.create_task(
+            self._run_dashboard_service(router=router, host=host, port=port, interval=interval)
+        )
+
+    async def _run_dashboard_service(self, router, host, port, interval):
+        try:
+            from quant_ecosystem.dashboard.dashboard_server import run_dashboard_server_forever
+        except Exception as exc:
+            print(f"Dashboard service unavailable: {exc}")
+            return
+        try:
+            await run_dashboard_server_forever(
+                router_provider=lambda: router,
+                host=host,
+                port=port,
+                update_interval_sec=interval,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            print(f"Dashboard service error: {exc}")
+
+    def _start_cockpit_service(self, router):
+        cfg = getattr(router, "cockpit_service_config", {}) or {}
+        if not bool(cfg.get("enabled", False)):
+            return None
+        host = str(cfg.get("host", "127.0.0.1"))
+        port = int(cfg.get("port", 8091))
+        interval = max(0.1, float(cfg.get("update_interval_sec", 0.25)))
+        print(f"Cockpit service starting: http://{host}:{port} interval={interval}s")
+        return asyncio.create_task(
+            self._run_cockpit_service(
+                router=router,
+                host=host,
+                port=port,
+                interval=interval,
+                auth_token=str(cfg.get("auth_token", "")),
+            )
+        )
+
+    async def _run_cockpit_service(self, router, host, port, interval, auth_token):
+        try:
+            from quant_ecosystem.cockpit.cockpit_server import run_cockpit_server_forever
+        except Exception as exc:
+            print(f"Cockpit service unavailable: {exc}")
+            return
+        try:
+            await run_cockpit_server_forever(
+                router_provider=lambda: router,
+                host=host,
+                port=port,
+                update_interval_sec=interval,
+                auth_token=auth_token,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            print(f"Cockpit service error: {exc}")
+
+    def _start_shadow_trading_engine(self, router):
+        engine = getattr(router, "shadow_trading_engine", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_shadow_trading", False)):
+            return None
+        interval = max(0.5, float(getattr(router.config, "shadow_trading_interval_sec", 2.0)))
+        if getattr(router, "strategy_engine", None):
+            try:
+                engine.register_shadow_strategies(getattr(router.strategy_engine, "strategies", []))
+            except Exception:
+                pass
+        print(f"Shadow trading started: interval={interval}s")
+        return asyncio.create_task(self._run_shadow_trading_loop(router, interval_sec=interval))
+
+    async def _run_shadow_trading_loop(self, router, interval_sec):
+        engine = getattr(router, "shadow_trading_engine", None)
+        if not engine:
+            return
+        while True:
+            try:
+                regime = str(getattr(router.autonomous_controller, "last_regime", "MEAN_REVERSION")).upper()
+                market_bias = "NEUTRAL"
+                async with router.execution_lock:
+                    outcome = engine.run_cycle(router=router, market_bias=market_bias, regime=regime)
+                executed = int(outcome.get("executed", 0) or 0)
+                promoted = len(list(outcome.get("promotions", []) or []))
+                if executed > 0 or promoted > 0:
+                    print(f"ShadowTrading: executed={executed} promoted={promoted}")
+            except Exception as exc:
+                print(f"ShadowTrading error: {exc}")
+            await asyncio.sleep(interval_sec)
+
+    def _run_safety_governor(self, router, result, intelligence_report, regime):
+        engine = getattr(router, "safety_governor", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_safety_governor", False)):
+            return None
+
+        now = time.time()
+        interval = max(0.2, float(getattr(router.config, "safety_governor_interval_sec", 2.0)))
+        last_eval = float(getattr(router, "_safety_gov_last_eval_ts", 0.0) or 0.0)
+        if last_eval > 0.0 and (now - last_eval) < interval:
+            return None
+        router._safety_gov_last_eval_ts = now
+
+        cooldown = max(1.0, float(getattr(router.config, "safety_governor_cooldown_sec", 30.0)))
+        last_action = float(getattr(router, "_safety_gov_last_action_ts", 0.0) or 0.0)
+
+        snapshots = []
+        try:
+            if hasattr(router, "_build_snapshots"):
+                snapshots = router._build_snapshots(regime=regime) or []
+        except Exception:
+            snapshots = []
+
+        cycle_stats = {
+            "accepted_trades": 1 if str(result.get("status", "")).upper() == "TRADE" else 0,
+            "rejected_signals": 0 if str(result.get("status", "")).upper() == "TRADE" else 1,
+        }
+        event = engine.monitor(
+            router=router,
+            context={
+                "intelligence_report": dict(intelligence_report or {}),
+                "snapshots": snapshots,
+                "cycle_stats": cycle_stats,
+                "feed_latency_ms": 0.0,
+                "api_errors": 0,
+            },
+        )
+        level = str(event.get("alert_level", "NONE")).upper()
+        if level != "NONE":
+            if last_action > 0.0 and (now - last_action) < cooldown:
+                return {
+                    "alert_level": level,
+                    "reason": event.get("reason", ""),
+                    "action": f"Suppressed by cooldown ({round(cooldown, 2)}s)",
+                }
+            router._safety_gov_last_action_ts = now
+        return event
+
+    def _start_alpha_genome_engine(self, router):
+        if not bool(getattr(router.config, "enable_alpha_genome_engine", False)):
+            return None
+        if not getattr(router, "alpha_genome_library", None) or not getattr(router, "alpha_genome_generator", None):
+            return None
+        interval = max(30.0, float(getattr(router.config, "alpha_genome_interval_sec", 300.0)))
+        print(f"Alpha genome engine started: interval={interval}s")
+        return asyncio.create_task(self._run_alpha_genome_loop(router, interval_sec=interval))
+
+    async def _run_alpha_genome_loop(self, router, interval_sec):
+        lib = getattr(router, "alpha_genome_library", None)
+        gen = getattr(router, "alpha_genome_generator", None)
+        evalr = getattr(router, "alpha_genome_evaluator", None)
+        if not lib or not gen:
+            return
+        while True:
+            try:
+                parents = lib.list(limit=40)
+                if not parents:
+                    genomes = gen.generate_random(count=max(1, int(getattr(router.config, "alpha_genome_random_count", 6))))
+                else:
+                    genomes = []
+                    genomes.extend(gen.generate_from_mutation(parents, variants_per_base=max(1, int(getattr(router.config, "alpha_genome_mutation_variants", 2)))))
+                    genomes.extend(gen.generate_from_crossbreeding(parents, children_count=max(1, int(getattr(router.config, "alpha_genome_cross_children", 4)))))
+                for g in genomes:
+                    lib.upsert_dict(g)
+
+                reports = evalr.evaluate_genomes(genomes[:30]) if evalr else []
+                top = sorted(reports, key=lambda r: float(r.get("fitness_score", 0.0)), reverse=True)[:3]
+                if top:
+                    self._emit_dashboard_event(
+                        "ALPHA_GENOME_EVALUATION",
+                        {"count": len(reports), "top": top},
+                    )
+                    if router.telegram:
+                        router.telegram.send_message(
+                            f"AlphaGenome: evaluated={len(reports)} top={top[0].get('genome_id')} fitness={round(float(top[0].get('fitness_score',0.0)),4)}"
+                        )
+                setattr(router, "alpha_genome_last_reports", reports)
+            except Exception as exc:
+                print(f"AlphaGenome error: {exc}")
+            await asyncio.sleep(interval_sec)
+
+    def _start_alpha_factory(self, router):
+        controller = getattr(router, "alpha_factory_controller", None)
+        if not controller:
+            return None
+        if not bool(getattr(router.config, "enable_alpha_factory", False)):
+            return None
+        poll = 30.0
+        print("Alpha factory started.")
+        return asyncio.create_task(self._run_alpha_factory_loop(router, poll_sec=poll))
+
+    async def _run_alpha_factory_loop(self, router, poll_sec):
+        controller = getattr(router, "alpha_factory_controller", None)
+        if not controller:
+            return
+        while True:
+            try:
+                report = controller.run_cycle()
+                promotions = list(report.get("promoted_strategies", []) or [])
+                if report.get("genomes_generated", 0) or report.get("candidates_filtered", 0) or promotions:
+                    self._emit_dashboard_event("ALPHA_FACTORY_REPORT", report)
+                if promotions and router.telegram:
+                    router.telegram.send_message(
+                        f"AlphaFactory: generated={report.get('genomes_generated',0)} filtered={report.get('candidates_filtered',0)} promoted={len(promotions)}"
+                    )
+                setattr(router, "alpha_factory_last_report", report)
+            except Exception as exc:
+                print(f"AlphaFactory error: {exc}")
+            await asyncio.sleep(poll_sec)
+
+    def _start_global_market_brain(self, router):
+        engine = getattr(router, "global_market_brain", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_global_market_brain", False)):
+            return None
+        interval = max(10.0, float(getattr(router.config, "global_market_brain_interval_sec", 120.0)))
+        print(f"Global Market Brain started: interval={interval}s")
+        return asyncio.create_task(self._run_global_market_brain_loop(router, interval_sec=interval))
+
+    async def _run_global_market_brain_loop(self, router, interval_sec):
+        engine = getattr(router, "global_market_brain", None)
+        if not engine:
+            return
+        while True:
+            try:
+                snapshots = self._build_global_macro_snapshots(router)
+                macro_inputs = self._build_macro_inputs(router)
+                output = engine.analyze(snapshots=snapshots, macro_inputs=macro_inputs)
+                engine.publish(
+                    output=output,
+                    market_pulse_engine=getattr(router, "market_pulse_engine", None),
+                    meta_strategy_brain=getattr(router, "meta_strategy_brain", None),
+                    portfolio_ai=getattr(router, "portfolio_ai_engine", None),
+                    alpha_factory=getattr(router, "alpha_factory_controller", None),
+                    adaptive_learning_engine=getattr(router, "adaptive_learning_engine", None),
+                )
+                setattr(router, "global_market_brain_last", output)
+
+                if bool(getattr(router.config, "global_market_brain_dashboard_events", True)):
+                    self._emit_dashboard_event("GLOBAL_MARKET_BRAIN", output)
+                if bool(getattr(router.config, "global_market_brain_telegram_events", True)) and router.telegram:
+                    router.telegram.send_message(
+                        "GlobalMarketBrain: "
+                        f"regime={output.get('regime')} "
+                        f"vol={output.get('volatility_state')} "
+                        f"liq={output.get('liquidity_state')} "
+                        f"pref={output.get('preferred_strategy_type')}"
+                    )
+                print(
+                    "GlobalMarketBrain: "
+                    f"{output.get('regime')} | vol={output.get('volatility_state')} | "
+                    f"liq={output.get('liquidity_state')} | pref={output.get('preferred_strategy_type')}"
+                )
+            except Exception as exc:
+                print(f"GlobalMarketBrain error: {exc}")
+            await asyncio.sleep(interval_sec)
+
+    def _build_global_macro_snapshots(self, router):
+        snapshots = []
+        if hasattr(router, "_build_snapshots"):
+            try:
+                snapshots = list(router._build_snapshots(regime="MEAN_REVERSION") or [])
+            except Exception:
+                snapshots = []
+        # enrich with return proxy for cross-asset analyzer
+        out = []
+        for row in snapshots:
+            item = dict(row)
+            closes = list(item.get("close", []) or [])
+            if len(closes) >= 2 and float(closes[-2]) != 0.0:
+                ret = (float(closes[-1]) - float(closes[-2])) / abs(float(closes[-2]))
+            else:
+                ret = 0.0
+            item["return"] = ret
+            out.append(item)
+        return out
+
+    def _build_macro_inputs(self, router):
+        state = getattr(router, "state", None)
+        dd = float(getattr(state, "total_drawdown_pct", 0.0) or 0.0) if state else 0.0
+        realized = float(getattr(state, "realized_pnl", 0.0) or 0.0) if state else 0.0
+        if realized > 0:
+            growth_trend = 0.4
+        elif realized < 0:
+            growth_trend = -0.4
+        else:
+            growth_trend = 0.0
+        inflation_trend = 0.3 if dd < 5.0 else 0.1
+        vol_state = "NORMAL"
+        if dd > 10.0:
+            vol_state = "HIGH"
+        return {
+            "growth_trend": growth_trend,
+            "inflation_trend": inflation_trend,
+            "volatility_state": vol_state,
+            "credit_spread_bps": 120.0 + (dd * 5.0),
+            "policy_rate_pct": 6.0,
+        }
+
+    def _emit_dashboard_event(self, event_type, payload):
+        try:
+            from quant_ecosystem.dashboard.system_state_api import SystemStateAPI
+
+            SystemStateAPI.emit_global_event(event_type=event_type, payload=payload)
+        except Exception:
+            pass
+
+    def _run_adaptive_learning(self, router, result, intelligence_report, cycle_id, batch_interval_cycles):
+        engine = getattr(router, "adaptive_learning_engine", None)
+        if not engine:
+            return None
+        if not bool(getattr(router.config, "enable_adaptive_learning", False)):
+            return None
+        try:
+            trades = list(getattr(router.state, "trade_history", []) or [])
+            if not hasattr(router, "_adaptive_last_trade_index"):
+                router._adaptive_last_trade_index = 0
+            defaults = {
+                "regime": str(
+                    result.get(
+                        "regime",
+                        intelligence_report.get("regime_advanced", intelligence_report.get("regime", "UNKNOWN")),
+                    )
+                ).upper(),
+                "volatility": float(intelligence_report.get("volatility", 0.0) or 0.0),
+            }
+
+            if str(result.get("status")) == "TRADE" and trades:
+                row = self._learning_payload_from_trade(
+                    trade=trades[-1],
+                    fallback_result=result,
+                    defaults=defaults,
+                )
+                update = engine.ingest_trade_result(row, defaults=defaults)
+                published = engine.publish_updates(
+                    updates_payload=update,
+                    strategy_lab=getattr(router, "strategy_lab_controller", None),
+                    meta_strategy_brain=getattr(router, "meta_strategy_brain", None),
+                    portfolio_ai=getattr(router, "portfolio_ai_engine", None),
+                    execution_intelligence=getattr(router, "execution_brain", None),
+                )
+                router._adaptive_last_trade_index = len(trades)
+                return {
+                    "mode": "trade",
+                    "updates": len(update.get("updates", [])),
+                    "published": int(published.get("published", 0)),
+                }
+
+            if (int(cycle_id) % max(1, int(batch_interval_cycles))) != 0:
+                return None
+            start_idx = int(getattr(router, "_adaptive_last_trade_index", 0) or 0)
+            if len(trades) <= start_idx:
+                return None
+            new_trades = trades[start_idx:]
+            batch_rows = [
+                self._learning_payload_from_trade(trade=row, fallback_result=result, defaults=defaults)
+                for row in new_trades
+            ]
+            update = engine.ingest_trade_batch(batch_rows, defaults=defaults)
+            published = engine.publish_updates(
+                updates_payload=update,
+                strategy_lab=getattr(router, "strategy_lab_controller", None),
+                meta_strategy_brain=getattr(router, "meta_strategy_brain", None),
+                portfolio_ai=getattr(router, "portfolio_ai_engine", None),
+                execution_intelligence=getattr(router, "execution_brain", None),
+            )
+            router._adaptive_last_trade_index = len(trades)
+            return {
+                "mode": "batch",
+                "rows": len(batch_rows),
+                "updates": len(update.get("updates", [])),
+                "published": int(published.get("published", 0)),
+            }
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    def _learning_payload_from_trade(self, trade, fallback_result, defaults):
+        trade = dict(trade or {})
+        fallback = dict(fallback_result or {})
+        symbol = str(trade.get("symbol", fallback.get("symbol", ""))).strip()
+        side = str(trade.get("side", fallback.get("side", "BUY"))).upper()
+        price = float(trade.get("price", fallback.get("price", 0.0)) or 0.0)
+        qty = float(trade.get("qty", fallback.get("qty", 0.0)) or 0.0)
+        realized = float(trade.get("realized_pnl", 0.0) or 0.0)
+        cycle_pnl = float(trade.get("cycle_pnl", fallback.get("pnl", 0.0)) or 0.0)
+        pnl = realized if abs(realized) > 1e-12 else cycle_pnl
+        timestamp = str(
+            trade.get("timestamp")
+            or datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
+        return {
+            "symbol": symbol,
+            "strategy_id": str(trade.get("strategy_id", fallback.get("strategy_id", ""))).strip(),
+            "entry_price": price,
+            "exit_price": price,
+            "pnl": pnl,
+            "execution_slippage": float(trade.get("slippage_bps", 0.0) or 0.0),
+            "regime": str(trade.get("regime", defaults.get("regime", "UNKNOWN"))).upper(),
+            "volatility": float(defaults.get("volatility", 0.0) or 0.0),
+            "timestamp": timestamp,
+            "side": side,
+            "qty": qty,
+        }
+
+    def _run_cognitive_controller(self, router, regime_advanced):
+        controller = getattr(router, "cognitive_controller", None)
+        if not controller:
+            return None
+        if not bool(getattr(router.config, "enable_cognitive_control", False)):
+            return None
+        try:
+            interval_sec = max(0.5, float(getattr(router.config, "cognitive_control_interval_sec", 2.0)))
+            outcome = controller.run_if_due(
+                router=router,
+                regime=str(regime_advanced).upper(),
+                interval_sec=interval_sec,
+            )
+            if not outcome:
+                return None
+            decision = dict(outcome.get("decision", {}))
+            return {
+                "mode": decision.get("system_mode", "BALANCED"),
+                "risk": decision.get("portfolio_risk_level", "MEDIUM"),
+                "pref": decision.get("preferred_strategy_type", "MIXED"),
+                "actions": decision.get("actions", []),
+                "latency_ms": round(float(outcome.get("latency_ms", 0.0)), 3),
+            }
+        except Exception as exc:
+            return {"error": str(exc)}

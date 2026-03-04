@@ -78,6 +78,45 @@ class Config:
         self.strategy_diversity_max_per_timeframe = int(os.getenv("STRATEGY_DIVERSITY_MAX_PER_TIMEFRAME", "4"))
         self.enable_strategy_survival = os.getenv("ENABLE_STRATEGY_SURVIVAL", "false").lower() == "true"
         self.enable_execution_intelligence = os.getenv("ENABLE_EXECUTION_INTELLIGENCE", "false").lower() == "true"
+        self.enable_event_signal_engine = os.getenv("ENABLE_EVENT_SIGNAL_ENGINE", "false").lower() == "true"
+        self.event_signal_engine_cooldown_sec = int(os.getenv("EVENT_SIGNAL_ENGINE_COOLDOWN_SEC", "20"))
+        self.event_signal_engine_max_immediate_executes = int(os.getenv("EVENT_SIGNAL_ENGINE_MAX_IMMEDIATE_EXECUTES", "3"))
+        self.enable_market_pulse_engine = os.getenv("ENABLE_MARKET_PULSE_ENGINE", "false").lower() == "true"
+        self.market_pulse_poll_sec = float(os.getenv("MARKET_PULSE_POLL_SEC", "2.0"))
+        self.market_pulse_min_strength = float(os.getenv("MARKET_PULSE_MIN_STRENGTH", "0.2"))
+        self.enable_event_driven_engine = os.getenv("ENABLE_EVENT_DRIVEN_ENGINE", "false").lower() == "true"
+        self.enable_adaptive_learning = os.getenv("ENABLE_ADAPTIVE_LEARNING", "false").lower() == "true"
+        self.adaptive_learning_batch_interval_cycles = int(os.getenv("ADAPTIVE_LEARNING_BATCH_INTERVAL_CYCLES", "10"))
+        self.enable_cognitive_control = os.getenv("ENABLE_COGNITIVE_CONTROL", "false").lower() == "true"
+        self.cognitive_control_interval_sec = float(os.getenv("COGNITIVE_CONTROL_INTERVAL_SEC", "2.0"))
+        self.enable_dashboard_server = os.getenv("ENABLE_DASHBOARD_SERVER", "false").lower() == "true"
+        self.dashboard_host = os.getenv("DASHBOARD_HOST", "127.0.0.1")
+        self.dashboard_port = int(os.getenv("DASHBOARD_PORT", "8090"))
+        self.dashboard_update_interval_sec = float(os.getenv("DASHBOARD_UPDATE_INTERVAL_SEC", "0.25"))
+        self.enable_cockpit_server = os.getenv("ENABLE_COCKPIT_SERVER", "false").lower() == "true"
+        self.cockpit_host = os.getenv("COCKPIT_HOST", "127.0.0.1")
+        self.cockpit_port = int(os.getenv("COCKPIT_PORT", "8091"))
+        self.cockpit_update_interval_sec = float(os.getenv("COCKPIT_UPDATE_INTERVAL_SEC", "0.25"))
+        self.cockpit_auth_token = os.getenv("COCKPIT_AUTH_TOKEN", "")
+        self.enable_safety_governor = os.getenv("ENABLE_SAFETY_GOVERNOR", "false").lower() == "true"
+        self.safety_governor_interval_sec = float(os.getenv("SAFETY_GOVERNOR_INTERVAL_SEC", "2.0"))
+        self.safety_governor_cooldown_sec = float(os.getenv("SAFETY_GOVERNOR_COOLDOWN_SEC", "30.0"))
+        self.enable_shadow_trading = os.getenv("ENABLE_SHADOW_TRADING", "false").lower() == "true"
+        self.shadow_trading_interval_sec = float(os.getenv("SHADOW_TRADING_INTERVAL_SEC", "2.0"))
+        self.shadow_initial_capital = float(os.getenv("SHADOW_INITIAL_CAPITAL", "100000.0"))
+        self.enable_alpha_genome_engine = os.getenv("ENABLE_ALPHA_GENOME_ENGINE", "false").lower() == "true"
+        self.alpha_genome_interval_sec = float(os.getenv("ALPHA_GENOME_INTERVAL_SEC", "300.0"))
+        self.alpha_genome_random_count = int(os.getenv("ALPHA_GENOME_RANDOM_COUNT", "6"))
+        self.alpha_genome_mutation_variants = int(os.getenv("ALPHA_GENOME_MUTATION_VARIANTS", "2"))
+        self.alpha_genome_cross_children = int(os.getenv("ALPHA_GENOME_CROSS_CHILDREN", "4"))
+        self.enable_alpha_factory = os.getenv("ENABLE_ALPHA_FACTORY", "false").lower() == "true"
+        self.alpha_factory_generate_every_sec = int(os.getenv("ALPHA_FACTORY_GENERATE_EVERY_SEC", "1800"))
+        self.alpha_factory_evaluate_every_sec = int(os.getenv("ALPHA_FACTORY_EVALUATE_EVERY_SEC", "900"))
+        self.alpha_factory_max_promotions = int(os.getenv("ALPHA_FACTORY_MAX_PROMOTIONS", "3"))
+        self.enable_global_market_brain = os.getenv("ENABLE_GLOBAL_MARKET_BRAIN", "false").lower() == "true"
+        self.global_market_brain_interval_sec = float(os.getenv("GLOBAL_MARKET_BRAIN_INTERVAL_SEC", "120.0"))
+        self.global_market_brain_telegram_events = os.getenv("GLOBAL_MARKET_BRAIN_TELEGRAM_EVENTS", "true").lower() == "true"
+        self.global_market_brain_dashboard_events = os.getenv("GLOBAL_MARKET_BRAIN_DASHBOARD_EVENTS", "true").lower() == "true"
         self.enable_microstructure_simulation = os.getenv("ENABLE_MICROSTRUCTURE_SIMULATION", "false").lower() == "true"
         self.microstructure_base_delay_ms = float(os.getenv("MICROSTRUCTURE_BASE_DELAY_MS", "120"))
         self.microstructure_spread_multiplier = float(os.getenv("MICROSTRUCTURE_SPREAD_MULTIPLIER", "1.0"))
