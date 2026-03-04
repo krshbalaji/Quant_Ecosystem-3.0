@@ -3,8 +3,13 @@ from quant_ecosystem.core.config_loader import Config
 
 class RiskEngine:
 
-    def __init__(self):
-        config = Config()
+    def __init__(self, config=None):
+        """
+        Optionally accept an explicit Config instance for consistency with
+        SystemFactory wiring while remaining backward compatible with
+        no-argument construction in existing tests and helpers.
+        """
+        config = config or Config()
         self.max_daily_dd = config.max_daily_loss_pct
         self.hard_drawdown_limit = config.hard_drawdown_limit_pct
         self.max_trade_risk = config.max_position_pct

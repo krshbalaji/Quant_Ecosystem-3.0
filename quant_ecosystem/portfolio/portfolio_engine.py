@@ -78,6 +78,17 @@ class PortfolioEngine:
             return 0.0
         return quantize(abs(position["net_qty"] * price), 4)
 
+    def get_allocations(self):
+        """
+        Lightweight allocation view used by CapitalIntelligenceEngine.
+        Returns a mapping of symbol -> absolute position size, without
+        any normalization; the intelligence layer is responsible for
+        converting this into weights.
+        """
+        if not self.positions:
+            return {}
+        return {symbol: abs(data.get("net_qty", 0)) for symbol, data in self.positions.items()}
+
     def snapshot(self):
         return {symbol: data.copy() for symbol, data in self.positions.items()}
 

@@ -7,7 +7,14 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class FyersBroker:
 
-    def __init__(self):
+    def __init__(self, config=None):
+        """
+        Optional config parameter is accepted for compatibility with the
+        SystemFactory wiring. The broker itself currently sources runtime
+        credentials from the environment, so the argument is stored only
+        for potential future use.
+        """
+        self._config = config
         self.client_id = (Env.FYERS_CLIENT_ID or "").strip()
         self.secret = (Env.FYERS_SECRET_KEY or "").strip()
         self.access_token = (os.getenv("FYERS_ACCESS_TOKEN", "") or "").strip()
