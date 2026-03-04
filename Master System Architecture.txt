@@ -1,0 +1,54 @@
+quant_ecosystem_3.0
+│
+├── main.py
+├── run.bat
+│
+├── core
+│   ├── master_orchestrator.py
+│   ├── system_state.py
+│   ├── system_factory.py
+│   └── events_bus.py
+│
+├── broker
+│   ├── fyers_broker.py
+│   └── broker_router.py
+│
+├── execution
+│   └── execution_router.py
+│
+├── market
+│   ├── market_data_engine.py
+│   └── regime_detector.py
+│
+├── strategy_bank
+│   ├── strategy_loader.py
+│   ├── strategy_converter.py
+│   └── strategy_scorer.py
+│
+├── portfolio
+│   ├── capital_allocator.py
+│   ├── position_sizer.py
+│   └── portfolio_engine.py
+│
+├── risk
+│   └── risk_engine.py
+│
+├── research
+│   ├── backtest_engine.py
+│   └── walk_forward.py
+│
+├── intelligence
+│   ├── news_analyzer.py
+│   ├── sentiment_engine.py
+│   └── black_swan_detector.py
+│
+├── reporting
+│   ├── pnl_report.py
+│   └── performance_analyzer.py
+│
+├── control
+│   └── telegram_controller.py
+│
+└── utils
+    ├── logger.py
+    └── config_loader.py

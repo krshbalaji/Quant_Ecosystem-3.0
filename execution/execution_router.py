@@ -1,4 +1,6 @@
 import random
+from datetime import datetime, time as dtime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from core.config_loader import Config
 from execution.instrument_policy_engine import InstrumentPolicyEngine
@@ -87,6 +89,10 @@ class ExecutionRouter:
                 candidate_signal = rebalance_signal
         if not candidate_signal:
             return {"status": "SKIP", "reason": "NO_SIGNAL"}
+        if bool(getattr(self.config, "strict_market_hours", False)):
+            if not self._is_symbol_tradable_now(candidate_signal.get("symbol")):
+                self._reset_risk_block_state()
+                return {"status": "SKIP", "reason": "MARKET_CLOSED"}
         if not self._is_valid_signal(candidate_signal):
             self._reset_risk_block_state()
             return {"status": "SKIP", "reason": "INVALID_SIGNAL"}
@@ -376,6 +382,15 @@ class ExecutionRouter:
         )
         if not candidates:
             return None
+        compatible = [item for item in candidates if self._strategy_symbol_compatible(item)]
+        if compatible:
+            candidates = compatible
+        if bool(getattr(self.config, "strict_market_hours", False)):
+            open_now = [item for item in candidates if self._is_symbol_tradable_now(item.get("symbol"))]
+            if open_now:
+                candidates = open_now
+            else:
+                return None
 
         for candidate in candidates:
             symbol_penalty = self._symbol_exposure_pct(candidate["symbol"]) / 100.0
@@ -422,19 +437,10 @@ class ExecutionRouter:
 
     def _dynamic_symbols(self, regime):
         base = list(self.symbols)
-        if regime == "CRISIS":
-            extra = ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ"]
-        elif regime == "HIGH_VOLATILITY":
-            extra = ["NSE:SBIN-EQ", "NSE:ICICIBANK-EQ", "NSE:TCS-EQ"]
-        elif regime == "LOW_VOLATILITY":
-            extra = ["NSE:RELIANCE-EQ", "NSE:INFY-EQ", "NSE:HDFCBANK-EQ"]
-        elif regime == "TREND":
-            extra = ["NSE:RELIANCE-EQ", "NSE:TCS-EQ", "NSE:LT-EQ"]
-        else:
-            extra = ["NSE:SBIN-EQ", "NSE:INFY-EQ", "NSE:ITC-EQ"]
+        extras = self._regime_extras_for_asset_classes(regime=regime, symbols=base)
 
         merged = []
-        for symbol in base + extra:
+        for symbol in base + extras:
             if symbol not in merged:
                 merged.append(symbol)
         return merged[:8]
@@ -672,6 +678,8 @@ class ExecutionRouter:
 
     def _asset_class(self, symbol):
         value = symbol.upper()
+        if value.startswith("MCX:"):
+            return "COMMODITY"
         if "CRYPTO" in value or value.endswith("USDT"):
             return "CRYPTO"
         if "FX" in value or "FOREX" in value:
@@ -681,6 +689,103 @@ class ExecutionRouter:
         if "OPT" in value:
             return "OPTIONS"
         return "EQUITY"
+
+    def _regime_extras_for_asset_classes(self, regime, symbols):
+        classes = {self._asset_class(symbol) for symbol in list(symbols or []) if symbol}
+        extras = []
+        eq_map = {
+            "CRISIS": ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ"],
+            "HIGH_VOLATILITY": ["NSE:SBIN-EQ", "NSE:ICICIBANK-EQ", "NSE:TCS-EQ"],
+            "LOW_VOLATILITY": ["NSE:RELIANCE-EQ", "NSE:INFY-EQ", "NSE:HDFCBANK-EQ"],
+            "TREND": ["NSE:RELIANCE-EQ", "NSE:TCS-EQ", "NSE:LT-EQ"],
+            "MEAN_REVERSION": ["NSE:SBIN-EQ", "NSE:INFY-EQ", "NSE:ITC-EQ"],
+        }
+        fx_map = {
+            "CRISIS": ["FX:USDINR", "FX:EURINR"],
+            "HIGH_VOLATILITY": ["FX:USDINR", "FX:GBPINR"],
+            "LOW_VOLATILITY": ["FX:EURINR", "FX:USDINR"],
+            "TREND": ["FX:USDINR", "FX:EURINR"],
+            "MEAN_REVERSION": ["FX:EURINR", "FX:USDINR"],
+        }
+        crypto_map = {
+            "CRISIS": ["CRYPTO:BTCUSDT", "CRYPTO:ETHUSDT"],
+            "HIGH_VOLATILITY": ["CRYPTO:BTCUSDT", "CRYPTO:ETHUSDT", "CRYPTO:SOLUSDT"],
+            "LOW_VOLATILITY": ["CRYPTO:BTCUSDT", "CRYPTO:ETHUSDT"],
+            "TREND": ["CRYPTO:BTCUSDT", "CRYPTO:ETHUSDT", "CRYPTO:SOLUSDT"],
+            "MEAN_REVERSION": ["CRYPTO:ETHUSDT", "CRYPTO:BTCUSDT"],
+        }
+        commodity_map = {
+            "CRISIS": ["MCX:GOLD", "MCX:SILVER"],
+            "HIGH_VOLATILITY": ["MCX:GOLD", "MCX:CRUDEOIL"],
+            "LOW_VOLATILITY": ["MCX:GOLD", "MCX:SILVER"],
+            "TREND": ["MCX:CRUDEOIL", "MCX:GOLD"],
+            "MEAN_REVERSION": ["MCX:GOLD", "MCX:SILVER"],
+        }
+        regime_key = str(regime or "MEAN_REVERSION").upper()
+        if "EQUITY" in classes or "FUTURES" in classes or "OPTIONS" in classes:
+            extras.extend(eq_map.get(regime_key, eq_map["MEAN_REVERSION"]))
+        if "FOREX" in classes:
+            extras.extend(fx_map.get(regime_key, fx_map["MEAN_REVERSION"]))
+        if "CRYPTO" in classes:
+            extras.extend(crypto_map.get(regime_key, crypto_map["MEAN_REVERSION"]))
+        if "COMMODITY" in classes:
+            extras.extend(commodity_map.get(regime_key, commodity_map["MEAN_REVERSION"]))
+        return extras
+
+    def _strategy_symbol_compatible(self, signal):
+        sid = str(signal.get("strategy_id", "")).strip()
+        symbol = str(signal.get("symbol", "")).strip()
+        if not sid or not symbol:
+            return True
+        bank_engine = getattr(self, "strategy_bank_engine", None)
+        registry = getattr(bank_engine, "registry", None)
+        row = registry.get(sid) if registry and hasattr(registry, "get") else None
+        strategy_asset = str((row or {}).get("asset_class", "")).strip().lower()
+        if not strategy_asset:
+            return True
+        symbol_asset = self._asset_class(symbol).lower()
+        allowed = {
+            "stocks": {"equity"},
+            "equity": {"equity"},
+            "indices": {"equity", "futures", "options"},
+            "futures": {"futures"},
+            "options": {"options"},
+            "forex": {"forex"},
+            "fx": {"forex"},
+            "crypto": {"crypto"},
+            "commodities": {"commodity", "futures"},
+            "commodity": {"commodity", "futures"},
+            "multi": {"equity", "forex", "crypto", "futures", "options", "commodity"},
+        }
+        supported = allowed.get(strategy_asset, None)
+        if not supported:
+            return True
+        return symbol_asset in supported
+
+    def _is_symbol_tradable_now(self, symbol):
+        sym = str(symbol or "").upper().strip()
+        if not sym:
+            return False
+        if sym.startswith("CRYPTO:") or sym.endswith("USDT"):
+            return True
+
+        now_ist = self._now_ist()
+        if now_ist.weekday() >= 5:
+            return False
+        now_t = now_ist.time()
+
+        if sym.startswith("NSE:"):
+            return dtime(9, 15) <= now_t <= dtime(15, 30)
+        if sym.startswith("MCX:"):
+            return dtime(9, 0) <= now_t <= dtime(23, 30)
+        return True
+
+    def _now_ist(self):
+        try:
+            return datetime.now(ZoneInfo("Asia/Kolkata"))
+        except Exception:
+            ist = timezone(timedelta(hours=5, minutes=30))
+            return datetime.now(ist)
 
     def _asset_class_exposure_notional(self, asset_class):
         total = 0.0

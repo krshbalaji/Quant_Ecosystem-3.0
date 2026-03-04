@@ -1,0 +1,114 @@
+You are building an institutional autonomous quant trading system called QUANT ECOSYSTEM.
+
+Requirements:
+
+Architecture must include:
+
+CORE
+- orchestrator
+- scheduler
+- health engine
+- system state
+- capital allocator
+
+BROKER LAYER
+- broker manager
+- fyers adapter
+- multi broker future support
+
+EXECUTION ENGINE
+- execution router
+- risk engine
+- order manager
+
+STRATEGY BANK
+- raw strategies
+- pine script converter
+- social link ingestion
+- validated strategies
+- paper approved strategies
+- live approved strategies
+
+INTELLIGENCE
+- regime engine
+- volatility engine
+- candle pattern engine
+- candle angle engine
+- news sentiment engine
+- geopolitics monitor
+
+RESEARCH LAB
+- backtest engine
+- walk forward testing
+- monte carlo simulation
+- correlation analysis
+- portfolio optimizer
+
+REPORTING
+- intraday report
+- EOD report
+- strategy analytics
+- learning log
+- adaptation log
+
+CONTROL
+- telegram command center
+- remote control
+- kill switch
+- authentication
+
+MANUAL DESK
+- AI assisted trading
+- voice/text interaction
+
+SCHEDULING
+
+7:30 AM
+system health + self healing
+
+8:00 AM
+global market analysis
+news sentiment
+geopolitical monitoring
+black swan detection
+
+9:15 AM
+market open execution
+
+EXECUTION MODES
+
+1 opportunistic trading
+2 systematic trading
+
+POST MARKET
+
+strategy performance
+PnL analytics
+learning report
+exportable reports
+
+SYSTEM REQUIREMENTS
+
+multi asset support
+stocks
+indices
+F&O
+forex
+crypto
+commodities
+
+strategy lifecycle
+
+raw → backtest → monte carlo → walk forward → paper → live
+
+risk controls
+
+max drawdown
+max daily loss
+capital governor
+correlation control
+risk of ruin monitoring
+
+system must be modular, scalable, autonomous, and broker agnostic.
+
+Output a full Python project structure with all modules and clean architecture.

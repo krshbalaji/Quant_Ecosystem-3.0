@@ -51,6 +51,7 @@ class Config:
         self.auto_update_probability = float(os.getenv("AUTO_UPDATE_PROBABILITY", "0.25"))
         self.intelligence_refresh_cycles = int(os.getenv("INTELLIGENCE_REFRESH_CYCLES", "5"))
         self.enable_global_session_fallback = os.getenv("ENABLE_GLOBAL_SESSION_FALLBACK", "true").lower() == "true"
+        self.strict_market_hours = os.getenv("STRICT_MARKET_HOURS", "false").lower() == "true"
 
         # Institutional strategy bank / mutation flags
         self.enable_strategy_bank = os.getenv("ENABLE_STRATEGY_BANK", "true").lower() == "true"
@@ -101,6 +102,9 @@ class Config:
         self.enable_safety_governor = os.getenv("ENABLE_SAFETY_GOVERNOR", "false").lower() == "true"
         self.safety_governor_interval_sec = float(os.getenv("SAFETY_GOVERNOR_INTERVAL_SEC", "2.0"))
         self.safety_governor_cooldown_sec = float(os.getenv("SAFETY_GOVERNOR_COOLDOWN_SEC", "30.0"))
+        self.safety_governor_min_rejection_samples = int(
+            os.getenv("SAFETY_GOVERNOR_MIN_REJECTION_SAMPLES", "8")
+        )
         self.enable_shadow_trading = os.getenv("ENABLE_SHADOW_TRADING", "false").lower() == "true"
         self.shadow_trading_interval_sec = float(os.getenv("SHADOW_TRADING_INTERVAL_SEC", "2.0"))
         self.shadow_initial_capital = float(os.getenv("SHADOW_INITIAL_CAPITAL", "100000.0"))

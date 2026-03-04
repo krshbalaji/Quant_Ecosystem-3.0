@@ -92,6 +92,7 @@ class TelegramController:
                 {"command": "status", "description": "System status"},
                 {"command": "positions", "description": "Open positions"},
                 {"command": "broker", "description": "Broker/source status"},
+                {"command": "market_hours", "description": "Market open/closed by prefix"},
                 {"command": "pnl", "description": "PnL snapshot"},
                 {"command": "strategies", "description": "Active strategies"},
                 {"command": "pause", "description": "Pause trading"},

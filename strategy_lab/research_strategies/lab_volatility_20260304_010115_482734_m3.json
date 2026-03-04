@@ -1,0 +1,41 @@
+{
+  "id": "lab_volatility_20260304_010115_482734_m3",
+  "name": "lab_volatility_20260304_010115_482734_m3",
+  "strategy_type": "volatility",
+  "category": "volatility",
+  "family": "volatility",
+  "asset_class": "commodities",
+  "timeframe": "5m",
+  "indicators": [
+    "bollinger",
+    "atr",
+    "bollinger"
+  ],
+  "entry_logic": "atr_expansion AND keltner_break",
+  "exit_logic": "atr_stop OR time_exit",
+  "risk_model": "kelly_fractional",
+  "parameters": {
+    "ema_fast": 9.0892,
+    "ema_slow": 38.1094,
+    "rsi_length": 7.6321,
+    "atr_length": 8,
+    "atr_stop_mult": 1.6504,
+    "risk_multiple": 1.7215,
+    "volume_filter_mult": 1.1945
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T01:01:15Z",
+    "mutation_origin": "lab_volatility_20260304_010115_482734"
+  },
+  "strategy_name": "lab_volatility_20260304_010115_482734_m3",
+  "creation_date": "2026-03-04T01:01:15Z",
+  "indicators_used": [
+    "bollinger",
+    "atr",
+    "bollinger"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_volatility_20260304_010115_482734"
+}

@@ -540,6 +540,28 @@ class MasterOrchestrator:
                 risk_limits={"max_drawdown": 20.0, "min_profit_factor": 0.9, "min_sharpe": -2.0},
                 capital_available_pct=100.0,
             )
+            diagnostics = dict(selection.get("diagnostics", {}) or {})
+            blocked_reasons = dict(diagnostics.get("blocked_reasons", {}) or {})
+            candidate_ids = [
+                str(row.get("id"))
+                for row in list(selection.get("candidates", []) or [])
+                if row.get("id")
+            ]
+            selected_ids = [
+                str(row.get("id"))
+                for row in list(selection.get("selected", []) or [])
+                if row.get("id")
+            ]
+            router._selector_last_snapshot = {
+                "regime": str(regime_advanced).upper(),
+                "candidate_ids": candidate_ids,
+                "selected_ids": selected_ids,
+                "blocked_reasons": blocked_reasons,
+                "candidate_count": int(diagnostics.get("candidate_count", len(candidate_ids)) or len(candidate_ids)),
+                "selected_count": int(diagnostics.get("selected_count", len(selected_ids)) or len(selected_ids)),
+                "tradeable_rows": int(diagnostics.get("tradeable_rows", 0) or 0),
+                "total_rows": int(diagnostics.get("total_rows", 0) or 0),
+            }
             allocation = allocator.rebalance(
                 regime=str(regime_advanced).upper(),
                 strategy_rows=selection.get("selected", []),
@@ -551,6 +573,9 @@ class MasterOrchestrator:
                 "active_ids": selection.get("activation", {}).get("active_ids", []),
                 "activated": selection.get("activation", {}).get("activated", []),
                 "deactivated": selection.get("activation", {}).get("deactivated", []),
+                "candidate_count": router._selector_last_snapshot.get("candidate_count", 0),
+                "selected_count": router._selector_last_snapshot.get("selected_count", 0),
+                "blocked_count": len(router._selector_last_snapshot.get("blocked_reasons", {}) or {}),
                 "alloc": allocation.get("allocation", {}),
                 "rebalanced": allocation.get("rebalanced", False),
             }
@@ -956,7 +981,7 @@ class MasterOrchestrator:
 
         cycle_stats = {
             "accepted_trades": 1 if str(result.get("status", "")).upper() == "TRADE" else 0,
-            "rejected_signals": 0 if str(result.get("status", "")).upper() == "TRADE" else 1,
+            "rejected_signals": self._is_rejection_result(result),
         }
         event = engine.monitor(
             router=router,
@@ -978,6 +1003,21 @@ class MasterOrchestrator:
                 }
             router._safety_gov_last_action_ts = now
         return event
+
+    def _is_rejection_result(self, result):
+        status = str((result or {}).get("status", "")).upper()
+        reason = str((result or {}).get("reason", "")).upper()
+        if status == "TRADE":
+            return 0
+        # Only count true rejection/error-like outcomes as rejections.
+        rejection_tokens = (
+            "REJECT",
+            "BROKER_ERROR",
+            "ORDER_ERROR",
+            "INVALID_SIGNAL",
+            "FAILED",
+        )
+        return 1 if any(token in reason for token in rejection_tokens) else 0
 
     def _start_alpha_genome_engine(self, router):
         if not bool(getattr(router.config, "enable_alpha_genome_engine", False)):

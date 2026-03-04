@@ -1,3 +1,4 @@
+from datetime import datetime, time as dtime, timedelta, timezone
 from pathlib import Path
 import json
 
@@ -13,7 +14,7 @@ class TelegramControlCenter:
         args = parts[1:]
 
         if cmd == "status":
-            return router.get_status_report()
+            return self._status_report(router)
         if cmd == "positions":
             return router.get_positions_report()
         if cmd == "pnl":
@@ -28,6 +29,8 @@ class TelegramControlCenter:
             return self._strategies_report(router)
         if cmd == "broker":
             return self._broker_report(router)
+        if cmd == "market_hours":
+            return self._market_hours_report(router)
         if cmd == "allocate":
             return self._allocate(router, args)
         if cmd == "deploy_strategy":
@@ -79,8 +82,11 @@ class TelegramControlCenter:
 
     def _strategies_report(self, router):
         bank = getattr(router, "strategy_bank_engine", None)
+        selector_snapshot = dict(getattr(router, "_selector_last_snapshot", {}) or {})
+        selector_line = self._selector_snapshot_line(selector_snapshot)
         if not bank or not getattr(bank, "enabled", False):
-            return router.get_strategy_report()
+            base = router.get_strategy_report()
+            return f"{selector_line}\n{base}" if selector_line else base
 
         rows = []
         try:
@@ -89,6 +95,8 @@ class TelegramControlCenter:
             rows = []
 
         if not rows:
+            if selector_line:
+                return f"{selector_line}\nStrategy Bank: no metadata yet."
             return "Strategy Bank: no metadata yet."
 
         rows = sorted(rows, key=lambda item: float(item.get("score", 0.0)), reverse=True)
@@ -96,6 +104,8 @@ class TelegramControlCenter:
         top = rows[:6]
 
         lines = ["Strategy Bank"]
+        if selector_line:
+            lines.append(selector_line)
         for row in top:
             sid = str(row.get("id", "?"))
             stage = str(row.get("stage", "CANDIDATE"))
@@ -113,6 +123,33 @@ class TelegramControlCenter:
         if len(rows) > len(top):
             lines.append(f"... +{len(rows) - len(top)} more")
         return "\n".join(lines)
+
+    def _status_report(self, router):
+        base = router.get_status_report()
+        selector_snapshot = dict(getattr(router, "_selector_last_snapshot", {}) or {})
+        selector_line = self._selector_snapshot_line(selector_snapshot)
+        if not selector_line:
+            return base
+        return f"{base}\n{selector_line}"
+
+    def _selector_snapshot_line(self, snapshot):
+        if not snapshot:
+            return ""
+        candidates = int(snapshot.get("candidate_count", len(snapshot.get("candidate_ids", []) or [])) or 0)
+        selected = int(snapshot.get("selected_count", len(snapshot.get("selected_ids", []) or [])) or 0)
+        blocked = dict(snapshot.get("blocked_reasons", {}) or {})
+        if not blocked:
+            return f"Selector cycle | candidates={candidates} selected={selected} blocked=0"
+        sample = []
+        for sid, reason in list(blocked.items())[:4]:
+            sample.append(f"{sid}:{reason}")
+        more = ""
+        if len(blocked) > 4:
+            more = f" (+{len(blocked) - 4} more)"
+        return (
+            f"Selector cycle | candidates={candidates} selected={selected} blocked={len(blocked)} "
+            f"| blocked_reason={', '.join(sample)}{more}"
+        )
 
     def _broker_report(self, router):
         state = getattr(router, "state", None)
@@ -134,6 +171,41 @@ class TelegramControlCenter:
             f"mode={mode} "
             f"symbols={symbols}"
         )
+
+    def _market_hours_report(self, router):
+        now_ist = self._now_ist(router)
+        wd = now_ist.weekday()  # 0=Mon
+        now_t = now_ist.time()
+
+        strict = bool(getattr(getattr(router, "config", None), "strict_market_hours", False))
+        status = {
+            "CRYPTO:*": True,  # 24/7
+            "NSE:*": (wd < 5 and dtime(9, 15) <= now_t <= dtime(15, 30)),
+            "MCX:*": (wd < 5 and dtime(9, 0) <= now_t <= dtime(23, 30)),
+            "FX:*": (wd < 5),
+        }
+
+        lines = [
+            f"Market Hours | IST={now_ist.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"strict_gate={'ON' if strict else 'OFF'}",
+        ]
+        for prefix, is_open in status.items():
+            lines.append(f"{prefix} {'OPEN' if is_open else 'CLOSED'}")
+        return "\n".join(lines)
+
+    def _now_ist(self, router):
+        if hasattr(router, "_now_ist"):
+            try:
+                return router._now_ist()
+            except Exception:
+                pass
+        try:
+            from zoneinfo import ZoneInfo
+
+            return datetime.now(ZoneInfo("Asia/Kolkata"))
+        except Exception:
+            ist = timezone(timedelta(hours=5, minutes=30))
+            return datetime.now(ist)
 
     def _allocate(self, router, args):
         if len(args) < 2:

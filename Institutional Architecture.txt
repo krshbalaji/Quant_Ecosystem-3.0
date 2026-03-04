@@ -1,0 +1,70 @@
+quant_ecosystem-3.0/
+
+launcher.py
+
+core/
+    orchestrator.py
+    scheduler.py
+    system_state.py
+    capital_allocator.py
+
+health/
+    health_check.py
+    self_heal.py
+
+broker/
+    broker_manager.py
+    adapters/
+        fyers_adapter.py
+
+execution/
+    execution_router.py
+    order_manager.py
+    position_manager.py
+
+risk/
+    risk_engine.py
+    drawdown_guard.py
+
+strategy_bank/
+    strategy_registry.py
+    strategy_loader.py
+    raw/
+    validated/
+    paper/
+    live/
+
+intelligence/
+    regime_engine.py
+    volatility_engine.py
+    candle_pattern_engine.py
+    candle_angle_engine.py
+    news_engine.py
+    geopolitics_engine.py
+
+research/
+    backtest_engine.py
+    walkforward_engine.py
+    montecarlo_engine.py
+    optimizer.py
+
+reporting/
+    eod_report.py
+    pnl_report.py
+    strategy_report.py
+
+control/
+    telegram_controller.py
+    kill_switch.py
+
+manual_desk/
+    ai_trade_assistant.py
+
+data/
+    market/
+    logs/
+    reports/
+    equity/
+
+config/
+    settings.py
