@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, Iterable, List, Optional
 
-from research.backtest.backtest_engine import BacktestEngine as CoreBacktestEngine
+from quant_ecosystem.research.backtest.backtest_engine import BacktestEngine as CoreBacktestEngine
 
 
 class BacktestEngine:

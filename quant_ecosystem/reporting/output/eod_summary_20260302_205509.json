@@ -1,0 +1,27 @@
+{
+  "timestamp": "20260302_205509",
+  "equity": 101532.28,
+  "peak_equity": 101532.28,
+  "drawdown_pct": 0.0,
+  "trades_count": 4,
+  "intelligence": {
+    "volatility": 0.195,
+    "trend": -1,
+    "regime": "BEAR",
+    "bias": "SHORT_BIAS"
+  },
+  "strategy_reports": [
+    {
+      "id": "core_momentum_v1",
+      "name": "core_momentum_v1",
+      "metrics": {
+        "win_rate": 52.105,
+        "expectancy": 0.06884,
+        "max_dd": 6.558,
+        "profit_factor": 1.202
+      },
+      "score": 20.02,
+      "stage": "REJECTED"
+    }
+  ]
+}

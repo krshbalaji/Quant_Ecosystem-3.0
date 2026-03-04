@@ -1,6 +1,6 @@
 """Market intelligence micro-layer adapter."""
 
-from intelligence.global_intelligence_engine import GlobalIntelligenceEngine
+from quant_ecosystem.intelligence.global_intelligence_engine import GlobalIntelligenceEngine
 
 
 class MarketIntelligenceLayer:

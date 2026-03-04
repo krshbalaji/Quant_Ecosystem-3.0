@@ -1,0 +1,46 @@
+{
+  "timestamp": "20260302_213012",
+  "equity": 99988.87,
+  "peak_equity": 100046.92,
+  "drawdown_pct": 0.058,
+  "cash_balance": 119135.3,
+  "realized_pnl": 0.0,
+  "unrealized_pnl": -6.35,
+  "fees_paid": 4.785,
+  "turnover": 19140.089,
+  "trades_count": 4,
+  "realized_stats": {
+    "win_rate_pct": 50.0,
+    "expectancy_abs": 11.2185,
+    "expectancy_bps": 1.1213,
+    "profit_factor": 3.954,
+    "warnings": []
+  },
+  "intelligence": {
+    "volatility": 0.1755,
+    "trend": -1,
+    "regime": "BEAR",
+    "bias": "SHORT_BIAS"
+  },
+  "strategy_reports": [
+    {
+      "id": "core_momentum_v1",
+      "name": "core_momentum_v1",
+      "metrics": {
+        "win_rate": 51.053,
+        "expectancy": 0.0472,
+        "max_dd": 7.677,
+        "profit_factor": 1.125
+      },
+      "score": 19.065,
+      "stage": "REJECTED"
+    }
+  ],
+  "adaptation": {
+    "action": "HOLD",
+    "new_trade_risk_pct": 10.0,
+    "win_rate_pct": 50.0,
+    "expectancy_abs": 11.2185,
+    "reason": "Performance within control band."
+  }
+}

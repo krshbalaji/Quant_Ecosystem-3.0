@@ -1,0 +1,3 @@
+strategy_id,symbol,side,qty,status,pnl_pct,equity
+mean_reversion_v1,NSE:SBIN-EQ,SELL,19,FILLED,0.246,100246.02
+mean_reversion_v1,NSE:SBIN-EQ,BUY,11,FILLED,0.2472,100493.86

@@ -1,7 +1,7 @@
 """Orchestration controller for the Self-Evolving Strategy Lab."""
 
 from __future__ import annotations
-
+from quant_ecosystem.alpha_discovery.alpha_discovery_engine import AlphaDiscoveryEngine
 from typing import Dict, Iterable, List, Optional
 
 from quant_ecosystem.strategy_lab.backtest_engine import BacktestEngine
@@ -40,7 +40,10 @@ class StrategyLabController:
         rows = self.generator.generate(count=count)
         self.repository.save_research(rows)
         return rows
-
+        
+        discovery = AlphaDiscoveryEngine()
+        discovery.discover(50)
+    
     def run_mutation_pipeline(self, base_strategies: Iterable[Dict], variants_per_base: int = 20) -> List[Dict]:
         mutated = self.mutation_pipeline.mutate(base_strategies, variants_per_base=variants_per_base)
         self.repository.save_research(mutated)

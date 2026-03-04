@@ -1,0 +1,41 @@
+{
+  "id": "lab_momentum_20260304_020359_798911_m4",
+  "name": "lab_momentum_20260304_020359_798911_m4",
+  "strategy_type": "momentum",
+  "category": "momentum",
+  "family": "momentum",
+  "asset_class": "stocks",
+  "timeframe": "1d",
+  "indicators": [
+    "stochastic",
+    "macd",
+    "ema"
+  ],
+  "entry_logic": "vwap_cross_filter AND atr_filter",
+  "exit_logic": "trailing_atr_stop OR ema_reversal",
+  "risk_model": "kelly_fractional",
+  "parameters": {
+    "ema_fast": 12.6992,
+    "ema_slow": 26.379,
+    "rsi_length": 19,
+    "atr_length": 6.7578,
+    "atr_stop_mult": 2.2439,
+    "risk_multiple": 0.8328,
+    "volume_filter_mult": 1.8571
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T02:03:59Z",
+    "mutation_origin": "lab_momentum_20260304_020359_798911"
+  },
+  "strategy_name": "lab_momentum_20260304_020359_798911_m4",
+  "creation_date": "2026-03-04T02:03:59Z",
+  "indicators_used": [
+    "stochastic",
+    "macd",
+    "ema"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_momentum_20260304_020359_798911"
+}

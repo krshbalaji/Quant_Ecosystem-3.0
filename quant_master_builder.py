@@ -30,8 +30,8 @@ files = {
 
     "main.py": """
 import asyncio
-from core.orchestrator import Orchestrator
-from core.scheduler import Scheduler
+from quant_ecosystem.core.orchestrator import Orchestrator
+from quant_ecosystem.core.scheduler import Scheduler
 
 async def main():
 
@@ -135,7 +135,7 @@ class BaseBroker:
 """,
 
     "broker/fyers_broker.py": """
-from broker.base_broker import BaseBroker
+from quant_ecosystem.broker.base_broker import BaseBroker
 
 class FyersBroker(BaseBroker):
 
@@ -144,7 +144,7 @@ class FyersBroker(BaseBroker):
 """,
 
     "broker/broker_factory.py": """
-from broker.fyers_broker import FyersBroker
+from quant_ecosystem.broker.fyers_broker import FyersBroker
 
 class BrokerFactory:
 

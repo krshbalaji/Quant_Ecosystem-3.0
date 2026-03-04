@@ -1,0 +1,41 @@
+{
+  "id": "lab_mean_reversion_20260304_020359_797865_m4",
+  "name": "lab_mean_reversion_20260304_020359_797865_m4",
+  "strategy_type": "mean_reversion",
+  "category": "mean_reversion",
+  "family": "mean_reversion",
+  "asset_class": "forex",
+  "timeframe": "15m",
+  "indicators": [
+    "rsi",
+    "stochastic",
+    "keltner"
+  ],
+  "entry_logic": "rsi_oversold AND bollinger_lower_touch",
+  "exit_logic": "mean_reversion_completed OR stop_loss",
+  "risk_model": "atr_risk",
+  "parameters": {
+    "ema_fast": 13.0157,
+    "ema_slow": 38,
+    "rsi_length": 9.2285,
+    "atr_length": 17,
+    "atr_stop_mult": 1.3584,
+    "risk_multiple": 1.8149,
+    "volume_filter_mult": 1.858
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T02:03:59Z",
+    "mutation_origin": "lab_mean_reversion_20260304_020359_797865"
+  },
+  "strategy_name": "lab_mean_reversion_20260304_020359_797865_m4",
+  "creation_date": "2026-03-04T02:03:59Z",
+  "indicators_used": [
+    "rsi",
+    "stochastic",
+    "keltner"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_mean_reversion_20260304_020359_797865"
+}

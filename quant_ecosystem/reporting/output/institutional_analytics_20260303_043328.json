@@ -1,0 +1,144 @@
+{
+  "equity_curve": [
+    {
+      "index": 1,
+      "equity": 99999.65,
+      "cycle_pnl": -0.3502
+    },
+    {
+      "index": 2,
+      "equity": 100001.15,
+      "cycle_pnl": 0.6979
+    },
+    {
+      "index": 3,
+      "equity": 100004.85,
+      "cycle_pnl": 0.6135
+    },
+    {
+      "index": 4,
+      "equity": 99998.4,
+      "cycle_pnl": -1.3933
+    },
+    {
+      "index": 5,
+      "equity": 99988.76,
+      "cycle_pnl": -5.5782
+    },
+    {
+      "index": 6,
+      "equity": 100014.9,
+      "cycle_pnl": 12.113
+    },
+    {
+      "index": 7,
+      "equity": 100044.43,
+      "cycle_pnl": 4.8119
+    },
+    {
+      "index": 8,
+      "equity": 100047.37,
+      "cycle_pnl": 3.2835
+    },
+    {
+      "index": 9,
+      "equity": 100042.71,
+      "cycle_pnl": 2.8749
+    }
+  ],
+  "rolling_sharpe": [
+    {
+      "index": 1,
+      "rolling_sharpe": 0.0
+    },
+    {
+      "index": 2,
+      "rolling_sharpe": 5.2663
+    },
+    {
+      "index": 3,
+      "rolling_sharpe": 10.698
+    },
+    {
+      "index": 4,
+      "rolling_sharpe": -2.0207
+    },
+    {
+      "index": 5,
+      "rolling_sharpe": -8.2393
+    },
+    {
+      "index": 6,
+      "rolling_sharpe": 2.9935
+    },
+    {
+      "index": 7,
+      "rolling_sharpe": 4.7902
+    },
+    {
+      "index": 8,
+      "rolling_sharpe": 5.7886
+    },
+    {
+      "index": 9,
+      "rolling_sharpe": 6.5441
+    }
+  ],
+  "rolling_drawdown": [
+    {
+      "index": 1,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 2,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 3,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 4,
+      "drawdown_pct": 0.0064
+    },
+    {
+      "index": 5,
+      "drawdown_pct": 0.0161
+    },
+    {
+      "index": 6,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 7,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 8,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 9,
+      "drawdown_pct": 0.0047
+    }
+  ],
+  "trade_distribution_histogram": {
+    "<-50": 0,
+    "-50:-10": 0,
+    "-10:0": 3,
+    "0:10": 5,
+    "10:50": 1,
+    ">50": 0
+  },
+  "regime_performance_split": {
+    "LOW_VOLATILITY": {
+      "trades": 9,
+      "pnl": 17.073
+    }
+  },
+  "exposure_heatmap": {
+    "LOW_VOLATILITY": {
+      "EQUITY": 9
+    }
+  }
+}

@@ -33,7 +33,7 @@ folders = [
 files = {
 
 "launcher.py":"""
-from core.orchestrator import Orchestrator
+from quant_ecosystem.core.orchestrator import Orchestrator
 
 if __name__ == "__main__":
     engine = Orchestrator()
@@ -41,9 +41,9 @@ if __name__ == "__main__":
 """,
 
 "core/orchestrator.py":"""
-from core.scheduler import Scheduler
-from broker.broker_manager import BrokerManager
-from control.telegram_controller import TelegramController
+from quant_ecosystem.core.scheduler import Scheduler
+from quant_ecosystem.broker.broker_manager import BrokerManager
+from quant_ecosystem.control.telegram_controller import TelegramController
 
 class Orchestrator:
 
@@ -67,8 +67,8 @@ class Orchestrator:
 "core/scheduler.py":"""
 import datetime
 from health.health_check import HealthCheck
-from intelligence.news_engine import NewsEngine
-from execution.execution_router import ExecutionRouter
+from quant_ecosystem.intelligence.news_engine import NewsEngine
+from quant_ecosystem.execution.execution_router import ExecutionRouter
 
 class Scheduler:
 
@@ -100,7 +100,7 @@ class SystemState:
 """,
 
 "broker/broker_manager.py":"""
-from broker.adapters.fyers_adapter import FyersAdapter
+from quant_ecosystem.broker.adapters.fyers_adapter import FyersAdapter
 
 class BrokerManager:
 
@@ -122,8 +122,8 @@ class FyersAdapter:
 """,
 
 "execution/execution_router.py":"""
-from strategy_bank.strategy_registry import StrategyRegistry
-from risk.risk_engine import RiskEngine
+from quant_ecosystem.strategy_bank.strategy_registry import StrategyRegistry
+from quant_ecosystem.risk.risk_engine import RiskEngine
 
 class ExecutionRouter:
 

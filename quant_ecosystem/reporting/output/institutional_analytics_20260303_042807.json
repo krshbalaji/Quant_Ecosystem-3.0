@@ -1,0 +1,378 @@
+{
+  "equity_curve": [
+    {
+      "index": 1,
+      "equity": 99999.46,
+      "cycle_pnl": -0.5433
+    },
+    {
+      "index": 2,
+      "equity": 100002.03,
+      "cycle_pnl": 2.5747
+    },
+    {
+      "index": 3,
+      "equity": 99993.37,
+      "cycle_pnl": -8.6589
+    },
+    {
+      "index": 4,
+      "equity": 99996.71,
+      "cycle_pnl": 3.3386
+    },
+    {
+      "index": 5,
+      "equity": 100005.83,
+      "cycle_pnl": 9.1222
+    },
+    {
+      "index": 6,
+      "equity": 99997.3,
+      "cycle_pnl": -8.5343
+    },
+    {
+      "index": 7,
+      "equity": 99992.58,
+      "cycle_pnl": -4.7192
+    },
+    {
+      "index": 8,
+      "equity": 99985.01,
+      "cycle_pnl": -7.5675
+    },
+    {
+      "index": 9,
+      "equity": 99993.4,
+      "cycle_pnl": 8.3863
+    },
+    {
+      "index": 10,
+      "equity": 99981.55,
+      "cycle_pnl": -11.8522
+    },
+    {
+      "index": 11,
+      "equity": 99986.04,
+      "cycle_pnl": 4.4911
+    },
+    {
+      "index": 12,
+      "equity": 100008.51,
+      "cycle_pnl": 22.4694
+    },
+    {
+      "index": 13,
+      "equity": 100011.21,
+      "cycle_pnl": 2.7068
+    },
+    {
+      "index": 14,
+      "equity": 99985.94,
+      "cycle_pnl": -25.277
+    },
+    {
+      "index": 15,
+      "equity": 99990.98,
+      "cycle_pnl": 5.0443
+    },
+    {
+      "index": 16,
+      "equity": 99985.02,
+      "cycle_pnl": -5.9621
+    },
+    {
+      "index": 17,
+      "equity": 99930.6,
+      "cycle_pnl": -54.4226
+    },
+    {
+      "index": 18,
+      "equity": 99970.29,
+      "cycle_pnl": 39.6958
+    },
+    {
+      "index": 19,
+      "equity": 99994.46,
+      "cycle_pnl": 24.1643
+    },
+    {
+      "index": 20,
+      "equity": 99968.21,
+      "cycle_pnl": -26.2439
+    },
+    {
+      "index": 21,
+      "equity": 100012.95,
+      "cycle_pnl": 44.7345
+    },
+    {
+      "index": 22,
+      "equity": 100066.37,
+      "cycle_pnl": 53.4211
+    },
+    {
+      "index": 23,
+      "equity": 100028.76,
+      "cycle_pnl": -37.6076
+    },
+    {
+      "index": 24,
+      "equity": 100068.43,
+      "cycle_pnl": 39.6685
+    },
+    {
+      "index": 25,
+      "equity": 100042.8,
+      "cycle_pnl": -25.6323
+    },
+    {
+      "index": 26,
+      "equity": 100042.93,
+      "cycle_pnl": 0.1334
+    },
+    {
+      "index": 27,
+      "equity": 100029.84,
+      "cycle_pnl": -13.0856
+    }
+  ],
+  "rolling_sharpe": [
+    {
+      "index": 1,
+      "rolling_sharpe": 0.0
+    },
+    {
+      "index": 2,
+      "rolling_sharpe": 10.3424
+    },
+    {
+      "index": 3,
+      "rolling_sharpe": -7.4065
+    },
+    {
+      "index": 4,
+      "rolling_sharpe": -2.7465
+    },
+    {
+      "index": 5,
+      "rolling_sharpe": 3.1813
+    },
+    {
+      "index": 6,
+      "rolling_sharpe": -1.1118
+    },
+    {
+      "index": 7,
+      "rolling_sharpe": -2.7427
+    },
+    {
+      "index": 8,
+      "rolling_sharpe": -4.8521
+    },
+    {
+      "index": 9,
+      "rolling_sharpe": -1.7595
+    },
+    {
+      "index": 10,
+      "rolling_sharpe": -4.1207
+    },
+    {
+      "index": 11,
+      "rolling_sharpe": -2.8709
+    },
+    {
+      "index": 12,
+      "rolling_sharpe": 1.1982
+    },
+    {
+      "index": 13,
+      "rolling_sharpe": 1.5149
+    },
+    {
+      "index": 14,
+      "rolling_sharpe": -1.4485
+    },
+    {
+      "index": 15,
+      "rolling_sharpe": -0.8886
+    },
+    {
+      "index": 16,
+      "rolling_sharpe": -1.4181
+    },
+    {
+      "index": 17,
+      "rolling_sharpe": -4.0056
+    },
+    {
+      "index": 18,
+      "rolling_sharpe": -1.4049
+    },
+    {
+      "index": 19,
+      "rolling_sharpe": -0.2432
+    },
+    {
+      "index": 20,
+      "rolling_sharpe": -1.3002
+    },
+    {
+      "index": 21,
+      "rolling_sharpe": 0.4583
+    },
+    {
+      "index": 22,
+      "rolling_sharpe": 2.0306
+    },
+    {
+      "index": 23,
+      "rolling_sharpe": 0.8099
+    },
+    {
+      "index": 24,
+      "rolling_sharpe": 1.7968
+    },
+    {
+      "index": 25,
+      "rolling_sharpe": 1.0739
+    },
+    {
+      "index": 26,
+      "rolling_sharpe": 1.0562
+    },
+    {
+      "index": 27,
+      "rolling_sharpe": 0.7159
+    }
+  ],
+  "rolling_drawdown": [
+    {
+      "index": 1,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 2,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 3,
+      "drawdown_pct": 0.0087
+    },
+    {
+      "index": 4,
+      "drawdown_pct": 0.0053
+    },
+    {
+      "index": 5,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 6,
+      "drawdown_pct": 0.0085
+    },
+    {
+      "index": 7,
+      "drawdown_pct": 0.0132
+    },
+    {
+      "index": 8,
+      "drawdown_pct": 0.0208
+    },
+    {
+      "index": 9,
+      "drawdown_pct": 0.0124
+    },
+    {
+      "index": 10,
+      "drawdown_pct": 0.0243
+    },
+    {
+      "index": 11,
+      "drawdown_pct": 0.0198
+    },
+    {
+      "index": 12,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 13,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 14,
+      "drawdown_pct": 0.0253
+    },
+    {
+      "index": 15,
+      "drawdown_pct": 0.0202
+    },
+    {
+      "index": 16,
+      "drawdown_pct": 0.0262
+    },
+    {
+      "index": 17,
+      "drawdown_pct": 0.0806
+    },
+    {
+      "index": 18,
+      "drawdown_pct": 0.0409
+    },
+    {
+      "index": 19,
+      "drawdown_pct": 0.0167
+    },
+    {
+      "index": 20,
+      "drawdown_pct": 0.043
+    },
+    {
+      "index": 21,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 22,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 23,
+      "drawdown_pct": 0.0376
+    },
+    {
+      "index": 24,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 25,
+      "drawdown_pct": 0.0256
+    },
+    {
+      "index": 26,
+      "drawdown_pct": 0.0255
+    },
+    {
+      "index": 27,
+      "drawdown_pct": 0.0386
+    }
+  ],
+  "trade_distribution_histogram": {
+    "<-50": 1,
+    "-50:-10": 6,
+    "-10:0": 6,
+    "0:10": 8,
+    "10:50": 5,
+    ">50": 1
+  },
+  "regime_performance_split": {
+    "LOW_VOLATILITY": {
+      "trades": 27,
+      "pnl": 29.8445
+    }
+  },
+  "exposure_heatmap": {
+    "LOW_VOLATILITY": {
+      "EQUITY": 103
+    }
+  }
+}

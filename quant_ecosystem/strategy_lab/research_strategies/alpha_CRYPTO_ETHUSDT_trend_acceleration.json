@@ -1,0 +1,27 @@
+{
+  "id": "alpha_CRYPTO_ETHUSDT_trend_acceleration",
+  "name": "alpha_CRYPTO_ETHUSDT_trend_acceleration",
+  "strategy_type": "trend_acceleration",
+  "category": "scanner_signal",
+  "family": "scanner_signal",
+  "asset_class": "crypto",
+  "timeframe": "5m",
+  "entry_logic": "trend_acceleration",
+  "exit_logic": "signal_decay_exit",
+  "indicators": [],
+  "parameters": {
+    "signal_strength": 0.777
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "mutation_origin": "global_alpha_scanner",
+    "scanner_score": 0.56607,
+    "symbol": "CRYPTO:ETHUSDT"
+  },
+  "strategy_name": "alpha_CRYPTO_ETHUSDT_trend_acceleration",
+  "creation_date": "2026-03-04T02:04:10Z",
+  "indicators_used": [],
+  "performance_metrics": {},
+  "mutation_origin": "global_alpha_scanner"
+}

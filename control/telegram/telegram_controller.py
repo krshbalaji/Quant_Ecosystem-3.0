@@ -1,2 +1,0 @@
-from control.telegram_controller import TelegramController
-

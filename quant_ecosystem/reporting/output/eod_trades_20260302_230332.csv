@@ -1,0 +1,5 @@
+strategy_id,symbol,side,qty,status,price,intended_price,slippage_bps,confidence,fee,realized_pnl,unrealized_pnl,cycle_pnl,equity,cash_balance
+core_trend_follow_v1,NSE:RELIANCE-EQ,BUY,15,FILLED,404.98,404.91,1.74,0.75,1.52,0.0,-1.06,-2.58,99997.42,93923.74
+core_trend_follow_v1,NSE:RELIANCE-EQ,BUY,15,FILLED,404.64,404.57,1.74,0.75,1.52,0.0,-7.22,-7.68,99989.74,87852.59
+core_trend_follow_v1,NSE:RELIANCE-EQ,BUY,14,FILLED,406.16,406.08,1.75,0.75,1.42,0.0,37.15,42.96,100032.7,82165.0
+core_trend_follow_v1,NSE:RELIANCE-EQ,BUY,5,FILLED,406.79,406.72,1.75,0.75,0.51,0.0,64.65,26.98,100059.68,80130.55

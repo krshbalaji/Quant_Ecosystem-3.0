@@ -1,0 +1,173 @@
+{
+  "CORE_MOMENTUM_V1|NSE:NIFTY50-INDEX|LOW_VOLATILITY|SWING": {
+    "trades": 15,
+    "closed": 4,
+    "wins": 0,
+    "losses": 4,
+    "sum_realized": -85.3387,
+    "sum_cycle": -67.3794,
+    "expectancy": -21.334675
+  },
+  "CORE_MOMENTUM_V1|NSE:RELIANCE-EQ|LOW_VOLATILITY|SWING": {
+    "trades": 19,
+    "closed": 2,
+    "wins": 1,
+    "losses": 1,
+    "sum_realized": -3.198,
+    "sum_cycle": -44.5541,
+    "expectancy": -1.599
+  },
+  "CORE_MOMENTUM_V1|NSE:BANKNIFTY-INDEX|LOW_VOLATILITY|SWING": {
+    "trades": 26,
+    "closed": 5,
+    "wins": 1,
+    "losses": 4,
+    "sum_realized": -58.9618,
+    "sum_cycle": 135.3475,
+    "expectancy": -11.79236
+  },
+  "CORE_MOMENTUM_V1|NSE:NIFTY50-INDEX|LOW_VOLATILITY|INTRADAY": {
+    "trades": 5,
+    "closed": 1,
+    "wins": 0,
+    "losses": 1,
+    "sum_realized": -22.981,
+    "sum_cycle": -127.3312,
+    "expectancy": -22.981
+  },
+  "LIQUIDATION_ASSIST_V1|NSE:RELIANCE-EQ|LOW_VOLATILITY|RISK_REDUCTION": {
+    "trades": 1,
+    "closed": 1,
+    "wins": 1,
+    "losses": 0,
+    "sum_realized": 35.2905,
+    "sum_cycle": -1.8337,
+    "expectancy": 35.2905
+  },
+  "CORE_MOMENTUM_V1|NSE:INFY-EQ|LOW_VOLATILITY|SWING": {
+    "trades": 1,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -24.4731,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|NSE:BANKNIFTY-INDEX|LOW_VOLATILITY|INTRADAY": {
+    "trades": 1,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -7.7111,
+    "expectancy": 0.0
+  },
+  "LIQUIDATION_ASSIST_V1|NSE:NIFTY50-INDEX|LOW_VOLATILITY|RISK_REDUCTION": {
+    "trades": 1,
+    "closed": 1,
+    "wins": 1,
+    "losses": 0,
+    "sum_realized": 22.5,
+    "sum_cycle": -2.167,
+    "expectancy": 22.5
+  },
+  "CORE_MOMENTUM_V1|FX:EURINR|MEAN_REVERSION|SWING": {
+    "trades": 7,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -33.2058,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|CRYPTO:BTCUSDT|MEAN_REVERSION|SWING": {
+    "trades": 1,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -1.9982,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|MCX:GOLD|MEAN_REVERSION|SWING": {
+    "trades": 4,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -20.6329,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|NSE:NIFTY50-INDEX|MEAN_REVERSION|INTRADAY": {
+    "trades": 3,
+    "closed": 2,
+    "wins": 0,
+    "losses": 2,
+    "sum_realized": -20.8248,
+    "sum_cycle": 30.6307,
+    "expectancy": -10.4124
+  },
+  "CORE_MOMENTUM_V1|FX:USDINR|MEAN_REVERSION|SWING": {
+    "trades": 2,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": 7.64,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|NSE:BANKNIFTY-INDEX|MEAN_REVERSION|SWING": {
+    "trades": 11,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": 116.7908,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|MCX:CRUDEOIL|MEAN_REVERSION|SWING": {
+    "trades": 1,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -18.4411,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|NSE:BANKNIFTY-INDEX|MEAN_REVERSION|INTRADAY": {
+    "trades": 3,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": 41.3712,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|CRYPTO:ETHUSDT|MEAN_REVERSION|SWING": {
+    "trades": 1,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -77.1663,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|NSE:NIFTY50-INDEX|MEAN_REVERSION|SWING": {
+    "trades": 10,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": 45.7878,
+    "expectancy": 0.0
+  },
+  "CORE_MOMENTUM_V1|CRYPTO:ETHUSDT|LOW_VOLATILITY|SWING": {
+    "trades": 1,
+    "closed": 0,
+    "wins": 0,
+    "losses": 0,
+    "sum_realized": 0.0,
+    "sum_cycle": -55.1988,
+    "expectancy": 0.0
+  }
+}

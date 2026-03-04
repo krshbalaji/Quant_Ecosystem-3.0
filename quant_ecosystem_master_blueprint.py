@@ -76,7 +76,7 @@ files = {
 
 # launcher
 "launcher.py":"""
-from core.orchestrator import Orchestrator
+from quant_ecosystem.core.orchestrator import Orchestrator
 
 if __name__ == "__main__":
     orchestrator = Orchestrator()
@@ -85,8 +85,8 @@ if __name__ == "__main__":
 
 # orchestrator
 "core/orchestrator.py":"""
-from core.scheduler import Scheduler
-from core.health.health_check import HealthCheck
+from quant_ecosystem.core.scheduler import Scheduler
+from quant_ecosystem.core.health.health_check import HealthCheck
 
 class Orchestrator:
 

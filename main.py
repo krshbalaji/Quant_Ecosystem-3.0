@@ -1,13 +1,21 @@
 import asyncio
+import sys
+from pathlib import Path
 
-from core.config_loader import Config
-from core.dependency_manager import DependencyManager
-from core.maintenance_manager import MaintenanceManager
-from core.master_orchestrator import MasterOrchestrator
-from core.onboarding import FirstTimeOnboarding
-from core.scheduler import Scheduler
-from core.system_factory import build_router
-from core.vcs.git_sync_manager import GitSyncManager
+ROOT = Path(__file__).resolve().parent
+sys.path.append(str(ROOT))
+
+sys.path.append(str(Path(__file__).parent))
+
+from quant_ecosystem.core.config_loader import Config
+from quant_ecosystem.core.dependency_manager import DependencyManager
+from quant_ecosystem.core.maintenance_manager import MaintenanceManager
+from quant_ecosystem.core.master_orchestrator import MasterOrchestrator
+from quant_ecosystem.core.onboarding import FirstTimeOnboarding
+from quant_ecosystem.core.scheduler import Scheduler
+from quant_ecosystem.core.system_factory import build_router
+from quant_ecosystem.core.vcs.git_sync_manager import GitSyncManager
+from quant_ecosystem.core.system_factory import SystemFactory
 
 
 async def main():

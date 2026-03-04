@@ -183,7 +183,7 @@ class MetaStrategyBrain:
         return []
 
     def _normalize_mutation_candidate(self, candidate: Dict) -> Dict:
-        # Handles mutation outputs from strategy_bank.mutation.mutation_engine.
+        # Handles mutation outputs from quant_ecosystem.strategy_bank.mutation.mutation_engine.
         metrics = dict(candidate.get("metrics", {}))
         sid = candidate.get("id")
         if not sid:

@@ -1,0 +1,41 @@
+{
+  "id": "lab_momentum_20260304_015101_951118_m3",
+  "name": "lab_momentum_20260304_015101_951118_m3",
+  "strategy_type": "momentum",
+  "category": "momentum",
+  "family": "momentum",
+  "asset_class": "futures",
+  "timeframe": "15m",
+  "indicators": [
+    "vwap",
+    "rsi",
+    "macd"
+  ],
+  "entry_logic": "vwap_cross_filter AND volume_filter",
+  "exit_logic": "trailing_atr_stop OR ema_reversal",
+  "risk_model": "fixed_risk",
+  "parameters": {
+    "ema_fast": 13.1417,
+    "ema_slow": 41,
+    "rsi_length": 10.3594,
+    "atr_length": 19.0554,
+    "atr_stop_mult": 2.6067,
+    "risk_multiple": 1.6054,
+    "volume_filter_mult": 1.9834
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T01:51:01Z",
+    "mutation_origin": "lab_momentum_20260304_015101_951118"
+  },
+  "strategy_name": "lab_momentum_20260304_015101_951118_m3",
+  "creation_date": "2026-03-04T01:51:01Z",
+  "indicators_used": [
+    "vwap",
+    "rsi",
+    "macd"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_momentum_20260304_015101_951118"
+}

@@ -23,3 +23,6 @@ Thumbs.db
 reporting/output/runtime/
 reporting/output/audit/
 
+strategy_lab/archived_strategies/
+strategy_lab/research_strategies/
+strategy_lab/validated_strategies/
