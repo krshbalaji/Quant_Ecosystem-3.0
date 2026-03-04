@@ -337,15 +337,31 @@ class MasterOrchestrator:
                 except asyncio.CancelledError:
                     pass
             if dashboard_task:
-                dashboard_task.cancel()
                 try:
-                    await dashboard_task
+                    srv = getattr(router, "_dashboard_uvicorn_server", None)
+                    if srv is not None:
+                        srv.should_exit = True
+                    await asyncio.wait_for(dashboard_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    dashboard_task.cancel()
+                    try:
+                        await dashboard_task
+                    except asyncio.CancelledError:
+                        pass
                 except asyncio.CancelledError:
                     pass
             if cockpit_task:
-                cockpit_task.cancel()
                 try:
-                    await cockpit_task
+                    srv = getattr(router, "_cockpit_uvicorn_server", None)
+                    if srv is not None:
+                        srv.should_exit = True
+                    await asyncio.wait_for(cockpit_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    cockpit_task.cancel()
+                    try:
+                        await cockpit_task
+                    except asyncio.CancelledError:
+                        pass
                 except asyncio.CancelledError:
                     pass
             if shadow_task:
@@ -818,21 +834,26 @@ class MasterOrchestrator:
 
     async def _run_dashboard_service(self, router, host, port, interval):
         try:
-            from quant_ecosystem.dashboard.dashboard_server import run_dashboard_server_forever
+            from quant_ecosystem.dashboard.dashboard_server import create_dashboard_app
+            import uvicorn
         except Exception as exc:
             print(f"Dashboard service unavailable: {exc}")
             return
+        app = create_dashboard_app(
+            router_provider=lambda: router,
+            update_interval_sec=interval,
+        )
+        server = uvicorn.Server(uvicorn.Config(app=app, host=host, port=int(port), log_level="warning"))
+        setattr(router, "_dashboard_uvicorn_server", server)
         try:
-            await run_dashboard_server_forever(
-                router_provider=lambda: router,
-                host=host,
-                port=port,
-                update_interval_sec=interval,
-            )
+            await server.serve()
         except asyncio.CancelledError:
+            server.should_exit = True
             raise
         except Exception as exc:
             print(f"Dashboard service error: {exc}")
+        finally:
+            setattr(router, "_dashboard_uvicorn_server", None)
 
     def _start_cockpit_service(self, router):
         cfg = getattr(router, "cockpit_service_config", {}) or {}
@@ -854,22 +875,27 @@ class MasterOrchestrator:
 
     async def _run_cockpit_service(self, router, host, port, interval, auth_token):
         try:
-            from quant_ecosystem.cockpit.cockpit_server import run_cockpit_server_forever
+            from quant_ecosystem.cockpit.cockpit_server import create_cockpit_app
+            import uvicorn
         except Exception as exc:
             print(f"Cockpit service unavailable: {exc}")
             return
+        app = create_cockpit_app(
+            router_provider=lambda: router,
+            update_interval_sec=interval,
+            auth_token=auth_token,
+        )
+        server = uvicorn.Server(uvicorn.Config(app=app, host=host, port=int(port), log_level="warning"))
+        setattr(router, "_cockpit_uvicorn_server", server)
         try:
-            await run_cockpit_server_forever(
-                router_provider=lambda: router,
-                host=host,
-                port=port,
-                update_interval_sec=interval,
-                auth_token=auth_token,
-            )
+            await server.serve()
         except asyncio.CancelledError:
+            server.should_exit = True
             raise
         except Exception as exc:
             print(f"Cockpit service error: {exc}")
+        finally:
+            setattr(router, "_cockpit_uvicorn_server", None)
 
     def _start_shadow_trading_engine(self, router):
         engine = getattr(router, "shadow_trading_engine", None)
