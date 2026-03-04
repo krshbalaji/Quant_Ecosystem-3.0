@@ -20,7 +20,8 @@ from quant_ecosystem.strategy_bank.strategy_evaluator import StrategyEvaluator
 
 class MasterOrchestrator:
 
-    def __init__(self):
+    def __init__(self, system):
+        self.system = system
         self.cycles = 30
         self.scheduler = Scheduler()
         self.health_check = HealthCheck()

@@ -1,89 +1,71 @@
-"""
-Alpha Competition Engine
-Institutional Alpha Tournament System
-
-Purpose
--------
-Continuously evaluate strategies and allow them to compete
-for capital allocation.
-
-Weak strategies lose allocation.
-Strong strategies gain allocation.
-
-This mimics how institutional hedge funds rotate alpha.
-"""
-
-from datetime import datetime
-
-
 class AlphaCompetitionEngine:
+    """
+    Strategy Darwinism engine.
 
-    def __init__(self, strategy_registry, portfolio_engine=None):
+    Strategies compete using their performance metrics.
+    Top performers receive more capital allocation.
+    """
 
-        self.registry = strategy_registry
-        self.portfolio = portfolio_engine
+    def __init__(self, strategy_registry):
 
-        self.last_competition = None
-        self.competition_interval = 60  # seconds
+        self.strategy_registry = strategy_registry
+        self.last_results = []
 
-    def run_competition(self):
+    def evaluate(self):
 
-        strategies = self.registry.get_all()
+        if not hasattr(self.strategy_registry, "get_all"):
+            print("AlphaCompetition: No strategy retrieval method found.")
+            return
+
+        strategies = self.strategy_registry.get_all()
 
         if not strategies:
             return
 
-        ranked = []
-
-        for strategy in strategies:
-
-            metrics = strategy.get("metrics", {})
-
-            score = self._compute_score(metrics)
-
-            ranked.append((score, strategy))
-
-        ranked.sort(reverse=True, key=lambda x: x[0])
-
-        winners = ranked[:3]
-
-        self.last_competition = datetime.utcnow()
-
-        return winners
-
-    def _compute_score(self, metrics):
-
-        sharpe = metrics.get("sharpe", 0)
-        win_rate = metrics.get("win_rate", 0)
-        profit_factor = metrics.get("profit_factor", 0)
-        drawdown = metrics.get("max_dd", 0)
-
-        score = (
-            sharpe * 2
-            + win_rate * 0.02
-            + profit_factor
-            - drawdown * 0.1
+        ranked = sorted(
+            strategies,
+            key=lambda s: s.get("score", 0),
+            reverse=True
         )
 
-        return score
+        top = ranked[:5]
 
-    def allocate_capital(self):
+        print("AlphaCompetition Top Strategies:")
 
-        winners = self.run_competition()
+        for s in top:
+            print(s.get("id"), s.get("score"))
 
-        if not winners or not self.portfolio:
-            return
+    def capital_allocation(self):
+
+        if not self.last_results:
+            return {}
+
+        total = sum(max(x["score"], 0) for x in self.last_results)
+
+        if total == 0:
+            return {}
 
         allocation = {}
 
-        capital_weights = [0.5, 0.3, 0.2]
+        for r in self.last_results:
 
-        for i, (_, strategy) in enumerate(winners):
+            strategy = r["strategy"]
+            score = max(r["score"], 0)
 
-            sid = strategy["id"]
-
-            allocation[sid] = capital_weights[i]
-
-        self.portfolio.apply_allocation(allocation)
+            allocation[strategy.name] = score / total
 
         return allocation
+
+    def _get_strategies(self):
+
+        if hasattr(self.strategy_registry, "get_all"):
+            return self.strategy_registry.get_all()
+
+        if hasattr(self.strategy_registry, "strategies"):
+            return list(self.strategy_registry.strategies.values())
+
+        if hasattr(self.strategy_registry, "registry"):
+            return list(self.strategy_registry.registry.values())
+
+        print("AlphaCompetition: No strategy retrieval method found.")
+        return []

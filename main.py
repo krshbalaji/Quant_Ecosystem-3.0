@@ -15,7 +15,7 @@ from quant_ecosystem.core.onboarding import FirstTimeOnboarding
 from quant_ecosystem.core.scheduler import Scheduler
 from quant_ecosystem.core.system_factory import build_router
 from quant_ecosystem.core.vcs.git_sync_manager import GitSyncManager
-from quant_ecosystem.core.system_factory import SystemFactory
+
 
 
 async def main():
@@ -42,9 +42,9 @@ async def main():
 
     FirstTimeOnboarding().ensure()
 
-    router = build_router()
+    router = build_router(config)
 
-    orchestrator = MasterOrchestrator()
+    orchestrator = MasterOrchestrator(router)
     await orchestrator.start(
         router,
         git_sync=git_sync,
