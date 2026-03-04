@@ -7,6 +7,17 @@ from quant_ecosystem.evolution.alpha_evolution_engine import AlphaEvolutionEngin
 from quant_ecosystem.core.capital.capital_intelligence_engine import CapitalIntelligenceEngine
 from quant_ecosystem.core.system_state import SystemState
 from quant_ecosystem.broker.fyers_broker import FyersBroker
+from quant_ecosystem.market.market_data_engine import MarketDataEngine
+from quant_ecosystem.market_pulse.pulse_engine import MarketPulseEngine
+
+
+class System:
+    """
+    Lightweight system container used by MasterOrchestrator.
+    All engines are attached as attributes on this object.
+    """
+
+    pass
 
 
 class SystemFactory:
@@ -15,11 +26,21 @@ class SystemFactory:
         self.config = config
 
     def build(self):
+        """
+        Build and wire the core trading system.
+        Returns the ExecutionRouter, with all engines also attached
+        to a lightweight System container accessible via router.system.
+        """
+        from quant_ecosystem.research.alpha_discovery_engine import AlphaDiscoveryEngine
+        from quant_ecosystem.evolution.alpha_factory import AlphaFactory
+        from quant_ecosystem.evolution.distributed_alpha_grid import DistributedAlphaGrid
 
-        # Build core system components in canonical order.
+        # System container
+        system = System()
 
         # 1) Broker
         broker = FyersBroker(config=self.config)
+        broker.connect()
 
         # 2) State
         state = SystemState()
@@ -33,35 +54,68 @@ class SystemFactory:
         # 5) Risk engine
         risk_engine = RiskEngine(config=self.config)
 
-        # 6) Execution router (core trading engine)
+        # 6) Market data engine
+        market_data = MarketDataEngine(
+            broker=broker,
+            symbols=["NSE:NIFTY50-INDEX", "NSE:BANKNIFTY-INDEX"],
+            universe_manager=None,
+            timeframe="5m",
+        )
+
+        # 7) Market pulse engine
+        market_pulse = MarketPulseEngine(market_data_engine=market_data)
+
+        # 8) Execution router (core trading engine)
         router = ExecutionRouter(
             broker=broker,
             risk_engine=risk_engine,
             state=state,
+            market_data=market_data,
             portfolio_engine=portfolio_engine,
         )
 
-        # 7) Research / alpha competition engine
+        # 9) Research / discovery engines
+        alpha_discovery = AlphaDiscoveryEngine(strategy_registry)
+        alpha_factory = AlphaFactory(strategy_registry)
+        alpha_grid = DistributedAlphaGrid(alpha_factory)
         alpha_competition = AlphaCompetitionEngine(strategy_registry)
-
-        # 8) Evolution engine
         alpha_evolution = AlphaEvolutionEngine(strategy_registry)
 
-        # 9) Capital intelligence engine
+        # 10) Capital intelligence engine
         capital_intelligence = CapitalIntelligenceEngine(
             portfolio_engine=portfolio_engine,
             risk_engine=risk_engine,
         )
 
-        # Attach engines to the system so the MasterOrchestrator
-        # can access everything via self.system
+        # Attach engines to the system container (for MasterOrchestrator)
+        system.broker = broker
+        system.state = state
+        system.strategy_registry = strategy_registry
+        system.portfolio_engine = portfolio_engine
+        system.risk_engine = risk_engine
+        system.market_data = market_data
+        system.market_pulse = market_pulse
+        system.execution_router = router
+        system.alpha_discovery = alpha_discovery
+        system.alpha_factory = alpha_factory
+        system.alpha_grid = alpha_grid
+        system.alpha_competition = alpha_competition
+        system.alpha_evolution = alpha_evolution
+        system.capital_intelligence = capital_intelligence
+
+        # Attach engines to the execution router for backwards compatibility
+        router.system = system
         router.strategy_registry = strategy_registry
         router.alpha_competition = alpha_competition
         router.alpha_evolution = alpha_evolution
         router.capital_intelligence = capital_intelligence
+        router.alpha_discovery = alpha_discovery
+        router.alpha_factory = alpha_factory
+        router.alpha_grid = alpha_grid
         router.state = state
         router.portfolio_engine = portfolio_engine
         router.risk_engine = risk_engine
+        router.market_data = market_data
         router.broker = broker
 
         return router

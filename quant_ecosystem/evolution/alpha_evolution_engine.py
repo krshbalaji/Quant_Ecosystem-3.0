@@ -61,3 +61,10 @@ class AlphaEvolutionEngine:
             return list(self.strategy_registry.strategies.values())
 
         return []
+
+    # Unified interface helper
+    def run(self):
+        """
+        Generic entry point expected by orchestration layers.
+        """
+        return self.evolve()

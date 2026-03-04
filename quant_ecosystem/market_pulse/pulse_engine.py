@@ -11,8 +11,33 @@ from quant_ecosystem.market_pulse.event_detector import PulseEventDetector
 class MarketPulseEngine:
     """Continuously monitors market and publishes pulse events."""
 
-    def __init__(self, event_detector: Optional[PulseEventDetector] = None, poll_interval_sec: float = 2.0):
-        self.event_detector = event_detector or PulseEventDetector()
+    def __init__(
+        self,
+        market_data_engine=None,
+        event_detector: Optional[PulseEventDetector] = None,
+        breakout_monitor=None,
+        liquidity_monitor=None,
+        volatility_monitor=None,
+        volume_monitor=None,
+        poll_interval_sec: float = 2.0,
+    ):
+        # Core data dependency
+        self.market_data_engine = market_data_engine
+
+        # Detection stack
+        # Primary event detector (composite can internally call the monitors)
+        if event_detector is not None and breakout_monitor is None and liquidity_monitor is None:
+            # Backwards compatibility: a single PulseEventDetector passed as
+            # the first positional argument.
+            self.event_detector = event_detector
+        else:
+            self.event_detector = event_detector or PulseEventDetector()
+
+        self.breakout_monitor = breakout_monitor
+        self.liquidity_monitor = liquidity_monitor
+        self.volatility_monitor = volatility_monitor
+        self.volume_monitor = volume_monitor
+
         self.poll_interval_sec = max(0.5, float(poll_interval_sec))
         self.last_events: List[Dict] = []
 

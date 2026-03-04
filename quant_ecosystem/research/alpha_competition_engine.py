@@ -69,3 +69,10 @@ class AlphaCompetitionEngine:
 
         print("AlphaCompetition: No strategy retrieval method found.")
         return []
+
+    # Unified interface helper
+    def run(self):
+        """
+        Generic entry point expected by orchestration layers.
+        """
+        return self.evaluate()

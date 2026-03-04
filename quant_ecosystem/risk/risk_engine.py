@@ -25,6 +25,10 @@ class RiskEngine:
         self.max_asset_exposure_pct = config.max_asset_exposure_pct
         self.cooldown_after_loss = config.cooldown_after_loss
 
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
     def allow_trade(
         self,
         state,
@@ -84,9 +88,55 @@ class RiskEngine:
 
         return True, "OK"
 
+    # Backwards compatible alias expected by some callers.
+    def check_trade(
+        self,
+        state,
+        portfolio_exposure_pct=0.0,
+        symbol_exposure_pct=0.0,
+        daily_trade_count=0,
+        symbol_daily_loss_pct=0.0,
+        sector_exposure_pct=0.0,
+        strategy_exposure_pct=0.0,
+        asset_exposure_pct=0.0,
+        exposure_reducing=False,
+        active_strategy_count=1,
+    ):
+        return self.allow_trade(
+            state=state,
+            portfolio_exposure_pct=portfolio_exposure_pct,
+            symbol_exposure_pct=symbol_exposure_pct,
+            daily_trade_count=daily_trade_count,
+            symbol_daily_loss_pct=symbol_daily_loss_pct,
+            sector_exposure_pct=sector_exposure_pct,
+            strategy_exposure_pct=strategy_exposure_pct,
+            asset_exposure_pct=asset_exposure_pct,
+            exposure_reducing=exposure_reducing,
+            active_strategy_count=active_strategy_count,
+        )
+
     def trade_risk(self, equity):
         return equity * (self.max_trade_risk / 100.0)
 
     def set_trade_risk_pct(self, value):
         self.max_trade_risk = max(self.min_trade_risk, min(value, self.max_trade_risk_cap))
         return self.max_trade_risk
+
+    def calculate_position_size(self, equity, price, volatility=None):
+        """
+        Simple position sizing helper based on configured per-trade risk.
+        """
+        if price <= 0:
+            return 0
+        risk_budget = self.trade_risk(equity)
+        return max(int(risk_budget / float(price)), 0)
+
+    def update_risk(self, performance=None):
+        """
+        Placeholder hook for dynamic risk adjustment.
+        Currently a no-op to keep the interface stable.
+        """
+        return {
+            "max_trade_risk": self.max_trade_risk,
+            "max_portfolio_risk": self.max_portfolio_risk,
+        }

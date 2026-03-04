@@ -54,6 +54,10 @@ class ExecutionRouter:
             self.telegram.notify_trade(result)
         return result
 
+    # Synchronous helper expected by some callers.
+    def execute_trade(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
+        return self.run_cycle(signal=signal, market_bias=market_bias, regime=regime)
+
     def run_cycle(self, signal=None, market_bias="NEUTRAL", regime="MEAN_REVERSION"):
         self._cycle_no += 1
         if self.state.trading_halted:
@@ -238,6 +242,32 @@ class ExecutionRouter:
             "rebalance_assist": trade_record["rebalance_assist"],
         }
 
+    def submit_order(self, symbol, side, qty, price, fee=0.0, meta=None):
+        """
+        Thin wrapper around the broker for external components that
+        want direct order submission via the router.
+        """
+        return self.broker.place_order(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price=price,
+            fee=fee,
+            meta=meta or {},
+        )
+
+    def update_positions(self):
+        """
+        Recompute portfolio exposure and account state using the
+        current latest prices.
+        """
+        if not self.portfolio_engine:
+            return {}
+        if not hasattr(self.state, "latest_prices"):
+            return {}
+        self.state.mark_to_market(self.portfolio_engine)
+        return self.portfolio_engine.snapshot()
+
     def start_trading(self):
         self.state.trading_enabled = True
         self.state.trading_halted = False
@@ -367,8 +397,20 @@ class ExecutionRouter:
         symbols = self._dynamic_symbols(regime)
         snapshots = []
         for symbol in symbols:
-            raw = self.market_data.get_snapshot(symbol=symbol, lookback=60)
-            snapshots.append(self._enrich_snapshot(raw))
+            raw = self.market_data.get_snapshot(symbol=symbol, lookback=60) or {}
+            closes = list(raw.get("close") or [])
+            if not closes:
+                continue
+            snapshot = {
+                "symbol": symbol,
+                "price": float(closes[-1]),
+                "open": list(raw.get("open") or []),
+                "high": list(raw.get("high") or []),
+                "low": list(raw.get("low") or []),
+                "close": closes,
+                "volume": list(raw.get("volume") or []),
+            }
+            snapshots.append(self._enrich_snapshot(snapshot))
         return snapshots
 
     def _select_signal(self, snapshots, market_bias, regime):

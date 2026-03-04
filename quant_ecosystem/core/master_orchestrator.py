@@ -20,8 +20,11 @@ from quant_ecosystem.strategy_bank.strategy_evaluator import StrategyEvaluator
 
 class MasterOrchestrator:
 
-    def __init__(self, system):
-        self.system = system
+    def __init__(self, system_or_router):
+        # Support both direct System container or ExecutionRouter with a
+        # .system attribute, while always exposing engines via self.system.
+        self.system = getattr(system_or_router, "system", system_or_router)
+        self.router_ref = getattr(system_or_router, "execution_router", None)
         self.cycles = 30
         self.scheduler = Scheduler()
         self.health_check = HealthCheck()
@@ -42,14 +45,29 @@ class MasterOrchestrator:
         print("Quant Ecosystem 3.0 booting...")
         self.scheduler.start_day()
 
-        if self.system.alpha_competition:
-            self.system.alpha_competition.evaluate()
+        if hasattr(self.system, "market_data"):
+            asyncio.create_task(self.system.market_data.start())
 
-        if self.system.capital_intelligence:
-            self.system.capital_intelligence.evaluate()
+        if hasattr(self.system, "alpha_competition") and self.system.alpha_competition:
+            # Research engine: strategy Darwinism
+            if hasattr(self.system.alpha_competition, "evaluate"):
+                self.system.alpha_competition.evaluate()
+            elif hasattr(self.system.alpha_competition, "run"):
+                self.system.alpha_competition.run()
 
-        if self.system.alpha_evolution:
-            self.system.alpha_evolution.evolve()
+        if hasattr(self.system, "capital_intelligence") and self.system.capital_intelligence:
+            # Capital allocation intelligence layer
+            if hasattr(self.system.capital_intelligence, "evaluate"):
+                self.system.capital_intelligence.evaluate()
+            elif hasattr(self.system.capital_intelligence, "run"):
+                self.system.capital_intelligence.run()
+
+        if hasattr(self.system, "alpha_evolution") and self.system.alpha_evolution:
+            # Evolutionary engine for strategies
+            if hasattr(self.system.alpha_evolution, "evolve"):
+                self.system.alpha_evolution.evolve()
+            elif hasattr(self.system.alpha_evolution, "run"):
+                self.system.alpha_evolution.run()
 
         health = self.health_check.run(router=router)
         if not health.get("broker_connected", False):
@@ -147,6 +165,26 @@ class MasterOrchestrator:
         if getattr(router, "cognitive_controller", None):
             cc_interval = max(0.5, float(getattr(router.config, "cognitive_control_interval_sec", 2.0)))
             print(f"Cognitive control enabled: interval={cc_interval}s")
+
+        if hasattr(self.system, "alpha_discovery") and self.system.alpha_discovery:
+            # New alpha idea generation
+            if hasattr(self.system.alpha_discovery, "discover"):
+                self.system.alpha_discovery.discover()
+            elif hasattr(self.system.alpha_discovery, "run"):
+                self.system.alpha_discovery.run()
+
+        if hasattr(self.system, "alpha_grid") and self.system.alpha_grid:
+            if hasattr(self.system.alpha_grid, "run_cycle"):
+                self.system.alpha_grid.run_cycle()
+            elif hasattr(self.system.alpha_grid, "run"):
+                self.system.alpha_grid.run()
+
+        if hasattr(self.system, "market_data"):
+            get_snapshot = getattr(self.system.market_data, "get_snapshot", None)
+            if callable(get_snapshot):
+                _ = self.system.market_data.get_snapshot()
+            else:
+                _ = self.system.market_data.get_market_data()
 
         try:
             for i in range(1, self.cycles + 1):

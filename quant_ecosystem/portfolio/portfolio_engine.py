@@ -12,7 +12,6 @@ class PortfolioEngine:
         current_avg = float(current["avg_price"])
         signed_fill = int(qty) if side == "BUY" else -int(qty)
 
-        realized_pnl = 0.0
         new_qty = current_qty + signed_fill
 
         if current_qty == 0:
@@ -88,6 +87,12 @@ class PortfolioEngine:
         if not self.positions:
             return {}
         return {symbol: abs(data.get("net_qty", 0)) for symbol, data in self.positions.items()}
+
+    def update_position(self, symbol, side, qty, price):
+        """
+        Backwards-compatible alias used by some callers.
+        """
+        return self.apply_fill(symbol=symbol, side=side, qty=qty, price=price)
 
     def snapshot(self):
         return {symbol: data.copy() for symbol, data in self.positions.items()}
