@@ -19,11 +19,14 @@ class AlphaEvolutionEngine:
             print("AlphaEvolution: no strategies available")
             return []
 
-        parents = sorted(
-            strategies,
-            key=lambda s: getattr(s, "score", 0),
-            reverse=True
-        )[:3]
+        # Sort by score in descending order. Supports both dict-style
+        # registry entries and plain strategy objects.
+        def _score(entry):
+            if isinstance(entry, dict):
+                return entry.get("score", 0)
+            return getattr(entry, "score", 0)
+
+        parents = sorted(strategies, key=_score, reverse=True)[:3]
 
         children = []
 
@@ -36,21 +39,39 @@ class AlphaEvolutionEngine:
 
         return children
 
-    def _mutate(self, strategy):
+    def _mutate(self, strategy_entry):
+        """
+        Create a mutated child strategy.
 
-        params = getattr(strategy, "params", {}).copy()
+        Accepts either a plain strategy instance or a registry entry dict
+        of the shape {"id": ..., "strategy": ..., "score": ...}.
+        """
+        if isinstance(strategy_entry, dict):
+            base = strategy_entry.get("strategy")
+            base_id = strategy_entry.get("id", getattr(base, "name", "strategy"))
+        else:
+            base = strategy_entry
+            base_id = getattr(strategy_entry, "name", "strategy")
+
+        if base is None:
+            return strategy_entry
+
+        params = getattr(base, "params", {}).copy()
 
         for k in params:
-
             if isinstance(params[k], (int, float)):
                 params[k] *= random.uniform(0.9, 1.1)
 
-        new_strategy = type(strategy)()
-
+        new_strategy = type(base)()
         new_strategy.params = params
-        new_strategy.name = strategy.name + "_mut"
+        new_strategy.name = f"{base_id}_mut"
 
-        return new_strategy
+        # Return a registry-style entry so downstream components can store it.
+        return {
+            "id": new_strategy.name,
+            "strategy": new_strategy,
+            "parent_id": base_id,
+        }
 
     def _get_strategies(self):
 

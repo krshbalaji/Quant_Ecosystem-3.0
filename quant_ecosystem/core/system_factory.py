@@ -48,6 +48,13 @@ class SystemFactory:
         # 3) Strategy registry
         strategy_registry = StrategyRegistry()
 
+        from quant_ecosystem.strategies.trend.ema_trend import EMATrendStrategy
+
+        strategy_registry.register({
+            "id": "ema_trend",
+            "strategy": EMATrendStrategy()
+        })
+        
         # 4) Portfolio engine
         portfolio_engine = PortfolioEngine()
 

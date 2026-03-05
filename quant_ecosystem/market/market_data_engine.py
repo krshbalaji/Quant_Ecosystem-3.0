@@ -3,6 +3,10 @@ import logging
 import random
 from collections import defaultdict, deque
 
+from quant_ecosystem.market.fyers_feed import FyersFeed
+from quant_ecosystem.market.market_cache import MarketCache
+from quant_ecosystem.market.candle_builder import CandleBuilder
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +26,7 @@ class MarketDataEngine:
         symbols=None,
         universe_manager=None,
         timeframe: str = "5m",
-        history: int = 500,
+        history: int = 500
     ):
         # Broker is optional: when omitted, the engine operates in
         # synthetic mode, generating internal OHLCV series. When a
@@ -30,9 +34,12 @@ class MarketDataEngine:
         # the broker exposes a compatible API.
         self.broker = broker
         self.universe_manager = universe_manager
-        self.symbols = symbols or []
+        self.symbols = symbols or ["NSE:NIFTY50-INDEX"]
         self.timeframe = timeframe
         self.history_size = int(history)
+        self.feed = FyersFeed(broker)
+        self.cache = MarketCache()
+        self.builder = CandleBuilder()
 
         # Rolling OHLCV buffers per symbol
         self._data = defaultdict(
@@ -68,6 +75,21 @@ class MarketDataEngine:
     async def update_market_data(self):
         symbols = []
 
+        for symbol in self.symbols:
+
+            raw = self.feed.get_candles(symbol)
+
+            candles = self.builder.build_from_fyers(raw)
+
+            for c in candles:
+                self.cache.update(symbol, c)
+
+    def get_series(self, symbol):
+        return self.cache.get_series(symbol)
+
+    def get_latest(self, symbol):
+        return self.cache.get_latest(symbol)
+    
         # Priority 1: Universe manager
         if self.universe_manager is not None:
             try:
