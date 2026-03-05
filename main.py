@@ -1,106 +1,82 @@
-import subprocess
-import sys
-import os
-
-def ensure_dependencies():
-
-    req_file = "requirements.txt"
-
-    if not os.path.exists(req_file):
-        return
-
-    print("Dependency install started...")
-
-    subprocess.check_call([
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "-r",
-        req_file
-    ])
-
-    print("Dependency install completed.")
-
-ensure_dependencies()
-
 import asyncio
+import os
+import sys
+import subprocess
 from pathlib import Path
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT))
 
-sys.path.append(str(Path(__file__).parent))
+DEPS_MARKER = ".deps_installed"
 
+
+# ---------------------------------------------------------
+# Dependency bootstrap (silent + only once)
+# ---------------------------------------------------------
+def ensure_dependencies():
+
+    if os.path.exists(DEPS_MARKER):
+        return
+
+    req = "requirements.txt"
+
+    if not os.path.exists(req):
+        return
+
+    print("Installing dependencies (first run only)...")
+
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-r", req],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    open(DEPS_MARKER, "w").close()
+
+    print("Dependencies installed.")
+
+
+ensure_dependencies()
+
+
+# ---------------------------------------------------------
+# Imports AFTER dependency install
+# ---------------------------------------------------------
 from quant_ecosystem.core.config_loader import Config
-from quant_ecosystem.core.dependency_manager import DependencyManager
-from quant_ecosystem.core.maintenance_manager import MaintenanceManager
 from quant_ecosystem.core.master_orchestrator import MasterOrchestrator
-from quant_ecosystem.core.onboarding import FirstTimeOnboarding
 from quant_ecosystem.core.scheduler import Scheduler
 from quant_ecosystem.core.system_factory import build_router
 from quant_ecosystem.core.vcs.git_sync_manager import GitSyncManager
+from quant_ecosystem.core.maintenance_manager import MaintenanceManager
+from quant_ecosystem.core.onboarding import FirstTimeOnboarding
 
 
-
+# ---------------------------------------------------------
+# MAIN SYSTEM LOOP
+# ---------------------------------------------------------
 async def main():
+
     config = Config()
-    deps = DependencyManager(req_file="requests.txt")
+
     git_sync = GitSyncManager(
         workdir=".",
         auto_commit_message=config.git_auto_commit_message,
         include_paths=config.git_sync_paths,
         exclude_paths=config.git_exclude_paths,
     )
+
     maintenance = MaintenanceManager(
-        dependency_manager=deps,
+        dependency_manager=None,
         git_manager=git_sync,
         update_probability=config.auto_update_probability,
     )
 
-    def ensure_dependencies():
-
-        import importlib
-        import subprocess
-        import sys
-
-        packages = {
-            "numpy": "numpy",
-            "pandas": "pandas",
-            "scipy": "scipy",
-            "requests": "requests",
-            "aiohttp": "aiohttp",
-            "yfinance": "yfinance",
-            "sklearn": "scikit-learn",
-            "ray": "ray",
-            "loguru": "loguru",
-            "dotenv": "python-dotenv"
-        }
-
-        missing = []
-
-        for module, package in packages.items():
-            try:
-                importlib.import_module(module)
-            except ImportError:
-                missing.append(package)
-
-        if not missing:
-            return
-
-        print("Installing missing dependencies:", missing)
-
-        subprocess.check_call([
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            *missing
-        ])
-    if config.auto_dependency_install:
-        deps.install_from_file()
     if config.auto_git_sync:
         git_sync.pull_on_start()
+
     phase = Scheduler().current_phase()
     maintenance.run_random_checks(phase=phase)
 
@@ -109,6 +85,7 @@ async def main():
     router = build_router(config)
 
     orchestrator = MasterOrchestrator(router)
+
     await orchestrator.start(
         router,
         git_sync=git_sync,
@@ -116,19 +93,9 @@ async def main():
         auto_tag_end=config.auto_git_tag_end,
     )
 
-    if config.telegram_always_on and getattr(router, "telegram", None):
-        print("Telegram standby listener active (idle mode). Press Ctrl+C to stop.")
-        poll_sec = max(0.2, float(config.telegram_idle_poll_sec))
-        while True:
-            commands = router.telegram.consume_webhook_events()
-            for command, result in commands:
-                response = f"Command {command}: {result}"
-                print(response)
-                if not str(command).startswith("button:"):
-                    router.telegram.send_message(response)
-            await asyncio.sleep(poll_sec)
 
-
+# ---------------------------------------------------------
+# START
+# ---------------------------------------------------------
 if __name__ == "__main__":
-
     asyncio.run(main())

@@ -1,132 +1,97 @@
-from quant_ecosystem.core.strategy_registry import StrategyRegistry
-from quant_ecosystem.execution.execution_router import ExecutionRouter
-from quant_ecosystem.portfolio.portfolio_engine import PortfolioEngine
-from quant_ecosystem.risk.risk_engine import RiskEngine
+import logging
+
 from quant_ecosystem.market.market_data_engine import MarketDataEngine
-from quant_ecosystem.market_pulse.pulse_engine import MarketPulseEngine
-from quant_ecosystem.research.alpha_discovery_engine import AlphaDiscoveryEngine
-from quant_ecosystem.research.alpha_competition_engine import AlphaCompetitionEngine
+from quant_ecosystem.market.market_universe_manager import MarketUniverseManager
+
+from quant_ecosystem.research.distributed_research_engine import DistributedResearchEngine
+from quant_ecosystem.research.strategy_discovery_engine import StrategyDiscoveryEngine
+from quant_ecosystem.research.strategy_mutation_engine import StrategyMutationEngine
+from quant_ecosystem.research.research_dataset_builder import ResearchDatasetBuilder
+from quant_ecosystem.research.factor_dataset_builder import FactorDatasetBuilder
+
 from quant_ecosystem.evolution.alpha_evolution_engine import AlphaEvolutionEngine
-from quant_ecosystem.evolution.alpha_factory import AlphaFactory
-from quant_ecosystem.evolution.distributed_alpha_grid import DistributedAlphaGrid
-from quant_ecosystem.core.system_state import SystemState
-from quant_ecosystem.broker.fyers_broker import FyersBroker
-from quant_ecosystem.market.market_data_engine import MarketDataEngine
-from quant_ecosystem.market_pulse.pulse_engine import MarketPulseEngine
+
+from quant_ecosystem.execution.execution_router import ExecutionRouter
+from quant_ecosystem.execution.broker_router import BrokerRouter
+
+from quant_ecosystem.portfolio.capital_intelligence_engine import CapitalIntelligenceEngine
 
 
-class System:
-    pass
+logger = logging.getLogger(__name__)
 
 
 class SystemFactory:
+    """
+    Central wiring factory for the entire Quant Ecosystem.
+    Builds and connects all system components.
+    """
 
     def __init__(self, config):
         self.config = config
 
     def build(self):
 
-        # --- Core ---
-        broker = FyersBroker(config=self.config)
-        broker.connect()
+        logger.info("Initializing market universe...")
+        universe = MarketUniverseManager(self.config)
 
-        state = SystemState()
+        logger.info("Initializing market data engine...")
+        market_data = MarketDataEngine(self.config, universe)
 
-        # 3) Strategy registry
-        strategy_registry = StrategyRegistry()
+        logger.info("Initializing research dataset builder...")
+        dataset_builder = ResearchDatasetBuilder(market_data)
 
-        # 4) Portfolio engine
-        portfolio_engine = PortfolioEngine()
-        risk_engine = RiskEngine(config=self.config)
+        logger.info("Initializing factor dataset builder...")
+        factor_builder = FactorDatasetBuilder(dataset_builder)
 
-        # --- Market ---
-        market_data = MarketDataEngine(
-            broker=broker,
-            symbols=["NIFTY", "BANKNIFTY"],
-            timeframe="5m"
+        logger.info("Initializing distributed research engine...")
+        distributed_engine = DistributedResearchEngine()
+
+        logger.info("Initializing strategy discovery engine...")
+        discovery_engine = StrategyDiscoveryEngine(
+            dataset_builder,
+            factor_builder,
+            distributed_engine
         )
 
-        # Attach feature engine on top of market data
-        from quant_ecosystem.intelligence.feature_engine import FeatureEngine
+        logger.info("Initializing strategy mutation engine...")
+        mutation_engine = StrategyMutationEngine()
 
-        feature_engine = FeatureEngine(market_data)
-        setattr(market_data, "feature_engine", feature_engine)
-
-        market_pulse = MarketPulseEngine(
-            market_data_engine=market_data
+        logger.info("Initializing alpha evolution engine...")
+        evolution_engine = AlphaEvolutionEngine(
+            discovery_engine,
+            mutation_engine
         )
 
-        # --- Router ---
-        router = ExecutionRouter(
-            broker=broker,
-            risk_engine=risk_engine,
-            state=state,
-            market_data=market_data,
-            portfolio_engine=portfolio_engine
+        logger.info("Initializing capital intelligence engine...")
+        capital_intelligence = CapitalIntelligenceEngine(self.config)
+
+        logger.info("Initializing broker router...")
+        broker_router = BrokerRouter(self.config)
+
+        logger.info("Initializing execution router...")
+        execution_router = ExecutionRouter(
+            broker_router,
+            capital_intelligence
         )
 
-        # 9) Research / discovery engines
-        alpha_discovery = AlphaDiscoveryEngine(strategy_registry)
-        alpha_competition = AlphaCompetitionEngine(strategy_registry)
-        alpha_factory = AlphaFactory(strategy_registry)
-        alpha_grid = DistributedAlphaGrid(alpha_factory)
-        alpha_competition = AlphaCompetitionEngine(strategy_registry)
-        alpha_evolution = AlphaEvolutionEngine(strategy_registry)
+        logger.info("System components successfully wired.")
 
-        # 10) Capital intelligence engine
-        capital_intelligence = CapitalIntelligenceEngine(
-            portfolio_engine,
-            risk_engine
-        )
-
-        from quant_ecosystem.portfolio.capital_allocator import CapitalAllocator
-        from quant_ecosystem.portfolio.portfolio_constructor import PortfolioConstructor
-        from quant_ecosystem.risk.risk_overlay_engine import RiskOverlayEngine
-        from quant_ecosystem.execution.execution_planner import ExecutionPlanner
-        from quant_ecosystem.signals.signal_engine import SignalEngine
-        from quant_ecosystem.signals.signal_aggregator import SignalAggregator
-
-        capital_allocator = CapitalAllocator()
-        portfolio_constructor = PortfolioConstructor(capital_allocator)
-        risk_overlay = RiskOverlayEngine(risk_engine, portfolio_engine, state)
-        execution_planner = ExecutionPlanner(portfolio_engine, state, market_data)
-        signal_engine = SignalEngine(strategy_registry, market_data)
-        signal_aggregator = SignalAggregator()
-
-        # --- System Container ---
-        system = System()
-
-        system.broker = broker
-        system.state = state
-        system.strategy_registry = strategy_registry
-        system.portfolio_engine = portfolio_engine
-        system.risk_engine = risk_engine
-        system.market_data = market_data
-        system.feature_engine = feature_engine
-        system.market_pulse = market_pulse
-        system.execution_router = router
-        system.alpha_discovery = alpha_discovery
-        system.alpha_competition = alpha_competition
-        system.alpha_factory = alpha_factory
-        system.alpha_grid = alpha_grid
-        system.alpha_evolution = alpha_evolution
-        system.capital_allocator = capital_allocator
-        system.portfolio_constructor = portfolio_constructor
-        system.risk_overlay = risk_overlay
-        system.execution_planner = execution_planner
-        system.signal_engine = signal_engine
-        system.signal_aggregator = signal_aggregator
-        system.portfolio_constructor = portfolio_constructor
-        system.risk_overlay = risk_overlay
-        system.execution_planner = execution_planner
-        system.signal_engine = signal_engine
-        system.signal_aggregator = signal_aggregator
-
-        router.system = system
-
-        return router
+        return {
+            "market_data": market_data,
+            "dataset_builder": dataset_builder,
+            "factor_builder": factor_builder,
+            "distributed_research": distributed_engine,
+            "strategy_discovery": discovery_engine,
+            "strategy_mutation": mutation_engine,
+            "alpha_evolution": evolution_engine,
+            "capital_intelligence": capital_intelligence,
+            "execution_router": execution_router,
+        }
 
 
 def build_router(config):
+    """
+    Public entry point used by main.py
+    """
     factory = SystemFactory(config)
     return factory.build()

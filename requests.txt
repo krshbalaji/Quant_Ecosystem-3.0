@@ -1,3 +1,0 @@
-fyers-apiv3
-python-dotenv
-requests

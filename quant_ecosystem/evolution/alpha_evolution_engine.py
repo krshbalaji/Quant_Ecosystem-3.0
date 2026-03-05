@@ -1,5 +1,6 @@
 import random
 from typing import List
+from quant_ecosystem.evolution.alpha_genome_engine import AlphaGenomeEngine
 
 class AlphaEvolutionEngine:
     """
@@ -9,7 +10,8 @@ class AlphaEvolutionEngine:
 
     def __init__(self, strategy_registry):
         self.strategy_registry = strategy_registry
-
+        self.genome_engine = AlphaGenomeEngine()
+    
     def evolve(self):
 
         strategies = self._get_strategies()
@@ -33,7 +35,11 @@ class AlphaEvolutionEngine:
         print(f"AlphaEvolution: created {len(children)} new strategies")
 
         return children
-
+    
+    def generate_initial_populations(self):
+        population = self.genome_engine.generate_population(1000)
+        return population
+        
     def _mutate(self, strategy):
 
         params = getattr(strategy, "params", {}).copy()
