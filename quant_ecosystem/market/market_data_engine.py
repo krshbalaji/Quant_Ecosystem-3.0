@@ -6,6 +6,7 @@ from collections import defaultdict, deque
 from quant_ecosystem.market.fyers_feed import FyersFeed
 from quant_ecosystem.market.market_cache import MarketCache
 from quant_ecosystem.market.candle_builder import CandleBuilder
+from quant_ecosystem.market.data_source_router import DataSourceRouter
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class MarketDataEngine:
         self.symbols = symbols or ["NSE:NIFTY50-INDEX"]
         self.timeframe = timeframe
         self.history_size = int(history)
-        self.feed = FyersFeed(broker)
+        self.router = DataSourceRouter(broker)
         self.cache = MarketCache()
         self.builder = CandleBuilder()
 
@@ -72,6 +73,8 @@ class MarketDataEngine:
 
             await asyncio.sleep(2)
 
+            candles = self.router.fetch(symbol, timeframe)
+            
     async def update_market_data(self):
         """
         Poll the broker for the latest candles and feed them into the cache.

@@ -1,0 +1,7 @@
+class TradingViewFeed:
+
+    name = "tradingview"
+
+    def fetch(self, symbol, timeframe):
+
+        return None

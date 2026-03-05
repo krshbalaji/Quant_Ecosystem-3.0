@@ -9,7 +9,8 @@ from quant_ecosystem.core.system_state import SystemState
 from quant_ecosystem.broker.fyers_broker import FyersBroker
 from quant_ecosystem.market.market_data_engine import MarketDataEngine
 from quant_ecosystem.market_pulse.pulse_engine import MarketPulseEngine
-
+from quant_ecosystem.research.strategy_discovery_engine import StrategyDiscoveryEngine
+from quant_ecosystem.research.distributed_research_engine import DistributedResearchEngine
 
 class System:
     """
@@ -45,8 +46,19 @@ class SystemFactory:
         # 2) State
         state = SystemState()
 
+        distributed_engine = DistributedResearchEngine(market_data)
+
+        system.distributed_research = distributed_engine
+        
         # 3) Strategy registry
         strategy_registry = StrategyRegistry()
+
+        discovery = StrategyDiscoveryEngine(
+            market_data,
+            strategy_registry
+        )
+
+        system.strategy_discovery = discovery
 
         # Institutional strategy universe
         from quant_ecosystem.strategy_bank.strategy_universe import StrategyUniverse

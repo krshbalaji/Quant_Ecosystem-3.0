@@ -1,5 +1,30 @@
-import asyncio
+import subprocess
 import sys
+import os
+
+def ensure_dependencies():
+
+    req_file = "requirements.txt"
+
+    if not os.path.exists(req_file):
+        return
+
+    print("Dependency install started...")
+
+    subprocess.check_call([
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "-r",
+        req_file
+    ])
+
+    print("Dependency install completed.")
+
+ensure_dependencies()
+
+import asyncio
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -33,6 +58,45 @@ async def main():
         update_probability=config.auto_update_probability,
     )
 
+    def ensure_dependencies():
+
+        import importlib
+        import subprocess
+        import sys
+
+        packages = {
+            "numpy": "numpy",
+            "pandas": "pandas",
+            "scipy": "scipy",
+            "requests": "requests",
+            "aiohttp": "aiohttp",
+            "yfinance": "yfinance",
+            "sklearn": "scikit-learn",
+            "ray": "ray",
+            "loguru": "loguru",
+            "dotenv": "python-dotenv"
+        }
+
+        missing = []
+
+        for module, package in packages.items():
+            try:
+                importlib.import_module(module)
+            except ImportError:
+                missing.append(package)
+
+        if not missing:
+            return
+
+        print("Installing missing dependencies:", missing)
+
+        subprocess.check_call([
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            *missing
+        ])
     if config.auto_dependency_install:
         deps.install_from_file()
     if config.auto_git_sync:

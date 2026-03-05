@@ -104,6 +104,10 @@ class MasterOrchestrator:
             elif hasattr(self.system.alpha_competition, "run"):
                 self.system.alpha_competition.run()
 
+        if hasattr(self.system, "strategy_discovery"):
+
+            self.system.strategy_discovery.discover()
+            
         if hasattr(self.system, "capital_intelligence") and self.system.capital_intelligence:
             # Capital allocation intelligence layer
             if hasattr(self.system.capital_intelligence, "evaluate"):
