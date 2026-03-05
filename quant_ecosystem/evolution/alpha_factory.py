@@ -30,7 +30,7 @@ class AlphaFactory:
             if cls is BaseStrategy or cls.__name__.startswith("_DiscoveredStrategy"):
                 continue
 
-            child = self.factory.mutate_numeric_params(strategy)
+            child = self.factory.mutate(strategy)
             child.id = f"{strategy.id}_grid"
             child.name = f"{strategy.name} (grid)"
             self.registry.register(child)

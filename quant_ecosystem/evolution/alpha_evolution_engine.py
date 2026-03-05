@@ -61,7 +61,7 @@ class AlphaEvolutionEngine:
         if not (hasattr(base, "params") and hasattr(base, "id")):
             return strategy_entry  # type: ignore[return-value]
 
-        child = self.factory.mutate_numeric_params(base)
+        child = self.factory.mutate(base)
         child.id = f"{base.id}_mut"
         child.name = f"{base.name} (mut)"
         return child

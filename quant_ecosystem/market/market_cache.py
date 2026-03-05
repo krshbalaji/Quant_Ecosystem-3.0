@@ -1,17 +1,32 @@
 from collections import defaultdict, deque
+from typing import Deque, Dict, List, Optional
+
 
 class MarketCache:
+    """
+    Rolling in-memory cache of OHLCV candles.
 
-    def __init__(self, history=500):
-        self.cache = defaultdict(lambda: deque(maxlen=history))
+    Internally stores a deque per (symbol, timeframe) pair, but exposes
+    a simple API that defaults to the primary timeframe when not given.
+    """
 
-    def update(self, symbol, candle):
-        self.cache[symbol].append(candle)
+    def __init__(self, history: int = 500):
+        self._history = int(history)
+        self._cache: Dict[str, Dict[str, Deque[dict]]] = defaultdict(
+            lambda: defaultdict(lambda: deque(maxlen=self._history))
+        )
 
-    def get_series(self, symbol):
-        return list(self.cache.get(symbol, []))
+    def update(self, symbol: str, candle: dict, timeframe: str = "5m") -> None:
+        self._cache[str(symbol)][str(timeframe)].append(candle)
 
-    def get_latest(self, symbol):
-        if symbol in self.cache and self.cache[symbol]:
-            return self.cache[symbol][-1]
+    def get_series(self, symbol: str, timeframe: str = "5m", lookback: Optional[int] = None) -> List[dict]:
+        rows = list(self._cache.get(str(symbol), {}).get(str(timeframe), []))
+        if lookback is not None and lookback > 0:
+            rows = rows[-lookback:]
+        return rows
+
+    def get_latest(self, symbol: str, timeframe: str = "5m") -> Optional[dict]:
+        series = self._cache.get(str(symbol), {}).get(str(timeframe))
+        if series and len(series):
+            return series[-1]
         return None

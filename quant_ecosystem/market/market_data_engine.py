@@ -73,22 +73,42 @@ class MarketDataEngine:
             await asyncio.sleep(2)
 
     async def update_market_data(self):
-        symbols = []
-
-        for symbol in self.symbols:
-
+        """
+        Poll the broker for the latest candles and feed them into the cache.
+        """
+        for symbol in list(self.symbols or []):
             raw = self.feed.get_candles(symbol)
-
-            candles = self.builder.build_from_fyers(raw)
-
+            candles = self.builder.build_from_fyers(raw or {})
             for c in candles:
-                self.cache.update(symbol, c)
+                self.cache.update(symbol, c, timeframe=self.timeframe)
 
-    def get_series(self, symbol):
-        return self.cache.get_series(symbol)
+    # ------------------------------------------------------------------
+    # Institutional public API
+    # ------------------------------------------------------------------
 
-    def get_latest(self, symbol):
-        return self.cache.get_latest(symbol)
+    def get_latest_price(self, symbol: str) -> float | None:
+        """
+        Latest traded price for a symbol, if any.
+        """
+        latest = self.cache.get_latest(symbol, timeframe=self.timeframe)
+        if latest is None:
+            snap = self.get_snapshot(symbol=symbol)
+            closes = list(snap.get("close") or [])
+            return float(closes[-1]) if closes else None
+        return float(latest.get("close"))
+
+    def get_series(self, symbol: str, timeframe: str = "5m", lookback: int = 200):
+        """
+        Return a rolling close-price series for the given symbol/timeframe.
+        """
+        candles = self.cache.get_series(symbol, timeframe=timeframe, lookback=lookback)
+        return [c.get("close") for c in candles if "close" in c]
+
+    def get_latest(self, symbol: str):
+        """
+        Backwards-compatible accessor used by some callers.
+        """
+        return self.cache.get_latest(symbol, timeframe=self.timeframe)
     
         # Priority 1: Universe manager
         if self.universe_manager is not None:
@@ -170,7 +190,7 @@ class MarketDataEngine:
             return None
         return closes[-1]
 
-    def get_snapshot(self, symbol=None, lookback: int = 60):
+    def get_snapshot(self, symbol=None, timeframe: str | None = None, lookback: int = 60):
         """
         Returns a rolling snapshot of OHLCV data.
 
