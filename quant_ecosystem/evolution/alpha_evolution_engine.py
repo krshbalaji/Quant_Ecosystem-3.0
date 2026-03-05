@@ -1,4 +1,8 @@
 import random
+from typing import List
+
+from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
+from quant_ecosystem.strategies.factory.strategy_factory import StrategyFactory
 
 
 class AlphaEvolutionEngine:
@@ -7,9 +11,9 @@ class AlphaEvolutionEngine:
     Creates new strategies from top performers.
     """
 
-    def __init__(self, strategy_registry):
-
+    def __init__(self, strategy_registry, factory: StrategyFactory | None = None):
         self.strategy_registry = strategy_registry
+        self.factory = factory or StrategyFactory(strategy_registry)
 
     def evolve(self):
 
@@ -19,8 +23,8 @@ class AlphaEvolutionEngine:
             print("AlphaEvolution: no strategies available")
             return []
 
-        # Sort by score in descending order. Supports both dict-style
-        # registry entries and plain strategy objects.
+        # Sort by score in descending order. Supports both legacy dict-style
+        # registry entries and class-based strategies.
         def _score(entry):
             if isinstance(entry, dict):
                 return entry.get("score", 0)
@@ -39,49 +43,42 @@ class AlphaEvolutionEngine:
 
         return children
 
-    def _mutate(self, strategy_entry):
+    def _mutate(self, strategy_entry: BaseStrategy | dict) -> BaseStrategy:
         """
         Create a mutated child strategy.
 
-        Accepts either a plain strategy instance or a registry entry dict
-        of the shape {"id": ..., "strategy": ..., "score": ...}.
+        Mutates only numeric params and delegates instance creation to
+        StrategyFactory. Core logic (class type) is never changed.
         """
         if isinstance(strategy_entry, dict):
             base = strategy_entry.get("strategy")
-            base_id = strategy_entry.get("id", getattr(base, "name", "strategy"))
         else:
             base = strategy_entry
-            base_id = getattr(strategy_entry, "name", "strategy")
 
         if base is None:
-            return strategy_entry
+            return strategy_entry  # type: ignore[return-value]
 
-        params = getattr(base, "params", {}).copy()
+        if not (hasattr(base, "params") and hasattr(base, "id")):
+            return strategy_entry  # type: ignore[return-value]
 
-        for k in params:
-            if isinstance(params[k], (int, float)):
-                params[k] *= random.uniform(0.9, 1.1)
+        child = self.factory.mutate_numeric_params(base)
+        child.id = f"{base.id}_mut"
+        child.name = f"{base.name} (mut)"
+        return child
 
-        new_strategy = type(base)()
-        new_strategy.params = params
-        new_strategy.name = f"{base_id}_mut"
-
-        # Return a registry-style entry so downstream components can store it.
-        return {
-            "id": new_strategy.name,
-            "strategy": new_strategy,
-            "parent_id": base_id,
-        }
-
-    def _get_strategies(self):
-
+    def _get_strategies(self) -> List[BaseStrategy | dict]:
+        raw = None
         if hasattr(self.strategy_registry, "get_all"):
-            return self.strategy_registry.get_all()
+            raw = self.strategy_registry.get_all()
+        elif hasattr(self.strategy_registry, "strategies"):
+            raw = self.strategy_registry.strategies
 
-        if hasattr(self.strategy_registry, "strategies"):
-            return list(self.strategy_registry.strategies.values())
+        if raw is None:
+            return []
 
-        return []
+        if isinstance(raw, dict):
+            return list(raw.values())
+        return list(raw)
 
     # Unified interface helper
     def run(self):

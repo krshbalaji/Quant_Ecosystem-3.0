@@ -50,10 +50,9 @@ class SystemFactory:
 
         from quant_ecosystem.strategies.trend.ema_trend import EMATrendStrategy
 
-        strategy_registry.register({
-            "id": "ema_trend",
-            "strategy": EMATrendStrategy()
-        })
+        ema_trend = EMATrendStrategy()
+        ema_trend.required_symbols = ["NSE:NIFTY50-INDEX", "NSE:BANKNIFTY-INDEX"]
+        strategy_registry.register(ema_trend)
         
         # 4) Portfolio engine
         portfolio_engine = PortfolioEngine()

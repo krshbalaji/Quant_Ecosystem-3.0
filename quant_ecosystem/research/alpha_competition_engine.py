@@ -17,23 +17,30 @@ class AlphaCompetitionEngine:
             print("AlphaCompetition: No strategy retrieval method found.")
             return
 
-        strategies = self.strategy_registry.get_all()
+        raw = self.strategy_registry.get_all()
+        strategies = list(raw.values()) if isinstance(raw, dict) else list(raw or [])
 
         if not strategies:
             return
 
-        ranked = sorted(
-            strategies,
-            key=lambda s: s.get("score", 0),
-            reverse=True
-        )
+        def _score(item):
+            if isinstance(item, dict):
+                return item.get("score", 0)
+            return getattr(item, "score", 0)
 
+        ranked = sorted(strategies, key=_score, reverse=True)
         top = ranked[:5]
 
         print("AlphaCompetition Top Strategies:")
 
         for s in top:
-            print(s.get("id"), s.get("score"))
+            if isinstance(s, dict):
+                sid = s.get("id")
+                score = s.get("score")
+            else:
+                sid = getattr(s, "id", None)
+                score = getattr(s, "score", None)
+            print(sid, score)
 
     def capital_allocation(self):
 
