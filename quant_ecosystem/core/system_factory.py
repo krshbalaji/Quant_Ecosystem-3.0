@@ -88,8 +88,10 @@ class SystemFactory:
 
         # 9) Research / discovery engines
         from quant_ecosystem.research.performance_store import PerformanceStore
+        from quant_ecosystem.research.performance_attribution import PerformanceAttributionEngine
 
         performance_store = PerformanceStore()
+        perf_attribution = PerformanceAttributionEngine(performance_store)
         alpha_discovery = AlphaDiscoveryEngine(strategy_registry)
         alpha_factory = AlphaFactory(strategy_registry)
         alpha_grid = DistributedAlphaGrid(alpha_factory)
@@ -103,8 +105,18 @@ class SystemFactory:
         )
 
         from quant_ecosystem.portfolio.capital_allocator import CapitalAllocator
+        from quant_ecosystem.portfolio.portfolio_constructor import PortfolioConstructor
+        from quant_ecosystem.risk.risk_overlay_engine import RiskOverlayEngine
+        from quant_ecosystem.execution.execution_planner import ExecutionPlanner
+        from quant_ecosystem.signals.signal_engine import SignalEngine
+        from quant_ecosystem.signals.signal_aggregator import SignalAggregator
 
         capital_allocator = CapitalAllocator()
+        portfolio_constructor = PortfolioConstructor(capital_allocator)
+        risk_overlay = RiskOverlayEngine(risk_engine, portfolio_engine, state)
+        execution_planner = ExecutionPlanner(portfolio_engine, state, market_data)
+        signal_engine = SignalEngine(strategy_registry, market_data)
+        signal_aggregator = SignalAggregator()
 
         # Attach engines to the system container (for MasterOrchestrator)
         system.broker = broker
@@ -125,6 +137,12 @@ class SystemFactory:
         system.performance_store = performance_store
         system.capital_allocator = capital_allocator
         system.strategy_universe = universe
+        system.performance_attribution = perf_attribution
+        system.portfolio_constructor = portfolio_constructor
+        system.risk_overlay = risk_overlay
+        system.execution_planner = execution_planner
+        system.signal_engine = signal_engine
+        system.signal_aggregator = signal_aggregator
 
         # Attach engines to the execution router for backwards compatibility
         router.system = system
