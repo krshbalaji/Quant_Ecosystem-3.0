@@ -41,6 +41,55 @@ class MasterOrchestrator:
         self.survival = SurvivalPlaybook()
         self.control_center = TelegramControlCenter()
 
+    # ------------------------------------------------------------------
+    # Institutional helpers
+    # ------------------------------------------------------------------
+
+    def _run_institutional_cycle(
+        self,
+        router,
+        cycle_id: int,
+        regime: str,
+        market_bias: str,
+        intelligence_report: dict,
+    ):
+        """
+        Optional institutional pipeline:
+        1) FeatureEngine update
+        2) StrategyUniverse (registry) update and signals (research)
+        3) AlphaCompetition rankings
+        4) CapitalAllocator weights
+        5) PerformanceStore left for trade-based updates
+        """
+        system = self.system
+
+        feature_engine = getattr(system, "feature_engine", None)
+        if feature_engine and hasattr(feature_engine, "refresh"):
+            feature_engine.refresh()
+
+        # Strategy universe is loaded into StrategyRegistry at startup,
+        # so there is no additional work required here to "load" it.
+
+        alpha_comp = getattr(system, "alpha_competition", None)
+        allocator = getattr(system, "capital_allocator", None)
+        performance_store = getattr(system, "performance_store", None)
+
+        rankings = None
+        if alpha_comp and hasattr(alpha_comp, "evaluate"):
+            rankings = alpha_comp.evaluate()
+
+        allocation = {}
+        if allocator and rankings is not None:
+            metrics_map = (
+                performance_store.get_all_metrics() if performance_store else {}
+            )
+            allocation = allocator.allocate(metrics_map)
+
+        # At this stage allocations are advisory; ExecutionRouter sizing
+        # remains governed by RiskEngine and portfolio constraints.
+        if allocation:
+            print(f"CapitalAllocator Weights: {allocation}")
+
     async def start(self, router, git_sync=None, auto_push_end=True, auto_tag_end=True):
         print("Quant Ecosystem 3.0 booting...")
         self.scheduler.start_day()
@@ -222,6 +271,15 @@ class MasterOrchestrator:
                 else:
                     classes = ["stocks", "indices"]
                 router.symbols = self.universe.symbols(asset_classes=classes, regime=regime_advanced, limit=8)
+
+                # Institutional loop hook
+                self._run_institutional_cycle(
+                    router=router,
+                    cycle_id=i,
+                    regime=regime,
+                    market_bias=market_bias,
+                    intelligence_report=intelligence_report,
+                )
                 async with router.execution_lock:
                     result = await router.execute(market_bias=market_bias, regime=regime)
 

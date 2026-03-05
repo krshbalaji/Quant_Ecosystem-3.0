@@ -48,12 +48,12 @@ class SystemFactory:
         # 3) Strategy registry
         strategy_registry = StrategyRegistry()
 
-        from quant_ecosystem.strategies.trend.ema_trend import EMATrendStrategy
+        # Institutional strategy universe
+        from quant_ecosystem.strategy_bank.strategy_universe import StrategyUniverse
 
-        ema_trend = EMATrendStrategy()
-        ema_trend.required_symbols = ["NSE:NIFTY50-INDEX", "NSE:BANKNIFTY-INDEX"]
-        strategy_registry.register(ema_trend)
-        
+        universe = StrategyUniverse()
+        universe.load_strategies(strategy_registry)
+
         # 4) Portfolio engine
         portfolio_engine = PortfolioEngine()
 
@@ -68,6 +68,12 @@ class SystemFactory:
             timeframe="5m",
         )
 
+        # Attach feature engine on top of market data
+        from quant_ecosystem.intelligence.feature_engine import FeatureEngine
+
+        feature_engine = FeatureEngine(market_data)
+        setattr(market_data, "feature_engine", feature_engine)
+
         # 7) Market pulse engine
         market_pulse = MarketPulseEngine(market_data_engine=market_data)
 
@@ -81,17 +87,24 @@ class SystemFactory:
         )
 
         # 9) Research / discovery engines
+        from quant_ecosystem.research.performance_store import PerformanceStore
+
+        performance_store = PerformanceStore()
         alpha_discovery = AlphaDiscoveryEngine(strategy_registry)
         alpha_factory = AlphaFactory(strategy_registry)
         alpha_grid = DistributedAlphaGrid(alpha_factory)
-        alpha_competition = AlphaCompetitionEngine(strategy_registry)
+        alpha_competition = AlphaCompetitionEngine(strategy_registry, performance_store=performance_store)
         alpha_evolution = AlphaEvolutionEngine(strategy_registry)
 
-        # 10) Capital intelligence engine
+        # 10) Capital intelligence and allocation engines
         capital_intelligence = CapitalIntelligenceEngine(
             portfolio_engine=portfolio_engine,
             risk_engine=risk_engine,
         )
+
+        from quant_ecosystem.portfolio.capital_allocator import CapitalAllocator
+
+        capital_allocator = CapitalAllocator()
 
         # Attach engines to the system container (for MasterOrchestrator)
         system.broker = broker
@@ -100,6 +113,7 @@ class SystemFactory:
         system.portfolio_engine = portfolio_engine
         system.risk_engine = risk_engine
         system.market_data = market_data
+        system.feature_engine = feature_engine
         system.market_pulse = market_pulse
         system.execution_router = router
         system.alpha_discovery = alpha_discovery
@@ -108,6 +122,9 @@ class SystemFactory:
         system.alpha_competition = alpha_competition
         system.alpha_evolution = alpha_evolution
         system.capital_intelligence = capital_intelligence
+        system.performance_store = performance_store
+        system.capital_allocator = capital_allocator
+        system.strategy_universe = universe
 
         # Attach engines to the execution router for backwards compatibility
         router.system = system
