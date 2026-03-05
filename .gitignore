@@ -1,28 +1,169 @@
-.env
+# ===============================
+# Quant Ecosystem .gitignore
+# ===============================
+
+################################
+# PYTHON
+################################
+
 __pycache__/
 *.py[cod]
-*.log
-fyersApi.log
-fyersRequests.log
-reporting/output/
-core/persistence/outcome_memory.json
-# Tool caches
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+*$py.class
 
-# IDE
+################################
+# VIRTUAL ENVIRONMENTS
+################################
+
+venv/
+env/
+.quant/
+quant_env/
+.venv/
+
+################################
+# PYTHON BUILD
+################################
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+################################
+# PYTHON TOOLING
+################################
+
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+################################
+# IDE / EDITORS
+################################
+
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
-# OS
+################################
+# OS FILES
+################################
+
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Keep runtime outputs untracked
-reporting/output/runtime/
-reporting/output/audit/
+################################
+# LOG FILES
+################################
 
-strategy_lab/archived_strategies/
-strategy_lab/research_strategies/
-strategy_lab/validated_strategies/
+logs/
+*.log
+
+################################
+# DATA FILES
+################################
+
+data/
+datasets/
+*.parquet
+*.csv
+*.hdf5
+
+################################
+# RUNTIME OUTPUT
+################################
+
+reporting/output/
+reporting/runtime/
+reporting/audit/
+
+################################
+# MODEL FILES
+################################
+
+*.pkl
+*.joblib
+*.model
+*.onnx
+
+################################
+# API KEYS / SECRETS
+################################
+
+.env
+.env.*
+secrets.json
+credentials.json
+
+################################
+# BROKER TOKENS
+################################
+
+token.json
+access_token.json
+fyers_token.json
+
+################################
+# RAY / DISTRIBUTED CACHE
+################################
+
+ray_results/
+ray_tmp/
+
+################################
+# BACKTEST OUTPUT
+################################
+
+backtests/
+results/
+
+################################
+# STRATEGY GENERATED FILES
+################################
+
+quant_ecosystem/strategies/generated/*.py
+
+################################
+# PARQUET MARKET CACHE
+################################
+
+market_cache/
+candles/
+
+################################
+# NOTEBOOKS
+################################
+
+.ipynb_checkpoints/
+
+################################
+# TEMP FILES
+################################
+
+*.tmp
+*.temp
+*.bak
+
+################################
+# WINDOWS EXECUTABLES
+################################
+
+*.exe
+*.dll
+
+################################
+# PYARROW BINARIES
+################################
+
+*.pyd
+
+################################
+# GIT MERGE BACKUPS
+################################
+
+*.orig

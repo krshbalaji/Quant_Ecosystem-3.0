@@ -1,1 +1,0 @@
-strategy_id,symbol,asset_class,regime,trade_type,side,qty,status,price,intended_price,slippage_bps,confidence,fee,realized_pnl,unrealized_pnl,cycle_pnl,equity,cash_balance

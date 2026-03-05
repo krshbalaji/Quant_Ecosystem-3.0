@@ -1,6 +1,0 @@
-strategy_id,symbol,side,qty,status,price,confidence,pnl_pct,equity
-core_trend_follow_v1,NSE:INFY-EQ,SELL,9,FILLED,589.959,0.85,0.0295,100029.5
-core_trend_follow_v1,NSE:INFY-EQ,SELL,9,FILLED,588.4866,0.85,0.1262,100155.74
-core_trend_follow_v1,NSE:INFY-EQ,SELL,9,FILLED,586.5119,0.85,0.0128,100168.56
-core_trend_follow_v1,NSE:INFY-EQ,SELL,7,FILLED,585.5573,0.85,-0.0108,100157.74
-core_trend_follow_v1,NSE:SBIN-EQ,SELL,7,FILLED,710.9082,0.85,0.1451,100303.07
