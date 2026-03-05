@@ -1,5 +1,5 @@
 import random
-
+from typing import List
 
 class AlphaEvolutionEngine:
     """
@@ -7,9 +7,8 @@ class AlphaEvolutionEngine:
     Creates new strategies from top performers.
     """
 
-    def __init__(self, strategy_registry, factory: StrategyFactory | None = None):
+    def __init__(self, strategy_registry):
         self.strategy_registry = strategy_registry
-        self.factory = factory or StrategyFactory(strategy_registry)
 
     def evolve(self):
 
@@ -19,19 +18,15 @@ class AlphaEvolutionEngine:
             print("AlphaEvolution: no strategies available")
             return []
 
-        # Sort by score in descending order. Supports both legacy dict-style
-        # registry entries and class-based strategies.
-        def _score(entry):
-            if isinstance(entry, dict):
-                return entry.get("score", 0)
-            return getattr(entry, "score", 0)
-
-        parents = sorted(strategies, key=_score, reverse=True)[:3]
+        parents = sorted(
+            strategies,
+            key=lambda s: getattr(s, "score", 0),
+            reverse=True
+        )[:3]
 
         children = []
 
         for p in parents:
-
             child = self._mutate(p)
             children.append(child)
 
@@ -44,7 +39,6 @@ class AlphaEvolutionEngine:
         params = getattr(strategy, "params", {}).copy()
 
         for k in params:
-
             if isinstance(params[k], (int, float)):
                 params[k] *= random.uniform(0.9, 1.1)
 
@@ -55,23 +49,15 @@ class AlphaEvolutionEngine:
 
         return new_strategy
 
-    def _get_strategies(self) -> List[BaseStrategy | dict]:
-        raw = None
+    def _get_strategies(self):
+
         if hasattr(self.strategy_registry, "get_all"):
-            raw = self.strategy_registry.get_all()
-        elif hasattr(self.strategy_registry, "strategies"):
-            raw = self.strategy_registry.strategies
+            return self.strategy_registry.get_all()
 
-        if raw is None:
-            return []
+        if hasattr(self.strategy_registry, "strategies"):
+            return list(self.strategy_registry.strategies.values())
 
-        if isinstance(raw, dict):
-            return list(raw.values())
-        return list(raw)
+        return []
 
-    # Unified interface helper
     def run(self):
-        """
-        Generic entry point expected by orchestration layers.
-        """
         return self.evolve()

@@ -110,11 +110,12 @@ class SystemFactory:
         system.alpha_factory = alpha_factory
         system.alpha_grid = alpha_grid
         system.alpha_evolution = alpha_evolution
-        system.capital_intelligence = capital_intelligence
-        system.performance_store = performance_store
         system.capital_allocator = capital_allocator
-        system.strategy_universe = universe
-        system.performance_attribution = perf_attribution
+        system.portfolio_constructor = portfolio_constructor
+        system.risk_overlay = risk_overlay
+        system.execution_planner = execution_planner
+        system.signal_engine = signal_engine
+        system.signal_aggregator = signal_aggregator
         system.portfolio_constructor = portfolio_constructor
         system.risk_overlay = risk_overlay
         system.execution_planner = execution_planner
