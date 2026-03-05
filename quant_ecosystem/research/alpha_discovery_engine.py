@@ -1,55 +1,39 @@
 import random
-import uuid
-
 
 class AlphaDiscoveryEngine:
 
-    def __init__(self, strategy_registry):
+    def __init__(self, strategy_registry, backtest_engine=None):
         self.strategy_registry = strategy_registry
+        self.backtest_engine = backtest_engine
 
-    def generate_strategy(self):
+    def discover(self):
 
-        indicators = [
-            "RSI",
-            "MACD",
-            "EMA",
-            "BOLLINGER",
-            "VWAP"
-        ]
-
-        entry_indicator = random.choice(indicators)
-        exit_indicator = random.choice(indicators)
-
-        strategy = {
-            "id": str(uuid.uuid4()),
-            "name": f"alpha_{entry_indicator}_{exit_indicator}",
-            "entry": entry_indicator,
-            "exit": exit_indicator,
-            "parameters": {
-                "lookback": random.randint(5, 50),
-                "threshold": random.uniform(0.5, 2.5)
-            }
-        }
-
-        return strategy
-
-    def discover(self, count=5):
+        strategies = self.strategy_registry.get_all()
 
         discovered = []
 
-        for _ in range(count):
+        # registry may return dict or list
+        if isinstance(strategies, dict):
+            iterable = strategies.items()
+        else:
+            iterable = [(s.get("id", "unknown"), s) for s in strategies]
 
-            strategy = self.generate_strategy()
+        for strategy_id, entry in iterable:
 
-            self.strategy_registry.register(strategy)
+            strategy = entry.get("strategy") if isinstance(entry, dict) else entry
 
-            discovered.append(strategy)
+            if strategy is None:
+                continue
+
+            try:
+                score = getattr(strategy, "score", None)
+                discovered.append((strategy_id, score))
+            except Exception:
+                continue
+
+        print(f"AlphaDiscovery: evaluated {len(discovered)} strategies")
 
         return discovered
 
-    # Unified interface helper
-    def run(self, count=5):
-        """
-        Generic entry point expected by orchestration layers.
-        """
-        return self.discover(count=count)
+    def run(self):
+        return self.discover()

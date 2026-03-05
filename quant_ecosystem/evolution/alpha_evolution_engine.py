@@ -1,8 +1,4 @@
 import random
-from typing import List
-
-from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
-from quant_ecosystem.strategies.factory.strategy_factory import StrategyFactory
 
 
 class AlphaEvolutionEngine:
@@ -43,28 +39,21 @@ class AlphaEvolutionEngine:
 
         return children
 
-    def _mutate(self, strategy_entry: BaseStrategy | dict) -> BaseStrategy:
-        """
-        Create a mutated child strategy.
+    def _mutate(self, strategy):
 
-        Mutates only numeric params and delegates instance creation to
-        StrategyFactory. Core logic (class type) is never changed.
-        """
-        if isinstance(strategy_entry, dict):
-            base = strategy_entry.get("strategy")
-        else:
-            base = strategy_entry
+        params = getattr(strategy, "params", {}).copy()
 
-        if base is None:
-            return strategy_entry  # type: ignore[return-value]
+        for k in params:
 
-        if not (hasattr(base, "params") and hasattr(base, "id")):
-            return strategy_entry  # type: ignore[return-value]
+            if isinstance(params[k], (int, float)):
+                params[k] *= random.uniform(0.9, 1.1)
 
-        child = self.factory.mutate(base)
-        child.id = f"{base.id}_mut"
-        child.name = f"{base.name} (mut)"
-        return child
+        new_strategy = type(strategy)()
+
+        new_strategy.params = params
+        new_strategy.name = strategy.name + "_mut"
+
+        return new_strategy
 
     def _get_strategies(self) -> List[BaseStrategy | dict]:
         raw = None

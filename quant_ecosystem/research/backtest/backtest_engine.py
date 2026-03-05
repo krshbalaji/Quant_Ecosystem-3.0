@@ -113,3 +113,53 @@ class BacktestEngine:
             dd = ((peak - equity) / peak) * 100.0 if peak > 0 else 0.0
             max_dd = max(max_dd, dd)
         return max_dd
+
+import numpy as np
+
+
+class AlphaBacktestEngine:
+
+    def __init__(self, market_data_engine):
+        self.market_data_engine = market_data_engine
+
+    def backtest(self, strategy, symbol):
+
+        data = self.market_data_engine.get_close_series(symbol)
+
+        if len(data) < 100:
+            return None
+
+        pnl = []
+        position = 0
+        entry = None
+
+        for i in range(50, len(data)):
+
+            snapshot = {
+                "close": data[:i]
+            }
+
+            signal = strategy.generate_signal(snapshot)
+
+            price = data[i]
+
+            if signal == "BUY" and position == 0:
+                position = 1
+                entry = price
+
+            elif signal == "SELL" and position == 1:
+                pnl.append(price - entry)
+                position = 0
+
+        if len(pnl) == 0:
+            return None
+
+        pnl = np.array(pnl)
+
+        sharpe = pnl.mean() / (pnl.std() + 1e-6)
+
+        return {
+            "trades": len(pnl),
+            "pnl": pnl.sum(),
+            "sharpe": sharpe
+        }
