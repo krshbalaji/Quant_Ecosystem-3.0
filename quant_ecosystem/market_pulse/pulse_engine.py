@@ -143,3 +143,45 @@ class MarketPulseEngine:
             return False
         return False
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class PulseEngine:
+    """Minimal SystemFactory entry-point for market pulse monitoring.
+
+    Delegates to :class:`MarketPulseEngine` when available.
+    """
+
+    _NEUTRAL_STATE = {
+        "volatility": "NORMAL",
+        "trend": "NEUTRAL",
+        "liquidity": "NORMAL",
+        "breadth": "NEUTRAL",
+        "regime": "UNKNOWN",
+    }
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = MarketPulseEngine()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("PulseEngine: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("PulseEngine initialized")
+
+    def market_state(self, symbols: list | None = None) -> dict:
+        """Return the current composite market state.
+
+        Returns a dict with keys ``volatility``, ``trend``, ``liquidity``,
+        ``breadth``, and ``regime``; falls back to neutral values on error.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.get_pulse_state(symbols=symbols or {}) or self._NEUTRAL_STATE
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("PulseEngine.market_state: delegate error (%s)", exc)
+        return dict(self._NEUTRAL_STATE)

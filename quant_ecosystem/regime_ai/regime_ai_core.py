@@ -137,3 +137,41 @@ class AdaptiveRegimeEngine:
             merged[key] = merged[key][-200:]
         return merged
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class RegimeAICore:
+    """Minimal SystemFactory entry-point for regime detection.
+
+    Delegates to :class:`AdaptiveRegimeEngine` when available; falls
+    back to returning ``"RANGE_BOUND"`` so the system always has a regime.
+    """
+
+    _FALLBACK_REGIME = "RANGE_BOUND"
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = AdaptiveRegimeEngine()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("RegimeAICore: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("RegimeAICore initialized")
+
+    def detect_regime(self, market_data: dict | None = None) -> str:
+        """Detect the current market regime from *market_data*.
+
+        Returns a regime string (e.g. ``"TRENDING_UP"``, ``"RANGE_BOUND"``).
+        Never raises; returns the fallback regime on any failure.
+        """
+        if self._delegate is not None:
+            try:
+                result = self._delegate.detect(market_data=market_data or {})
+                return result.get("regime", self._FALLBACK_REGIME) if isinstance(result, dict) else str(result)
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("RegimeAICore.detect_regime: delegate error (%s)", exc)
+        return self._FALLBACK_REGIME

@@ -186,3 +186,43 @@ class GlobalAlphaScanner:
                 brain.promote_new_strategies(candidates)
             except Exception:
                 pass
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class AlphaScannerCore:
+    """Minimal SystemFactory entry-point for the alpha scanner.
+
+    Delegates to :class:`GlobalAlphaScanner` when available.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = GlobalAlphaScanner()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("AlphaScannerCore: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("AlphaScannerCore initialized")
+
+    def scan(self, universe: list | None = None, regime: str = "UNKNOWN") -> list:
+        """Scan *universe* for alpha opportunities in *regime*.
+
+        Returns a list of opportunity dicts; returns ``[]`` on error.
+        """
+        if self._delegate is not None:
+            try:
+                import asyncio as _asyncio
+                loop = _asyncio.new_event_loop()
+                try:
+                    return loop.run_until_complete(
+                        self._delegate.scan_universe(symbols=universe or [], regime=regime)
+                    ) or []
+                finally:
+                    loop.close()
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("AlphaScannerCore.scan: delegate error (%s)", exc)
+        return []

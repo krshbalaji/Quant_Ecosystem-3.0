@@ -96,3 +96,42 @@ class AlphaFactoryController:
         }
         return dict(self.last_report)
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class FactoryController:
+    """Lightweight SystemFactory entry-point for the alpha factory pipeline.
+
+    Wraps :class:`AlphaFactoryController` when its dependencies are
+    available; degrades gracefully to a no-op stub when they are not.
+    All third-party imports are deferred to method calls.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = AlphaFactoryController(
+                genome_library=None,
+                genome_generator=None,
+                genome_evaluator=None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("FactoryController: delegate unavailable (%s) — running as stub", exc)
+        self._log.info("FactoryController initialized")
+
+    def create_alpha(self, idea: dict | None = None) -> dict:
+        """Generate a new alpha genome from *idea* seed (or random).
+
+        Returns a genome dict; falls back to an empty stub on any error.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.run_research_cycle() or {}
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("FactoryController.create_alpha: delegate error (%s)", exc)
+        return {"status": "stub", "genome_id": None, "idea": idea}

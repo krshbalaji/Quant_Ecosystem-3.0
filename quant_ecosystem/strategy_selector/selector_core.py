@@ -173,3 +173,37 @@ class AutonomousStrategySelector:
         if category in {"scanner", "scanner_feed"}:
             return "scanner_category"
         return None
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class SelectorCore:
+    """Minimal SystemFactory entry-point for strategy selection.
+
+    Delegates to :class:`AutonomousStrategySelector` when available;
+    otherwise returns the full input list unchanged.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = AutonomousStrategySelector()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("SelectorCore: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("SelectorCore initialized")
+
+    def select_strategies(self, strategies: list, regime: str = "UNKNOWN") -> list:
+        """Return a filtered/ranked subset of *strategies* for *regime*.
+
+        Falls back to returning all strategies on any error.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.select(strategies=strategies, regime=regime)
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("SelectorCore.select_strategies: delegate error (%s)", exc)
+        return list(strategies)

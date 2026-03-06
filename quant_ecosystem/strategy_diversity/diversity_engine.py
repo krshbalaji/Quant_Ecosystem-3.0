@@ -262,3 +262,40 @@ class StrategyDiversityEngine:
             for sid, weight in allocations.items()
         }
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class DiversityEngine:
+    """Minimal SystemFactory entry-point for diversity enforcement.
+
+    Delegates to :class:`StrategyDiversityEngine` when available.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = StrategyDiversityEngine()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("DiversityEngine: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("DiversityEngine initialized")
+
+    def filter_correlated(self, strategies: list, returns: dict | None = None) -> list:
+        """Remove correlated strategies from *strategies*.
+
+        *returns* is an optional ``{strategy_id: [float]}`` mapping of
+        return series used to compute pairwise correlations.
+        Falls back to returning all strategies when the delegate fails.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.enforce_diversity(
+                    strategies=strategies, returns=returns or {}
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("DiversityEngine.filter_correlated: delegate error (%s)", exc)
+        return list(strategies)

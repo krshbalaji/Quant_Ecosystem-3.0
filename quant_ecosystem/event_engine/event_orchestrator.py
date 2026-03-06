@@ -63,3 +63,48 @@ class EventDrivenOrchestrator:
     def stats(self) -> Dict:
         return dict(self.last_stats)
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class EventOrchestrator:
+    """Minimal SystemFactory entry-point for event orchestration.
+
+    Delegates to :class:`EventDrivenOrchestrator` when available.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = EventDrivenOrchestrator()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("EventOrchestrator: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("EventOrchestrator initialized")
+
+    def process_event(self, event: dict | None = None) -> dict:
+        """Route and handle *event* through the event bus pipeline.
+
+        Returns a result dict with ``status`` and optional metadata.
+        Never raises.
+        """
+        event = event or {}
+        if self._delegate is not None:
+            try:
+                import asyncio as _asyncio
+                loop = _asyncio.new_event_loop()
+                try:
+                    result = loop.run_until_complete(
+                        self._delegate.dispatch(event)
+                    )
+                    return result or {"status": "dispatched", "event": event}
+                finally:
+                    loop.close()
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("EventOrchestrator.process_event: delegate error (%s)", exc)
+        event_type = event.get("type", "UNKNOWN")
+        self._log.debug("EventOrchestrator.process_event: stub handling %s", event_type)
+        return {"status": "stub_handled", "event_type": event_type}

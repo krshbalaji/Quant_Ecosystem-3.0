@@ -184,3 +184,44 @@ class StrategySurvivalEngine:
             out.append(payload)
         return out
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class SurvivalEngine:
+    """Minimal SystemFactory entry-point for strategy survival.
+
+    Delegates to :class:`StrategySurvivalEngine` when available.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = StrategySurvivalEngine()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("SurvivalEngine: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("SurvivalEngine initialized")
+
+    def remove_weak(self, strategies: list, threshold: float = 0.0) -> list:
+        """Retire strategies whose score falls below *threshold*.
+
+        Returns the survivors; falls back to the full list on error.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.run_survival_cycle(
+                    strategies=strategies, min_score=threshold
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("SurvivalEngine.remove_weak: delegate error (%s)", exc)
+        # Stub: keep strategies with score > threshold if available
+        survivors = []
+        for s in strategies:
+            score = s.get("score", 1.0) if isinstance(s, dict) else 1.0
+            if score >= threshold:
+                survivors.append(s)
+        return survivors if survivors else list(strategies)

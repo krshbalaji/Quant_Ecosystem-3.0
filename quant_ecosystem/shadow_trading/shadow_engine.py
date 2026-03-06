@@ -122,3 +122,43 @@ class ShadowTradingEngine:
         }
         return dict(self.last_cycle)
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class ShadowEngine:
+    """Minimal SystemFactory entry-point for shadow trading.
+
+    Delegates to :class:`ShadowTradingEngine` when available.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = ShadowTradingEngine()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("ShadowEngine: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("ShadowEngine initialized")
+
+    def mirror_trades(self, signals: list, market_data: dict | None = None) -> list:
+        """Simulate *signals* in the shadow portfolio.
+
+        Returns a list of shadow execution result dicts.
+        Falls back to empty list on error.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.process_signals(
+                    signals=signals, market_data=market_data or {}
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("ShadowEngine.mirror_trades: delegate error (%s)", exc)
+        results = []
+        for sig in signals:
+            symbol = sig.get("symbol", "UNKNOWN") if isinstance(sig, dict) else str(sig)
+            results.append({"symbol": symbol, "status": "shadow_skipped", "pnl": 0.0})
+        return results

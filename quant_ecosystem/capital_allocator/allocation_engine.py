@@ -132,3 +132,46 @@ class CapitalAllocator:
             layer.bank_engine.registry.upsert(updated)
         layer.bank_engine.registry.save()
 
+
+
+# ---------------------------------------------------------------------------
+# SystemFactory-compatible alias
+# ---------------------------------------------------------------------------
+
+class AllocationEngine:
+    """Minimal SystemFactory entry-point for capital allocation.
+
+    Delegates to :class:`CapitalAllocator` when available; otherwise
+    returns the input strategy list with equal weight.
+    """
+
+    def __init__(self) -> None:
+        import logging as _logging
+        self._log = _logging.getLogger(__name__)
+        self._delegate = None
+        try:
+            self._delegate = CapitalAllocator()
+        except Exception as exc:  # noqa: BLE001
+            self._log.warning("AllocationEngine: delegate unavailable (%s) — stub mode", exc)
+        self._log.info("AllocationEngine initialized")
+
+    def allocate(self, strategies: list, total_capital: float = 0.0) -> list:
+        """Allocate *total_capital* across *strategies*.
+
+        Returns strategies annotated with ``capital_fraction``; on error
+        returns the input list unchanged.
+        """
+        if self._delegate is not None:
+            try:
+                return self._delegate.allocate_capital(
+                    strategies=strategies, total_capital=total_capital
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._log.warning("AllocationEngine.allocate: delegate error (%s)", exc)
+        # Equal-weight stub
+        n = len(strategies)
+        fraction = 1.0 / n if n else 0.0
+        for s in strategies:
+            if isinstance(s, dict):
+                s.setdefault("capital_fraction", fraction)
+        return strategies
