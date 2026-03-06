@@ -12,6 +12,22 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+class AlphaGenomeLibrary:
+    """
+    Stores discovered alpha genomes.
+    """
+
+    def __init__(self):
+        self.genomes = {}
+
+    def store(self, name, genome):
+        self.genomes[name] = genome
+
+    def get(self, name):
+        return self.genomes.get(name)
+
+    def list(self):
+        return list(self.genomes.keys())
 
 class GenomeLibrary:
     """Central registry for alpha genomes.

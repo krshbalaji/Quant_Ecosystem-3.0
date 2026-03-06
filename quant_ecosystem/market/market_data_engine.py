@@ -10,6 +10,20 @@ from quant_ecosystem.market.data_source_router import DataSourceRouter
 
 logger = logging.getLogger(__name__)
 
+class PaperDataFeed:
+    """
+    Simple fallback data feed for PAPER mode.
+    Uses synthetic or router-provided candles.
+    """
+
+    def get_candles(self, symbol, timeframe="1m"):
+        return []
+
+    def get_quote(self, symbol):
+        return {"symbol": symbol, "price": 0.0}
+
+    def subscribe(self, symbol, callback):
+        pass
 
 class MarketDataEngine:
     """
@@ -37,6 +51,7 @@ class MarketDataEngine:
         self.config = config
         self.feed = PaperDataFeed()
         self.broker = broker
+        self.market_data = MarketDataEngine(config=None, universe=None)
         self.universe_manager = universe_manager
         self.symbols = symbols or ["NSE:NIFTY50-INDEX"]
         self.timeframe = timeframe
