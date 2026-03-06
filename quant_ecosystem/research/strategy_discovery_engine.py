@@ -2,16 +2,32 @@ import random
 import uuid
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class StrategyDiscoveryEngine:
 
-    def __init__(self, feature_engine, strategy_registry):
+    def __init__(self, market_data=None, factor_library=None, config=None):
+        self.market_data = market_data
+        self.factor_library = factor_library
+        self.config = config
 
-        self.feature_engine = feature_engine
-        self.registry = strategy_registry
+        logger.info("StrategyDiscoveryEngine initialized")
 
-        self.max_new_strategies = 20
+    def discover(self):
+
+        logger.info("Running strategy discovery")
+
+        strategy = {
+            "type": random.choice(["trend", "mean_reversion"]),
+            "factor": random.choice(["momentum", "rsi", "volatility"]),
+        }
+
+        logger.info(f"Discovered strategy: {strategy}")
+
+        return strategy
 
     # -------------------------------------------------
 

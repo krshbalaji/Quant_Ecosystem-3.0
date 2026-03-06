@@ -1,39 +1,81 @@
+"""
+Capital Intelligence Engine
+===========================
+
+Responsible for:
+- Capital allocation intelligence
+- Portfolio capital efficiency
+- Strategy capital scoring
+- Risk adjusted allocation
+
+Future Extensions
+-----------------
+Kelly optimization
+Dynamic capital rotation
+Strategy capital reinforcement learning
+"""
+
+from __future__ import annotations
+
 import logging
-logger = logging.getLogger(name)
+from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
+
 
 class CapitalIntelligenceEngine:
-    """
-    Manages capital allocation across strategies.
-    """
-    def __init__(self, initial_capital=1000000):
 
-        self.initial_capital = initial_capital
-        self.available_capital = initial_capital
-        self.strategy_allocations = {}
+    def __init__(self, config: Any):
+        self.config = config
+        self.total_capital = getattr(config, "initial_capital", 1000000)
 
-        logger.info("Capital Intelligence Engine initialized")
+        logger.info("CapitalIntelligenceEngine initialized.")
 
-    def allocate(self, strategy_name, capital):
+    def evaluate_strategy_capital(self, strategy_metrics: Dict) -> float:
+        """
+        Calculate capital allocation weight for strategy.
+        """
 
-        if capital > self.available_capital:
-            raise Exception("Not enough capital")
+        if not strategy_metrics:
+            return 0.0
 
-        self.strategy_allocations[strategy_name] = capital
-        self.available_capital -= capital
+        sharpe = strategy_metrics.get("sharpe", 0)
+        winrate = strategy_metrics.get("winrate", 0)
+        drawdown = strategy_metrics.get("max_drawdown", 1)
 
-    def release(self, strategy_name):
+        score = (sharpe * 0.5) + (winrate * 0.3) - (drawdown * 0.2)
 
-        capital = self.strategy_allocations.get(strategy_name, 0)
+        return max(score, 0)
 
-        self.available_capital += capital
+    def allocate(self, strategies: Dict[str, Dict]) -> Dict[str, float]:
+        """
+        Allocate capital across strategies.
+        """
 
-        if strategy_name in self.strategy_allocations:
-            del self.strategy_allocations[strategy_name]
+        scores = {}
+        total_score = 0
 
-    def summary(self):
+        for name, metrics in strategies.items():
+            score = self.evaluate_strategy_capital(metrics)
+            scores[name] = score
+            total_score += score
+
+        if total_score == 0:
+            return {}
+
+        allocation = {}
+
+        for name, score in scores.items():
+            weight = score / total_score
+            allocation[name] = weight * self.total_capital
+
+        return allocation
+
+    def capital_snapshot(self) -> Dict:
+        """
+        Return capital state snapshot.
+        """
 
         return {
-            "initial_capital": self.initial_capital,
-            "available_capital": self.available_capital,
-            "allocations": self.strategy_allocations
+            "total_capital": self.total_capital
         }

@@ -106,7 +106,10 @@ class MasterOrchestrator:
 
         if hasattr(self.system, "strategy_discovery"):
 
-            self.system.strategy_discovery.discover()
+            if self.system.strategy_discovery:
+                self.system.strategy_discovery.discover()
+            else:
+                logger.warning("StrategyDiscoveryEngine not available — skipping discovery.")
             
         if hasattr(self.system, "capital_intelligence") and self.system.capital_intelligence:
             # Capital allocation intelligence layer

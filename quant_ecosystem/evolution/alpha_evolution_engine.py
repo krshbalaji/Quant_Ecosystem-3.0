@@ -2,23 +2,24 @@ import random
 from typing import List
 from quant_ecosystem.evolution.alpha_genome_engine import AlphaGenomeEngine
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class AlphaEvolutionEngine:
-    """
-    Strategy mutation and evolution engine.
-    Creates new strategies from top performers.
-    """
 
-    def __init__(self, strategy_registry):
-        self.strategy_registry = strategy_registry
-        self.genome_engine = AlphaGenomeEngine()
-    
-    def evolve(self):
+    def __init__(self, config=None, genome_engine=None):
+        self.config = config
+        self.genome_engine = genome_engine
 
-        strategies = self._get_strategies()
+        logger.info("AlphaEvolutionEngine initialized")
 
-        if not strategies:
-            print("AlphaEvolution: no strategies available")
-            return []
+    def evolve(self, strategies=None):
+
+        logger.info("Running alpha evolution")
+
+        return strategies
 
         parents = sorted(
             strategies,

@@ -23,6 +23,7 @@ class MarketDataEngine:
 
     def __init__(
         self,
+        config=None,
         broker=None,
         symbols=None,
         universe_manager=None,
@@ -33,6 +34,8 @@ class MarketDataEngine:
         # synthetic mode, generating internal OHLCV series. When a
         # broker is provided, it will be used for live candles if
         # the broker exposes a compatible API.
+        self.config = config
+        self.feed = None
         self.broker = broker
         self.universe_manager = universe_manager
         self.symbols = symbols or ["NSE:NIFTY50-INDEX"]

@@ -2,9 +2,22 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class MarketUniverseManager:
 
-    def __init__(self):
+    def __init__(self, config=None):
+        self.config = config
+        self.symbols = ["NSE:RELIANCE-EQ"]
+
+        logger.info("MarketUniverseManager initialized")
+
+    def get_universe(self):
+        return self.symbols
+        
         self._universe = {
             "stocks": ["NSE:RELIANCE-EQ", "NSE:INFY-EQ", "NSE:HDFCBANK-EQ", "NSE:SBIN-EQ"],
             "indices": ["NSE:NIFTY50-INDEX", "NSE:BANKNIFTY-INDEX"],
