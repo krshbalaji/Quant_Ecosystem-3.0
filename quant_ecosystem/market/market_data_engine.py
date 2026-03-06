@@ -35,7 +35,7 @@ class MarketDataEngine:
         # broker is provided, it will be used for live candles if
         # the broker exposes a compatible API.
         self.config = config
-        self.feed = None
+        self.feed = PaperDataFeed()
         self.broker = broker
         self.universe_manager = universe_manager
         self.symbols = symbols or ["NSE:NIFTY50-INDEX"]
