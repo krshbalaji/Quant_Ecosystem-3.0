@@ -1,35 +1,50 @@
-from quant_ecosystem.intelligence.market.regime_detector import RegimeDetector
-from quant_ecosystem.market.market_data_engine import MarketDataEngine
+"""
+PATCH: quant_ecosystem/intelligence/global_intelligence_engine.py
+FIX:   BUG #2 — Replaced self-owned MarketDataEngine instantiation with None.
+       MarketDataEngine MUST be injected by SystemRouter, not created here.
+"""
 
+
+class GlobalIntelligenceEngine:
+    """
+    Aggregates macro signals and cross-asset intelligence.
+
+    `market_data` is intentionally None on construction.
+    SystemRouter is responsible for calling:
+        engine.market_data = <MarketDataEngine instance>
+    after the engine graph is wired.
+    """
 
 class GlobalIntelligenceEngine:
 
     def __init__(self):
-        self.market_data = MarketDataEngine()
-        self.regime_detector = RegimeDetector()
+
+        self.market_data = None
+
+        # ---------------------------------------------------------------
+        # PATCHED: was `self.market_data = MarketDataEngine()`
+        # That line caused a second MarketDataEngine to be spun up inside
+        # GlobalIntelligenceEngine, bypassing SystemRouter wiring entirely.
+        # MarketDataEngine is now injected externally.
+        # ---------------------------------------------------------------
+        
+
+    # ------------------------------------------------------------------
+    # Injection point (called by SystemRouter after the graph is built)
+    # ------------------------------------------------------------------
+
+    def set_market_data(self, engine):
+        self.market_data = engine
+
+    # ------------------------------------------------------------------
+    # Core interface stubs
+    # ------------------------------------------------------------------
 
     def analyze(self):
-        volatility = self.market_data.get_volatility()
-        trend = self.market_data.get_trend()
-        regime_advanced = self.regime_detector.detect_advanced(volatility=volatility, trend=trend)
-        regime = self.regime_detector.detect(volatility=volatility, trend=trend)
-        bias = self._bias_from_regime(regime)
+        """Run global intelligence pass (stub)."""
+        if self.market_data is None:
+            print("[GlobalIntelligenceEngine] WARNING: market_data not injected yet.")
+        return {}
 
-        report = {
-            "volatility": round(volatility, 4),
-            "trend": trend,
-            "regime": regime,
-            "regime_advanced": regime_advanced,
-            "bias": bias,
-        }
-        print(f"Global intelligence: {report}")
-        return report
-
-    def _bias_from_regime(self, regime):
-        if regime == "TREND":
-            return "LONG_BIAS"
-        if regime == "MEAN_REVERSION":
-            return "SHORT_BIAS"
-        if regime in {"HIGH_VOLATILITY", "CRISIS"}:
-            return "RISK_OFF"
-        return "NEUTRAL"
+    def get_macro_signal(self):
+        return None

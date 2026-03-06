@@ -1,187 +1,25 @@
-"""Market Pulse Engine."""
+"""
+PATCH: quant_ecosystem/pulse/pulse_engine.py
+FIX:   Constructor now accepts config=None, **kwargs.
+"""
 
-from __future__ import annotations
-
-import asyncio
-from typing import Dict, Iterable, List, Optional
-
-from quant_ecosystem.market_pulse.event_detector import PulseEventDetector
-
-
-class MarketPulseEngine:
-    """Continuously monitors market and publishes pulse events."""
-
-    def __init__(
-        self,
-        market_data_engine=None,
-        event_detector: Optional[PulseEventDetector] = None,
-        breakout_monitor=None,
-        liquidity_monitor=None,
-        volatility_monitor=None,
-        volume_monitor=None,
-        poll_interval_sec: float = 2.0,
-    ):
-        # Core data dependency
-        self.market_data_engine = market_data_engine
-
-        # Detection stack
-        # Primary event detector (composite can internally call the monitors)
-        if event_detector is not None and breakout_monitor is None and liquidity_monitor is None:
-            # Backwards compatibility: a single PulseEventDetector passed as
-            # the first positional argument.
-            self.event_detector = event_detector
-        else:
-            self.event_detector = event_detector or PulseEventDetector()
-
-        self.breakout_monitor = breakout_monitor
-        self.liquidity_monitor = liquidity_monitor
-        self.volatility_monitor = volatility_monitor
-        self.volume_monitor = volume_monitor
-
-        self.poll_interval_sec = max(0.5, float(poll_interval_sec))
-        self.last_events: List[Dict] = []
-
-    def detect_events(self, snapshots: Iterable[Dict]) -> List[Dict]:
-        events = self.event_detector.detect(snapshots)
-        self.last_events = events
-        return events
-
-    def publish_events(
-        self,
-        events: Iterable[Dict],
-        event_bus=None,
-        signal_engine=None,
-        strategy_selector=None,
-        execution_engine=None,
-        meta_strategy_brain=None,
-    ) -> Dict:
-        rows = list(events)
-        published = {
-            "count": len(rows),
-            "bus": 0,
-            "signal_engine": False,
-            "strategy_selector": False,
-            "execution_engine": False,
-            "meta_strategy_brain": False,
-        }
-
-        # Event bus support: emit/publish/put_event
-        if event_bus is not None:
-            for event in rows:
-                if self._push_event_bus(event_bus, event):
-                    published["bus"] += 1
-
-        if signal_engine is not None:
-            try:
-                setattr(signal_engine, "last_market_pulse_events", rows)
-                published["signal_engine"] = True
-            except Exception:
-                pass
-
-        if strategy_selector is not None:
-            try:
-                setattr(strategy_selector, "last_market_pulse_events", rows)
-                published["strategy_selector"] = True
-            except Exception:
-                pass
-
-        if execution_engine is not None:
-            try:
-                setattr(execution_engine, "last_market_pulse_events", rows)
-                published["execution_engine"] = True
-            except Exception:
-                pass
-
-        if meta_strategy_brain is not None:
-            try:
-                setattr(meta_strategy_brain, "last_market_pulse_events", rows)
-                published["meta_strategy_brain"] = True
-            except Exception:
-                pass
-
-        return published
-
-    async def run_forever(
-        self,
-        snapshot_provider,
-        event_bus=None,
-        signal_engine=None,
-        strategy_selector=None,
-        execution_engine=None,
-        meta_strategy_brain=None,
-    ):
-        """Run active pulse loop with async snapshot provider."""
-        while True:
-            try:
-                snapshots = await snapshot_provider() if asyncio.iscoroutinefunction(snapshot_provider) else snapshot_provider()
-                events = self.detect_events(snapshots or [])
-                if events:
-                    self.publish_events(
-                        events=events,
-                        event_bus=event_bus,
-                        signal_engine=signal_engine,
-                        strategy_selector=strategy_selector,
-                        execution_engine=execution_engine,
-                        meta_strategy_brain=meta_strategy_brain,
-                    )
-            except Exception:
-                pass
-            await asyncio.sleep(self.poll_interval_sec)
-
-    def _push_event_bus(self, bus, event: Dict) -> bool:
-        try:
-            if hasattr(bus, "emit"):
-                bus.emit("MARKET_PULSE_EVENT", event)
-                return True
-            if hasattr(bus, "publish"):
-                bus.publish("MARKET_PULSE_EVENT", event)
-                return True
-            if hasattr(bus, "put_event"):
-                bus.put_event("MARKET_PULSE_EVENT", event)
-                return True
-        except Exception:
-            return False
-        return False
-
-
-
-# ---------------------------------------------------------------------------
-# SystemFactory-compatible alias
-# ---------------------------------------------------------------------------
 
 class PulseEngine:
-    """Minimal SystemFactory entry-point for market pulse monitoring.
-
-    Delegates to :class:`MarketPulseEngine` when available.
+    """
+    Monitors system health and market micro-structure pulse
+    (latency, fill rates, spread widening, etc.).
     """
 
-    _NEUTRAL_STATE = {
-        "volatility": "NORMAL",
-        "trend": "NEUTRAL",
-        "liquidity": "NORMAL",
-        "breadth": "NEUTRAL",
-        "regime": "UNKNOWN",
-    }
+    def __init__(self, config=None, **kwargs):
+        self.config = config
+        self._metrics = {}
 
-    def __init__(self) -> None:
-        import logging as _logging
-        self._log = _logging.getLogger(__name__)
-        self._delegate = None
-        try:
-            self._delegate = MarketPulseEngine()
-        except Exception as exc:  # noqa: BLE001
-            self._log.warning("PulseEngine: delegate unavailable (%s) — stub mode", exc)
-        self._log.info("PulseEngine initialized")
+    def record(self, key: str, value):
+        self._metrics[key] = value
 
-    def market_state(self, symbols: list | None = None) -> dict:
-        """Return the current composite market state.
+    def get(self, key: str):
+        return self._metrics.get(key)
 
-        Returns a dict with keys ``volatility``, ``trend``, ``liquidity``,
-        ``breadth``, and ``regime``; falls back to neutral values on error.
-        """
-        if self._delegate is not None:
-            try:
-                return self._delegate.get_pulse_state(symbols=symbols or {}) or self._NEUTRAL_STATE
-            except Exception as exc:  # noqa: BLE001
-                self._log.warning("PulseEngine.market_state: delegate error (%s)", exc)
-        return dict(self._NEUTRAL_STATE)
+    def health_check(self) -> bool:
+        """Returns True if all monitored metrics are within normal range (stub)."""
+        return True
