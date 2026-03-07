@@ -69,11 +69,9 @@ class SlippageModel:
 class FixedBpsSlippage(SlippageModel):
     """Constant slippage as a fraction of price (basis points)."""
 
-<<<<<<< Updated upstream
-    def __init__(self, bps: float = 5.0) -> None:
-=======
+
     def __init__(self, bps: float = 5.0, **kwargs) -> None:
->>>>>>> Stashed changes
+
         self.factor = bps / 10_000.0
 
     def apply(self, price: float, side: str, qty: float, volume: float = 0.0) -> float:
@@ -87,11 +85,9 @@ class SqrtImpactSlippage(SlippageModel):
     Slippage ∝ σ × sqrt(qty / volume) where σ is an impact coefficient.
     """
 
-<<<<<<< Updated upstream
-    def __init__(self, impact_coeff: float = 0.1, min_bps: float = 2.0) -> None:
-=======
+
     def __init__(self, impact_coeff: float = 0.1, min_bps: float = 2.0, **kwargs) -> None:
->>>>>>> Stashed changes
+
         self.impact_coeff = impact_coeff
         self.min_factor   = min_bps / 10_000.0
 
@@ -120,11 +116,9 @@ class CommissionModel:
 class FlatCommission(CommissionModel):
     """Fixed amount per trade (e.g. ₹20 per order for Zerodha intraday)."""
 
-<<<<<<< Updated upstream
-    def __init__(self, flat: float = 20.0) -> None:
-=======
+
     def __init__(self, flat: float = 20.0, **kwargs) -> None:
->>>>>>> Stashed changes
+
         self.flat = flat
 
     def calculate(self, price: float, qty: float, side: str) -> float:
@@ -134,11 +128,9 @@ class FlatCommission(CommissionModel):
 class PercentCommission(CommissionModel):
     """Percentage of notional value (e.g. 0.03% for delivery equity)."""
 
-<<<<<<< Updated upstream
-    def __init__(self, pct: float = 0.03) -> None:
-=======
+
     def __init__(self, pct: float = 0.03, **kwargs) -> None:
->>>>>>> Stashed changes
+
         self.factor = pct / 100.0
 
     def calculate(self, price: float, qty: float, side: str) -> float:
@@ -160,11 +152,9 @@ class TieredCommission(CommissionModel):
         ])
     """
 
-<<<<<<< Updated upstream
-    def __init__(self, tiers: Optional[List[Tuple[float, float]]] = None) -> None:
-=======
+
     def __init__(self, tiers: Optional[List[Tuple[float, float]]] = None, **kwargs) -> None:
->>>>>>> Stashed changes
+
         self.tiers = sorted(tiers or [(math.inf, 0.03)], key=lambda t: t[0])
 
     def calculate(self, price: float, qty: float, side: str) -> float:
@@ -399,11 +389,9 @@ class BacktestEngine:
         commission_model: Optional[CommissionModel] = None,
         initial_capital: float = 100_000.0,
         periods_per_year: int = 252,
-<<<<<<< Updated upstream
-        risk_free_rate: float = 0.0,
-=======
+
         risk_free_rate: float = 0.0, **kwargs
->>>>>>> Stashed changes
+
     ) -> None:
         self.slippage_model   = slippage_model  or FixedBpsSlippage(bps=5.0)
         self.commission_model = commission_model or FlatCommission(flat=20.0)
@@ -915,11 +903,9 @@ class AlphaBacktestEngine:
     compatibility with callers in the research pipeline.
     """
 
-<<<<<<< Updated upstream
-    def __init__(self, market_data_engine) -> None:
-=======
+
     def __init__(self, market_data_engine, **kwargs) -> None:
->>>>>>> Stashed changes
+
         self.market_data_engine = market_data_engine
 
     def backtest(self, strategy, symbol: str) -> Optional[Dict]:

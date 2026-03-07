@@ -1,0 +1,44 @@
+{
+  "timestamp": "20260302_221924",
+  "equity": 100000.0,
+  "peak_equity": 100000.0,
+  "drawdown_pct": 0.0,
+  "cash_balance": 100000.0,
+  "realized_pnl": 0.0,
+  "unrealized_pnl": 0.0,
+  "fees_paid": 0.0,
+  "turnover": 0.0,
+  "trades_count": 0,
+  "realized_stats": {
+    "win_rate_pct": 0.0,
+    "expectancy_abs": 0.0,
+    "expectancy_bps": 0.0,
+    "profit_factor": 0.0,
+    "warnings": []
+  },
+  "intelligence": {
+    "volatility": 0.1608,
+    "trend": 1,
+    "regime": "BULL",
+    "bias": "LONG_BIAS"
+  },
+  "strategy_reports": [
+    {
+      "id": "core_momentum_v1",
+      "name": "core_momentum_v1",
+      "metrics": {
+        "win_rate": 47.895,
+        "expectancy": 0.02854,
+        "max_dd": 6.339,
+        "profit_factor": 1.08
+      },
+      "score": 17.832,
+      "stage": "REJECTED"
+    }
+  ],
+  "adaptation": {
+    "action": "HOLD",
+    "new_trade_risk_pct": 10.0,
+    "reason": "No trades in session."
+  }
+}
