@@ -443,9 +443,14 @@ class TelegramController:
                 url,
                 json=payload if use_json else None,
                 data=None if use_json else payload,
-                timeout=5,
+                timeout=(5, 15)  # connect timeout, read timeout
             )
-            data = response.json()
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Telegram API error: {e}")
+                return False, None
+            
+                data = response.json()
             if not data.get("ok"):
                 description = str(data.get("description", "unknown error"))
                 if "message is not modified" in description.lower():
@@ -467,7 +472,7 @@ class TelegramController:
             "allowed_updates": ["message", "callback_query"],
         }
         try:
-            response = requests.get(url, params=params, timeout=3)
+            response = requests.get(url, params=params, timeout=10)
             data = response.json()
         except (requests.RequestException, ValueError):
             return []

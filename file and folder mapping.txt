@@ -1,0 +1,19 @@
+﻿Claude's      Available             File Name 
+ Folder         Folder
+market	      market	            market_data_engine.py
+intelligence  intelligence	    global_intelligence_engine.py
+strategy      strategies 	    live_strategy_engine.py
+strategy      strategies    	    strategy_bank_layer.py
+strategy      strategies   	    selector_core.py
+allocation    capital_allocator     allocation_engine.py
+allocation    strategy_diversity    diversity_engine.py
+survival      strategy_survival     survival_engine.py
+alpha	      alpha_scanner	    alpha_scanner_core.py
+shadow	      shadow_trading        shadow_engine.py
+controller    autonomous_controller autonomous_controller.py
+regime	      regime_ai             regime_ai_core.py
+events	      event_signal_engine   event_driven_signal_engine.py
+pulse	      market_pulse          pulse_engine.py
+orchestration evet_engine           event_orchestrator.py
+governor      safety_governer       governor_core.py
+telegram      control              telegram_control_center.py

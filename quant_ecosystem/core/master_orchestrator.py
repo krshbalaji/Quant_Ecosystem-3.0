@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 import time
 
-from quant_ecosystem.control.telegram_control_center import TelegramControlCenter
+from quant_ecosystem.control.telegram_control_center2 import TelegramControlCenter
 from quant_ecosystem.core.health.health_check import HealthCheck
 from quant_ecosystem.core.persistence.runtime_store import RuntimeStore
 from quant_ecosystem.core.scheduler import Scheduler
@@ -20,7 +20,7 @@ from quant_ecosystem.strategy_bank.strategy_evaluator import StrategyEvaluator
 
 class MasterOrchestrator:
 
-    def __init__(self, system_or_router, **kwargs):
+    def __init__(self, system_or_router):
         # Support both direct System container or ExecutionRouter with a
         # .system attribute, while always exposing engines via self.system.
         self.system = getattr(system_or_router, "system", system_or_router)
@@ -1424,3 +1424,5 @@ class MasterOrchestrator:
             }
         except Exception as exc:
             return {"error": str(exc)}
+
+router.research_memory.create_snapshot("session_end")

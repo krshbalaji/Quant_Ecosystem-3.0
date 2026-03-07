@@ -5,15 +5,43 @@ from __future__ import annotations
 import copy
 import random
 from datetime import datetime
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 
 class GenomeMutator:
-    """Applies bounded mutations to genome genes."""
+    """Applies bounded mutations to genome genes.
 
-    def __init__(self, mutation_rate: float = 0.25, numeric_jitter_pct: float = 0.20, **kwargs):
-        self.mutation_rate = float(mutation_rate)
+    ResearchMemoryLayer integration
+    --------------------------------
+    Pass research_memory=router.research_memory to record every parent→child
+    mutation in AlphaMemoryStore and StrategyGenealogy.
+    The hook fires *after* the child genome is fully constructed — the core
+    mutation algorithm is unchanged.
+    """
+
+    def __init__(
+        self,
+        mutation_rate:      float = 0.25,
+        numeric_jitter_pct: float = 0.20,
+        research_memory            = None,
+        **kwargs,
+    ):
+        self.mutation_rate      = float(mutation_rate)
         self.numeric_jitter_pct = float(numeric_jitter_pct)
+        self._bridge = None
+        if research_memory is not None:
+            self._wire_bridge(research_memory)
+
+    def set_research_memory(self, research_memory) -> None:
+        """Late injection of ResearchMemoryLayer."""
+        self._wire_bridge(research_memory)
+
+    def _wire_bridge(self, rm) -> None:
+        try:
+            from quant_ecosystem.alpha_genome._memory_bridge import GenomeMemoryBridge
+            self._bridge = GenomeMemoryBridge(research_memory=rm)
+        except Exception:
+            pass
 
     def mutate(self, genome: Dict, seed: int | None = None) -> Dict:
         rng = random.Random(seed)
@@ -34,6 +62,15 @@ class GenomeMutator:
         child["genome_id"] = f"{base_id}_m{rng.randint(1000, 9999)}"
         child["metadata"]["mutation_origin"] = str(genome.get("genome_id", "unknown"))
         child["metadata"]["mutated_at"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # --- ResearchMemoryLayer hook ---
+        if self._bridge:
+            self._bridge.record_mutation(
+                parent = genome,
+                child  = child,
+                ops    = ["gene_mutation"],
+            )
+
         return child
 
     def _mutate_dict(self, data: Dict, rng: random.Random) -> Tuple[Dict, int]:

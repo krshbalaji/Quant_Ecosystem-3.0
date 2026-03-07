@@ -4,38 +4,82 @@ from __future__ import annotations
 
 import random
 from datetime import datetime
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 from quant_ecosystem.alpha_genome.genome_crossbreeder import GenomeCrossbreeder
 from quant_ecosystem.alpha_genome.genome_mutator import GenomeMutator
 
 
 class GenomeGenerator:
-    """Generates candidate genomes from multiple sources."""
+    """Generates candidate genomes from multiple sources.
+
+    ResearchMemoryLayer integration
+    --------------------------------
+    Pass research_memory=router.research_memory to record every generated
+    genome in the persistent alpha memory and genealogy systems.
+    Pass genome_library=lib to auto-store GenomeRecords on generation.
+    Both are optional; omitting them has no effect on the algorithm.
+    """
 
     def __init__(
         self,
-        mutator: GenomeMutator | None = None,
-        crossbreeder: GenomeCrossbreeder | None = None, **kwargs
+        mutator:         GenomeMutator | None = None,
+        crossbreeder:    GenomeCrossbreeder | None = None,
+        research_memory  = None,
+        genome_library   = None,
+        **kwargs,
     ):
-        self.mutator = mutator or GenomeMutator()
+        self.mutator      = mutator      or GenomeMutator()
         self.crossbreeder = crossbreeder or GenomeCrossbreeder()
+        self._library     = genome_library
 
-    def generate_random(self, count: int = 10, seed: int | None = None) -> List[Dict]:
+        # Wire memory bridge
+        self._bridge = None
+        if research_memory is not None:
+            try:
+                from quant_ecosystem.alpha_genome._memory_bridge import GenomeMemoryBridge
+                self._bridge = GenomeMemoryBridge(research_memory=research_memory)
+            except Exception:
+                pass
+
+    def set_research_memory(self, research_memory, genome_library=None) -> None:
+        """Late injection of ResearchMemoryLayer (called post-boot)."""
+        try:
+            from quant_ecosystem.alpha_genome._memory_bridge import GenomeMemoryBridge
+            self._bridge = GenomeMemoryBridge(research_memory=research_memory)
+        except Exception:
+            pass
+        if genome_library is not None:
+            self._library = genome_library
+
+    def generate_random(self, count: int = 10, seed: int | None = None, regime: str = "all") -> List[Dict]:
         rng = random.Random(seed)
         out = []
         for _ in range(max(1, int(count))):
-            out.append(self._random_genome(rng))
+            genome = self._random_genome(rng)
+            out.append(genome)
+            # Persist seed genome
+            if self._bridge:
+                self._bridge.record_seed(genome, regime=regime)
+            if self._library:
+                from quant_ecosystem.alpha_genome.genome_library import GenomeRecord
+                self._library.store_record(GenomeRecord.from_genome_dict(genome))
         return out
 
-    def generate_from_mutation(self, base_genomes: Iterable[Dict], variants_per_base: int = 3) -> List[Dict]:
+    def generate_from_mutation(self, base_genomes: Iterable[Dict], variants_per_base: int = 3, regime: str = "all") -> List[Dict]:
         out: List[Dict] = []
         for genome in list(base_genomes or []):
             for _ in range(max(1, int(variants_per_base))):
-                out.append(self.mutator.mutate(genome))
+                child = self.mutator.mutate(genome)
+                out.append(child)
+                # Genealogy + alpha store recorded inside GenomeMutator hook;
+                # also store in library
+                if self._library:
+                    from quant_ecosystem.alpha_genome.genome_library import GenomeRecord
+                    self._library.store_record(GenomeRecord.from_genome_dict(child))
         return out
 
-    def generate_from_crossbreeding(self, parent_genomes: Iterable[Dict], children_count: int = 10) -> List[Dict]:
+    def generate_from_crossbreeding(self, parent_genomes: Iterable[Dict], children_count: int = 10, regime: str = "all") -> List[Dict]:
         parents = [dict(item) for item in list(parent_genomes or []) if item]
         if len(parents) < 2:
             return []
@@ -45,6 +89,11 @@ class GenomeGenerator:
             a, b = rng.sample(parents, 2)
             child = self.crossbreeder.crossbreed(a, b)
             out.append(child)
+            # Genealogy + alpha store recorded inside GenomeCrossbreeder hook;
+            # also store in library
+            if self._library:
+                from quant_ecosystem.alpha_genome.genome_library import GenomeRecord
+                self._library.store_record(GenomeRecord.from_genome_dict(child))
         return out
 
     def _random_genome(self, rng: random.Random) -> Dict:

@@ -1,10 +1,7 @@
-"""
-Quant Ecosystem 3.0 — Main Boot Entry
-Institutional Boot Loader
-"""
-
 import logging
 import sys
+from dotenv import load_dotenv
+import os
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,23 +12,23 @@ logger = logging.getLogger("main")
 
 
 class Config:
-    """
-    Minimal runtime config container.
-    Later this will load from .env / config.yaml.
-    """
+
     def __init__(self):
+
+        load_dotenv()
 
         self.mode = "PAPER"
         self.symbols = ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ", "NSE:TCS-EQ"]
 
-        # risk defaults
         self.max_daily_loss_pct = 5
 
-        # telegram
-        self.telegram_token = None
-        self.telegram_chat_id = None
+        self.telegram_token = os.getenv("TELEGRAM_TOKEN")
+        self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+    
+    
 def main():
 
     config = Config()
@@ -46,22 +43,40 @@ def main():
 
         router = factory.build()
 
-    except Exception as e:
+    except Exception:
 
         logger.exception("System boot failed")
         sys.exit(1)
+
 
     # Telegram boot notification
     try:
 
         if router.telegram:
-            router.telegram.send("🚀 Quant Ecosystem boot completed")
+            router.telegram.send_message("🚀 Quant Ecosystem boot completed")
+            router.telegram.send_message("Quant Ecosystem boot test message")
 
     except Exception:
         pass
 
+
     print("Boot completed.")
 
+    if hasattr(router, "strategy_discovery_engine"):
+        import threading
+
+        threading.Thread(
+            target=router.strategy_discovery_engine.start,
+            daemon=True
+        ).start()
+        
+    # start telegram command loop
+    import time
+
+    if router.telegram:
+        while True:
+            router.telegram.consume_webhook_events()
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()
