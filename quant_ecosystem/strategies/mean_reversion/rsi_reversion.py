@@ -12,7 +12,7 @@ class RSIMeanReversionStrategy(BaseStrategy):
     RSI-based mean reversion strategy.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "rsi_length": 14,
             "oversold": 30.0,

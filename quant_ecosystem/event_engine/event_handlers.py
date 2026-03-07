@@ -16,7 +16,7 @@ class EventHandlers:
         alpha_scanner=None,
         strategy_lab_controller=None,
         execution_engine=None,
-        meta_strategy_brain=None,
+        meta_strategy_brain=None, **kwargs
     ):
         self.router = router
         self.strategy_selector = strategy_selector

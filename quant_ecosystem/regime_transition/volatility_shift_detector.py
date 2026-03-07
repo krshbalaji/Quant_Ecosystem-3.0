@@ -12,7 +12,7 @@ class VolatilityShiftDetector:
         self,
         acceleration_threshold: float = 0.12,
         atr_spike_threshold: float = 1.25,
-        range_expansion_threshold: float = 1.20,
+        range_expansion_threshold: float = 1.20, **kwargs
     ):
         self.acceleration_threshold = max(0.0, float(acceleration_threshold))
         self.atr_spike_threshold = max(1.0, float(atr_spike_threshold))

@@ -11,7 +11,7 @@ from quant_ecosystem.regime_ai.feature_engineer import FeatureEngineer
 class RegimeDatasetBuilder:
     """Creates labeled regime dataset from historical snapshots."""
 
-    def __init__(self, feature_engineer: FeatureEngineer | None = None):
+    def __init__(self, feature_engineer: FeatureEngineer | None = None, **kwargs):
         self.feature_engineer = feature_engineer or FeatureEngineer()
 
     def build_dataset(self, historical_rows: Iterable[Dict]) -> List[Dict]:

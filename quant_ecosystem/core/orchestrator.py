@@ -6,7 +6,7 @@ from quant_ecosystem.core.system_factory import build_router
 
 class Orchestrator:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.router = build_router()
         self.master = MasterOrchestrator()
 

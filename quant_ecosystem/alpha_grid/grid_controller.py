@@ -17,7 +17,7 @@ class AlphaGridController:
         self,
         task_queue: GridTaskQueue | None = None,
         result_aggregator: ResultAggregator | None = None,
-        max_parallel_dispatch: int = 64,
+        max_parallel_dispatch: int = 64, **kwargs
     ):
         self.task_queue = task_queue or GridTaskQueue()
         self.result_aggregator = result_aggregator or ResultAggregator()

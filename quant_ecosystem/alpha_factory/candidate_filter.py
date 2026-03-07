@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List
 class CandidateFilter:
     """Applies minimum Sharpe / max drawdown / min trade-count gates."""
 
-    def __init__(self, min_sharpe: float = 1.0, max_drawdown: float = 15.0, min_trade_count: int = 30):
+    def __init__(self, min_sharpe: float = 1.0, max_drawdown: float = 15.0, min_trade_count: int = 30, **kwargs):
         self.min_sharpe = float(min_sharpe)
         self.max_drawdown = float(max_drawdown)
         self.min_trade_count = int(min_trade_count)

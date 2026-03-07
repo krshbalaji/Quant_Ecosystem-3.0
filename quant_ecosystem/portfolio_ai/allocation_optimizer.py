@@ -10,7 +10,7 @@ from quant_ecosystem.portfolio_ai.correlation_analyzer import CorrelationAnalyze
 class AllocationOptimizer:
     """Computes risk-adjusted optimized allocation weights."""
 
-    def __init__(self, correlation_analyzer: CorrelationAnalyzer | None = None):
+    def __init__(self, correlation_analyzer: CorrelationAnalyzer | None = None, **kwargs):
         self.correlation_analyzer = correlation_analyzer or CorrelationAnalyzer(threshold=0.75)
 
     def optimize(self, strategy_rows: Iterable[Dict], capital_pct: float = 100.0) -> Dict:

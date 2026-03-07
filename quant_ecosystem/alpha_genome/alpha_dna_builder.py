@@ -92,7 +92,7 @@ class AlphaDNA:
         genes: Dict[str, AlphaGene],
         strategy_family: str = "mixed",
         fitness: float = 0.0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None, **kwargs
     ) -> None:
         self.dna_id = dna_id
         self.genes = genes               # slot_name → AlphaGene
@@ -180,7 +180,7 @@ class AlphaDNABuilder:
         genome = dna.to_genome_dict()   # → compatible with GenomeEvaluator
     """
 
-    def __init__(self, gene_pool: AlphaGenePool) -> None:
+    def __init__(self, gene_pool: AlphaGenePool, **kwargs) -> None:
         self.pool = gene_pool
 
     # ------------------------------------------------------------------

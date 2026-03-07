@@ -13,7 +13,7 @@ class GenomeEvaluator:
         strategy_lab=None,
         shadow_trading_engine=None,
         adaptive_learning_engine=None,
-        meta_strategy_brain=None,
+        meta_strategy_brain=None, **kwargs
     ):
         self.strategy_lab = strategy_lab
         self.shadow_trading_engine = shadow_trading_engine

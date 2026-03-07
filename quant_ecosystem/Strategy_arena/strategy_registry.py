@@ -1,6 +1,6 @@
 class StrategyRegistry:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.strategies = []
 
     def register(self, strategy):

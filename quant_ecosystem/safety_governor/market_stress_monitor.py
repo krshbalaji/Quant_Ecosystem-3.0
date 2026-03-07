@@ -12,7 +12,7 @@ class MarketStressMonitor:
         self,
         volatility_spike_limit: float = 0.35,
         spread_widen_limit_bps: float = 25.0,
-        min_liquidity_score: float = 0.2,
+        min_liquidity_score: float = 0.2, **kwargs
     ):
         self.volatility_spike_limit = float(volatility_spike_limit)
         self.spread_widen_limit_bps = float(spread_widen_limit_bps)

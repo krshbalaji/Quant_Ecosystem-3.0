@@ -1,6 +1,6 @@
 class CapitalIntelligenceEngine:
 
-    def __init__(self, portfolio_engine):
+    def __init__(self, portfolio_engine, **kwargs):
         self.portfolio_engine = portfolio_engine
 
     def optimize(self):

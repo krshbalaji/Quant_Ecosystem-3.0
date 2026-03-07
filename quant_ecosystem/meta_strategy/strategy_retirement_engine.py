@@ -17,7 +17,7 @@ class StrategyRetirementEngine:
         min_sharpe: float = 0.0,
         min_profit_factor: float = 1.0,
         min_meta_score: float = 0.30,
-        archive_dir: str = "strategy_archive",
+        archive_dir: str = "strategy_archive", **kwargs
     ):
         self.drawdown_threshold = float(drawdown_threshold)
         self.min_sharpe = float(min_sharpe)

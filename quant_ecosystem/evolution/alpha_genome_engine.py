@@ -13,7 +13,7 @@ class AlphaGenomeEngine:
     mutated, backtested, and evolved.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         logger.info("AlphaGenomeEngine initialized")
 
         self.indicators = [

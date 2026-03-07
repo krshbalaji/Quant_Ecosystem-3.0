@@ -4,7 +4,7 @@ from quant_ecosystem.core.config_loader import Config
 
 class AdaptationEngine:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.config = Config()
 
     def apply(self, state, risk_engine):

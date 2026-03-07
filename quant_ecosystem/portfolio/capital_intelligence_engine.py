@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class CapitalIntelligenceEngine:
 
-    def __init__(self, config: Any):
+    def __init__(self, config: Any, **kwargs):
         self.config = config
         self.total_capital = getattr(config, "initial_capital", 1000000)
 

@@ -193,7 +193,7 @@ class StrategySignalConfig:
         symbols: List[str],
         timeframe: str = "5m",
         params: Optional[Dict[str, Any]] = None,
-        min_strength: float = 0.1,
+        min_strength: float = 0.1, **kwargs
     ) -> None:
         self.strategy_id = strategy_id
         self.rule_type = rule_type
@@ -216,7 +216,7 @@ class SignalGeneratorEngine:
     def __init__(
         self,
         feature_store: Optional[FeatureStore] = None,
-        min_strength_global: float = 0.05,
+        min_strength_global: float = 0.05, **kwargs
     ) -> None:
         self._store = feature_store or FeatureStore()
         self._configs: Dict[str, StrategySignalConfig] = {}

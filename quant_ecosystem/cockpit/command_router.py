@@ -8,7 +8,7 @@ from typing import Dict, Optional
 class CockpitCommandRouter:
     """Command router for Trading Cockpit actions."""
 
-    def __init__(self, router_provider):
+    def __init__(self, router_provider, **kwargs):
         self.router_provider = router_provider
 
     def execute(self, command: str, payload: Optional[Dict] = None) -> Dict:

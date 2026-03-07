@@ -18,7 +18,7 @@ class PortfolioRiskManager:
         capital_allocator=None,
         drawdown_guard: Optional[DrawdownGuard] = None,
         correlation_monitor: Optional[CorrelationMonitor] = None,
-        exposure_limiter: Optional[ExposureLimiter] = None,
+        exposure_limiter: Optional[ExposureLimiter] = None, **kwargs
     ):
         self.execution_router = execution_router
         self.capital_allocator = capital_allocator

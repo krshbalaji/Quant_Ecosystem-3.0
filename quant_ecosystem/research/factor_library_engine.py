@@ -4,7 +4,7 @@ import numpy as np
 
 class FactorLibraryEngine:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         pass
 
     # ------------------------------

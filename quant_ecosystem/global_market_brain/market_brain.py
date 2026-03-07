@@ -19,7 +19,7 @@ class GlobalMarketBrain:
         cross_asset_analyzer: Optional[CrossAssetAnalyzer] = None,
         regime_classifier: Optional[GlobalRegimeClassifier] = None,
         liquidity_monitor: Optional[LiquidityMonitor] = None,
-        macro_signal_engine: Optional[MacroSignalEngine] = None,
+        macro_signal_engine: Optional[MacroSignalEngine] = None, **kwargs
     ):
         self.cross_asset_analyzer = cross_asset_analyzer or CrossAssetAnalyzer()
         self.regime_classifier = regime_classifier or GlobalRegimeClassifier()

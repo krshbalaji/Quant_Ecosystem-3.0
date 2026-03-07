@@ -17,7 +17,7 @@ import requests
 class CoinSwitchAdapter:
     """Minimal signed API adapter for CoinSwitch-like REST interfaces."""
 
-    def __init__(self, api_key: str, api_secret: str, base_url: str):
+    def __init__(self, api_key: str, api_secret: str, base_url: str, **kwargs):
         self.api_key = (api_key or "").strip()
         self.api_secret = (api_secret or "").strip()
         self.base_url = (base_url or "").rstrip("/")

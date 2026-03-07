@@ -10,7 +10,7 @@ from typing import Any, Dict
 class SystemStatusReporter:
     """Builds operational status and diagnostics snapshots."""
 
-    def __init__(self, router=None, orchestrator=None, risk_manager=None):
+    def __init__(self, router=None, orchestrator=None, risk_manager=None, **kwargs):
         self.router = router
         self.orchestrator = orchestrator
         self.risk_manager = risk_manager

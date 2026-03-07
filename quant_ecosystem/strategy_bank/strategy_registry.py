@@ -4,7 +4,7 @@ from pathlib import Path
 
 class StrategyRegistry:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.path = Path("strategy_bank/validated")
         self.path.mkdir(parents=True, exist_ok=True)
 

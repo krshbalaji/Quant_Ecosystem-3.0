@@ -4,7 +4,7 @@
 class CapitalAllocatorLayer:
     """Provides dynamic and optional manual allocation overlays."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._manual_allocations = {}
 
     def set_manual_allocation(self, strategy_id, pct):

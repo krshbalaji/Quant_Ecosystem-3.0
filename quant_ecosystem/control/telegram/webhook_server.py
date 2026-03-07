@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 class TelegramWebhookServer:
 
-    def __init__(self, host, port, path, secret_token=""):
+    def __init__(self, host, port, path, secret_token="", **kwargs):
         self.host = host
         self.port = port
         self.path = path

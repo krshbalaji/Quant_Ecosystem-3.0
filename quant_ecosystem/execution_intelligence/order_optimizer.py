@@ -10,7 +10,7 @@ from quant_ecosystem.execution_intelligence.order_slicer import OrderSlicer
 class OrderOptimizer:
     """Selects order type and slicing strategy from execution context."""
 
-    def __init__(self, slicer: OrderSlicer | None = None):
+    def __init__(self, slicer: OrderSlicer | None = None, **kwargs):
         self.slicer = slicer or OrderSlicer()
 
     def optimize(

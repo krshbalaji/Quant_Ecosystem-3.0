@@ -20,7 +20,7 @@ from quant_ecosystem.strategy_bank.strategy_evaluator import StrategyEvaluator
 
 class MasterOrchestrator:
 
-    def __init__(self, system_or_router):
+    def __init__(self, system_or_router, **kwargs):
         # Support both direct System container or ExecutionRouter with a
         # .system attribute, while always exposing engines via self.system.
         self.system = getattr(system_or_router, "system", system_or_router)

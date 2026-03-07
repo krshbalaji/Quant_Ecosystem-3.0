@@ -25,7 +25,7 @@ class GlobalAlphaScanner:
         signal_detector: Optional[SignalDetector] = None,
         opportunity_ranker: Optional[OpportunityRanker] = None,
         cycle_interval_sec: int = 60,
-        max_assets_per_cycle: int = 1200,
+        max_assets_per_cycle: int = 1200, **kwargs
     ):
         self.strategy_lab_controller = strategy_lab_controller
         self.strategy_bank_layer = strategy_bank_layer
@@ -198,7 +198,7 @@ class AlphaScannerCore:
     Delegates to :class:`GlobalAlphaScanner` when available.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         import logging as _logging
         self._log = _logging.getLogger(__name__)
         self._delegate = None

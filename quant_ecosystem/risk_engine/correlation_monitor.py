@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Tuple
 class CorrelationMonitor:
     """Flags excessive correlated exposure by matrix and concentration heuristics."""
 
-    def __init__(self, threshold: float = 0.75):
+    def __init__(self, threshold: float = 0.75, **kwargs):
         self.threshold = float(threshold)
 
     def evaluate(

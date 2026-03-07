@@ -12,7 +12,7 @@ class RiskAdjustedAllocator:
         score = sharpe * win_rate / drawdown
     """
 
-    def __init__(self, min_drawdown_denominator: float = 0.5):
+    def __init__(self, min_drawdown_denominator: float = 0.5, **kwargs):
         self.min_drawdown_denominator = float(max(0.1, min_drawdown_denominator))
 
     def compute_score(self, strategy_row: Dict) -> float:

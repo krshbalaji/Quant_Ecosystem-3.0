@@ -3,7 +3,7 @@ from quant_ecosystem.core.config_loader import Config
 
 class LiveStrategyEngine:
 
-    def __init__(self, strategy_registry):
+    def __init__(self, strategy_registry, **kwargs):
         self.strategy_registry = strategy_registry
         self.strategies = strategy_registry.load()
         self.active_ids = None

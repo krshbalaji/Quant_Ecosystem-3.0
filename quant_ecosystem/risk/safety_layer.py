@@ -3,7 +3,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class SafetyLayer:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.last_reason = ""
 
     def evaluate_cycle(self, router, cycle_result):

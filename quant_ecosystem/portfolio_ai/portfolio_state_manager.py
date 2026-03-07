@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List
 class PortfolioStateManager:
     """Tracks evolving portfolio state and risk metrics."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._history: List[Dict] = []
         self._latest: Dict = {}
 

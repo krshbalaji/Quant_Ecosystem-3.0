@@ -17,7 +17,7 @@ class AlphaGenomeLibrary:
     Stores discovered alpha genomes.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.genomes = {}
 
     def store(self, name, genome):
@@ -48,7 +48,7 @@ class GenomeLibrary:
 
     def __init__(
         self,
-        max_capacity: int = 10_000,
+        max_capacity: int = 10_000, **kwargs
     ) -> None:
         self.max_capacity = max(1, int(max_capacity))
         self._store: Dict[str, Dict[str, Any]] = {}

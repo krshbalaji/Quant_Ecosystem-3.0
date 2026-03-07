@@ -25,7 +25,7 @@ class StrategyGenerator:
     INDICATORS = ["ema", "rsi", "atr", "bollinger", "vwap", "macd", "stochastic", "keltner", "aroon"]
     RISK_MODELS = ["fixed_risk", "atr_risk", "vol_target", "kelly_fractional"]
 
-    def __init__(self, seed: Optional[int] = None):
+    def __init__(self, seed: Optional[int] = None, **kwargs):
         self._rng = random.Random(seed)
 
     def generate(self, count: int = 20) -> List[Dict]:

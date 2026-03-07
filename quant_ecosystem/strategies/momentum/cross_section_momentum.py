@@ -13,7 +13,7 @@ class CrossSectionMomentumStrategy(BaseStrategy):
     Ranks symbols by recent returns and generates a signal on the top-ranked symbol.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 20,
             "top_n": 1,

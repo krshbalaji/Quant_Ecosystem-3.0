@@ -8,7 +8,7 @@ from typing import Dict, List
 class VolumeMonitor:
     """Detects abnormal trading activity."""
 
-    def __init__(self, volume_multiplier: float = 2.0):
+    def __init__(self, volume_multiplier: float = 2.0, **kwargs):
         self.volume_multiplier = max(1.1, float(volume_multiplier))
 
     def evaluate(self, snapshot: Dict) -> Dict:

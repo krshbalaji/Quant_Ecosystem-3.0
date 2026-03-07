@@ -13,7 +13,7 @@ class LiquidityImbalanceStrategy(BaseStrategy):
     Buys when recent buying pressure is strong, sells on selling pressure.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 20,
             "threshold": 0.4,

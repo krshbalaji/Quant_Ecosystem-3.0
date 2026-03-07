@@ -10,7 +10,7 @@ class StrategyRegistry:
     Institutional strategy registry for class-based strategies.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         self._strategies: Dict[str, BaseStrategy] = {}
 
     def register(self, strategy: Union[BaseStrategy, Dict[str, object], object]) -> None:

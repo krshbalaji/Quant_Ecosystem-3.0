@@ -22,7 +22,7 @@ class PortfolioBuilder:
         regime_router: Optional[RegimeStrategyRouter] = None,
         optimizer: Optional[PortfolioOptimizer] = None,
         max_strategies: int = 5,
-        correlation_threshold: float = 0.7,
+        correlation_threshold: float = 0.7, **kwargs
     ):
         self.strategy_bank_layer = strategy_bank_layer
         self.strategy_selector = strategy_selector

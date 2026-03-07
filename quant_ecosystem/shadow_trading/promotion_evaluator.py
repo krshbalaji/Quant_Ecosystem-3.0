@@ -12,7 +12,7 @@ class PromotionEvaluator:
         self,
         min_sharpe: float = 1.2,
         max_drawdown: float = 5.0,
-        min_trades: int = 50,
+        min_trades: int = 50, **kwargs
     ):
         self.min_sharpe = float(min_sharpe)
         self.max_drawdown = float(max_drawdown)

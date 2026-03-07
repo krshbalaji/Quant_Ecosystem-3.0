@@ -2,7 +2,7 @@ import random
 
 class AlphaDiscoveryEngine:
 
-    def __init__(self, strategy_registry, backtest_engine=None):
+    def __init__(self, strategy_registry, backtest_engine=None, **kwargs):
         self.strategy_registry = strategy_registry
         self.backtest_engine = backtest_engine
 

@@ -8,7 +8,7 @@ from typing import Dict
 class LiquidityMonitor:
     """Detects liquidity drops and returns liquidity score."""
 
-    def __init__(self, drop_threshold: float = 0.35):
+    def __init__(self, drop_threshold: float = 0.35, **kwargs):
         self.drop_threshold = max(0.05, min(0.95, float(drop_threshold)))
 
     def evaluate(self, snapshot: Dict) -> Dict:

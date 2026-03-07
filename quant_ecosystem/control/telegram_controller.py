@@ -9,7 +9,7 @@ from quant_ecosystem.core.config_loader import Config
 
 class TelegramController:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.config = Config()
         self.token = self.config.telegram_token
         self.chat_id = self.config.telegram_chat_id

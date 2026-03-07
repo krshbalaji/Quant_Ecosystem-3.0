@@ -68,7 +68,7 @@ class PerformanceStore:
     Lightweight in-memory performance store keyed by strategy_id.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         self._records: Dict[str, PerformanceRecord] = defaultdict(PerformanceRecord)
 
     def record_trade(self, strategy_id: str, pnl: float, equity_before: float) -> None:

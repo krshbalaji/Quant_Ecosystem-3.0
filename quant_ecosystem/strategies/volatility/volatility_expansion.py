@@ -14,7 +14,7 @@ class VolatilityExpansionStrategy(BaseStrategy):
     direction of the expansion.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 40,
             "expansion_factor": 1.5,

@@ -15,7 +15,7 @@ class MarketEventDetector:
         volatility_spike_mult: float = 1.6,
         volume_spike_mult: float = 2.0,
         breakout_window: int = 20,
-        order_imbalance_threshold: float = 0.35,
+        order_imbalance_threshold: float = 0.35, **kwargs
     ):
         self.lookback = max(10, int(lookback))
         self.volatility_spike_mult = max(1.1, float(volatility_spike_mult))

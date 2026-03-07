@@ -12,7 +12,7 @@ class ExposureLimiter:
         self,
         max_strategy_exposure_pct: float = 25.0,
         max_asset_exposure_pct: float = 30.0,
-        total_leverage_limit: float = 1.5,
+        total_leverage_limit: float = 1.5, **kwargs
     ):
         self.max_strategy_exposure_pct = float(max_strategy_exposure_pct)
         self.max_asset_exposure_pct = float(max_asset_exposure_pct)

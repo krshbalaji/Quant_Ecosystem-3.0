@@ -77,7 +77,7 @@ class ExperimentTracker:
     def __init__(
         self,
         tracking_root: Optional[Path] = None,
-        max_runs_in_memory: int = 10000,
+        max_runs_in_memory: int = 10000, **kwargs
     ) -> None:
         self._root = tracking_root or _TRACKING_ROOT
         self._runs: Dict[str, Run] = {}

@@ -6,7 +6,7 @@ from quant_ecosystem.intelligence.global_intelligence_engine import GlobalIntell
 class MarketIntelligenceLayer:
     """Independent intelligence facade used by institutional controller."""
 
-    def __init__(self, engine=None):
+    def __init__(self, engine=None, **kwargs):
         self.engine = engine or GlobalIntelligenceEngine()
 
     def collect(self):

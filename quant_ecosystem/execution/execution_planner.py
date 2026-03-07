@@ -8,7 +8,7 @@ class ExecutionPlanner:
     Converts target portfolio weights into broker-neutral order intents.
     """
 
-    def __init__(self, portfolio_engine, state, market_data):
+    def __init__(self, portfolio_engine, state, market_data, **kwargs):
         self.portfolio_engine = portfolio_engine
         self.state = state
         self.market_data = market_data

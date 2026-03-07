@@ -32,7 +32,7 @@ class QuantOrchestrator:
         strategy_bank_layer=None,
         capital_allocator=None,
         execution_router=None,
-        risk_engine=None,
+        risk_engine=None, **kwargs
     ):
         self.event_bus = event_bus or EventBus()
         self.mode_manager = mode_manager or ModeManager(ControlMode.AUTONOMOUS)

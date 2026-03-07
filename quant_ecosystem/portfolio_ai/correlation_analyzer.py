@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Tuple
 class CorrelationAnalyzer:
     """Builds correlation matrix and correlated clusters."""
 
-    def __init__(self, threshold: float = 0.75):
+    def __init__(self, threshold: float = 0.75, **kwargs):
         self.threshold = max(0.0, min(0.99, float(threshold)))
 
     def analyze(self, strategy_rows: Iterable[Dict]) -> Dict:

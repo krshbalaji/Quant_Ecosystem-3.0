@@ -10,7 +10,7 @@ class AlphaEvolutionEngine:
         mutation_engine,
         crossover_engine,
         evaluation_engine,
-        interval=600,
+        interval=600, **kwargs
     ):
 
         self.registry = strategy_registry

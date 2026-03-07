@@ -1,6 +1,6 @@
 class StrategyPortfolioManager:
 
-    def __init__(self, correlation_threshold=0.75):
+    def __init__(self, correlation_threshold=0.75, **kwargs):
         self.correlation_threshold = float(correlation_threshold)
 
     def build_portfolio(self, strategy_reports):

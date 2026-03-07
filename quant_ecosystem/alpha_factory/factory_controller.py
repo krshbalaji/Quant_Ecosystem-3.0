@@ -29,7 +29,7 @@ class AlphaFactoryController:
         random_count: int = 8,
         mutation_variants: int = 2,
         cross_children: int = 4,
-        max_promotions: int = 3,
+        max_promotions: int = 3, **kwargs
     ):
         self.genome_library = genome_library
         self.genome_generator = genome_generator
@@ -110,7 +110,7 @@ class FactoryController:
     All third-party imports are deferred to method calls.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         import logging as _logging
         self._log = _logging.getLogger(__name__)
         self._delegate = None

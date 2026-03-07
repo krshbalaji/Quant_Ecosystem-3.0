@@ -3,7 +3,7 @@ import random
 
 class MaintenanceManager:
 
-    def __init__(self, dependency_manager, git_manager, update_probability=0.25):
+    def __init__(self, dependency_manager, git_manager, update_probability=0.25, **kwargs):
         self.dependency_manager = dependency_manager
         self.git_manager = git_manager
         self.update_probability = max(0.0, min(update_probability, 1.0))

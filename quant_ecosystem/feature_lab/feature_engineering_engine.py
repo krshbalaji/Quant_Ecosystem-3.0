@@ -32,7 +32,7 @@ class SymbolFeatureSet:
     __slots__ = ["symbol", "timeframe", "timestamp", "features", "computed_at"]
 
     def __init__(self, symbol: str, timeframe: str, timestamp: int,
-                 features: Dict[str, float]) -> None:
+                 features: Dict[str, float], **kwargs) -> None:
         self.symbol = symbol
         self.timeframe = timeframe
         self.timestamp = timestamp
@@ -68,7 +68,7 @@ class FeatureEngineeringEngine:
         feature_store: Optional[FeatureStore] = None,
         timeframes: Optional[List[str]] = None,
         feature_groups: Optional[List[str]] = None,
-        lookback: int = 250,
+        lookback: int = 250, **kwargs
     ) -> None:
         self.market_data = market_data_engine
         self.store = feature_store or FeatureStore()

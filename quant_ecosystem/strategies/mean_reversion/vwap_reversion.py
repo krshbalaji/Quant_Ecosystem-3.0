@@ -13,7 +13,7 @@ class VWAPReversionStrategy(BaseStrategy):
     Buys when price is sufficiently below VWAP, sells when above.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 30,
             "deviation_pct": 0.3,

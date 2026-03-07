@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 class Config:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         load_dotenv()
 
         # Broker

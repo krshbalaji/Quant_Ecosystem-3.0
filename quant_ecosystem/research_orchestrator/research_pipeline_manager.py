@@ -108,7 +108,7 @@ class ResearchPipelineManager:
         min_fitness: float = 0.30,
         max_dd: float = 15.0,
         n_elite_promote: int = 5,
-        use_ray: bool = True,
+        use_ray: bool = True, **kwargs
     ) -> None:
         self.dna_builder = dna_builder
         self.gene_pool = gene_pool

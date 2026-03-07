@@ -7,7 +7,7 @@ from pathlib import Path
 
 class TelegramAuditLogger:
 
-    def __init__(self, secret, output_path="reporting/output/audit/telegram_actions.jsonl"):
+    def __init__(self, secret, output_path="reporting/output/audit/telegram_actions.jsonl", **kwargs):
         self.secret = (secret or "telegram-audit-default").encode("utf-8")
         self.output_path = Path(output_path)
         self.output_path.parent.mkdir(parents=True, exist_ok=True)

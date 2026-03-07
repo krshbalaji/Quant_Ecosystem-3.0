@@ -10,7 +10,7 @@ class MarketCache:
     a simple API that defaults to the primary timeframe when not given.
     """
 
-    def __init__(self, history: int = 500):
+    def __init__(self, history: int = 500, **kwargs):
         self._history = int(history)
         self._cache: Dict[str, Dict[str, Deque[dict]]] = defaultdict(
             lambda: defaultdict(lambda: deque(maxlen=self._history))

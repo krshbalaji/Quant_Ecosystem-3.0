@@ -19,7 +19,7 @@ class SpreadModel:
         "commodities": 0.0010,
     }
 
-    def __init__(self, multiplier: float = 1.0):
+    def __init__(self, multiplier: float = 1.0, **kwargs):
         self.multiplier = max(0.1, float(multiplier))
 
     def estimate(self, volatility: float, asset_class: str = "stocks", timestamp: datetime | None = None) -> Dict:

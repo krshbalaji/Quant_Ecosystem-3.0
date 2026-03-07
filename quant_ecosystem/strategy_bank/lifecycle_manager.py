@@ -3,7 +3,7 @@ from quant_ecosystem.core.config_loader import Config
 
 class StrategyLifecycleManager:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.config = Config()
 
     def promote(self, report):

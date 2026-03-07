@@ -16,7 +16,7 @@ class StrategyScoringEngine:
         weight_expectancy: float = 0.20,
         weight_win_rate: float = 0.10,
         weight_stability: float = 0.10,
-        weight_drawdown_penalty: float = 0.10,
+        weight_drawdown_penalty: float = 0.10, **kwargs
     ):
         self.weight_sharpe = float(weight_sharpe)
         self.weight_profit_factor = float(weight_profit_factor)

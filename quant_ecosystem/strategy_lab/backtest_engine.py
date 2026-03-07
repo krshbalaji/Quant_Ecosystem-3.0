@@ -10,7 +10,7 @@ from quant_ecosystem.research.backtest.backtest_engine import BacktestEngine as 
 class BacktestEngine:
     """Runs sandbox backtests for generated/mutated strategies."""
 
-    def __init__(self, core_engine: Optional[CoreBacktestEngine] = None, microstructure_simulator=None):
+    def __init__(self, core_engine: Optional[CoreBacktestEngine] = None, microstructure_simulator=None, **kwargs):
         self.core_engine = core_engine or CoreBacktestEngine()
         self.microstructure_simulator = microstructure_simulator
 

@@ -14,7 +14,7 @@ from quant_ecosystem.autonomous_controller.mode_manager import ControlMode
 class AutonomousTradingLoop:
     """Fault-tolerant threaded trading loop with 30-second default interval."""
 
-    def __init__(self, orchestrator, loop_interval_sec: float = 30.0):
+    def __init__(self, orchestrator, loop_interval_sec: float = 30.0, **kwargs):
         self.orchestrator = orchestrator
         self.loop_interval_sec = max(1.0, float(loop_interval_sec))
         self._stop = Event()

@@ -11,7 +11,7 @@ from typing import Any, Deque, Dict, List
 class ResultAggregator:
     """Collects worker results and propagates updates to research modules."""
 
-    def __init__(self, max_results: int = 20000):
+    def __init__(self, max_results: int = 20000, **kwargs):
         self._lock = threading.Lock()
         self._results: Deque[Dict[str, Any]] = deque(maxlen=max_results)
         self._latest_by_task: Dict[str, Dict[str, Any]] = {}

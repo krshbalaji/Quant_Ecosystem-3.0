@@ -1,7 +1,7 @@
 
 class SystemState:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         self.equity = 100000
         self.drawdown = 0

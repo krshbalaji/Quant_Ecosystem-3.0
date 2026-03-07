@@ -19,7 +19,7 @@ class CognitiveController:
         system_state_monitor: Optional[SystemStateMonitor] = None,
         decision_engine: Optional[DecisionEngine] = None,
         behavior_manager: Optional[BehaviorManager] = None,
-        cognitive_memory: Optional[CognitiveMemory] = None,
+        cognitive_memory: Optional[CognitiveMemory] = None, **kwargs
     ):
         self.system_state_monitor = system_state_monitor or SystemStateMonitor()
         self.decision_engine = decision_engine or DecisionEngine()

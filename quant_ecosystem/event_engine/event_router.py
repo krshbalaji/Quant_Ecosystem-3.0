@@ -8,7 +8,7 @@ from typing import Dict, List
 class EventRouter:
     """Maps event types to handler method names."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.routes: Dict[str, List[str]] = {
             "VOLATILITY_SPIKE": ["handle_volatility_spike"],
             "PRICE_BREAKOUT": ["handle_breakout"],

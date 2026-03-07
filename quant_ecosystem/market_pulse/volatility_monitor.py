@@ -8,7 +8,7 @@ from typing import Dict, List
 class VolatilityMonitor:
     """Detects sudden volatility expansion using ATR-like behavior."""
 
-    def __init__(self, atr_multiplier: float = 1.5):
+    def __init__(self, atr_multiplier: float = 1.5, **kwargs):
         self.atr_multiplier = max(1.1, float(atr_multiplier))
 
     def evaluate(self, snapshot: Dict) -> Dict:

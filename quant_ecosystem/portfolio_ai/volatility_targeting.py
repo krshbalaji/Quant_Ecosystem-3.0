@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List
 class VolatilityTargeting:
     """Scales allocations to maintain target portfolio volatility."""
 
-    def __init__(self, target_volatility: float = 0.10, min_scale: float = 0.4, max_scale: float = 1.6):
+    def __init__(self, target_volatility: float = 0.10, min_scale: float = 0.4, max_scale: float = 1.6, **kwargs):
         self.target_volatility = max(0.01, float(target_volatility))
         self.min_scale = max(0.05, float(min_scale))
         self.max_scale = max(self.min_scale, float(max_scale))

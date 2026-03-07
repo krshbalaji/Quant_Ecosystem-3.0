@@ -13,7 +13,7 @@ class PerformanceRanker:
         weight_sharpe: float = 0.35,
         weight_win_rate: float = 0.20,
         weight_drawdown: float = 0.20,
-        weight_profit_factor: float = 0.25,
+        weight_profit_factor: float = 0.25, **kwargs
     ):
         self.weight_sharpe = float(weight_sharpe)
         self.weight_win_rate = float(weight_win_rate)

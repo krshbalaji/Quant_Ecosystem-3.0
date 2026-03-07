@@ -22,7 +22,7 @@ class MicrostructureSimulator:
         liquidity_model: Optional[LiquidityModel] = None,
         spread_model: Optional[SpreadModel] = None,
         slippage_model: Optional[SlippageModel] = None,
-        base_delay_ms: float = 120.0,
+        base_delay_ms: float = 120.0, **kwargs
     ):
         self.liquidity_model = liquidity_model or LiquidityModel()
         self.spread_model = spread_model or SpreadModel()

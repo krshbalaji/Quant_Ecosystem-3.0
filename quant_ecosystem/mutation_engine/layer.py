@@ -4,7 +4,7 @@
 class MutationEngineLayer:
     """Facade over mutation engine with explicit safety behavior."""
 
-    def __init__(self, mutation_engine=None):
+    def __init__(self, mutation_engine=None, **kwargs):
         self.mutation_engine = mutation_engine
 
     def is_enabled(self):

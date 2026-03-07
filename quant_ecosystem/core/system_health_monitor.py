@@ -1,6 +1,6 @@
 class SystemHealthMonitor:
 
-    def __init__(self, router):
+    def __init__(self, router, **kwargs):
         self.router = router
 
     def run_checks(self):

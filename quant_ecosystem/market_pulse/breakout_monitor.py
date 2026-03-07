@@ -8,7 +8,7 @@ from typing import Dict, List
 class BreakoutMonitor:
     """Detects price escaping a recent range and trend slope shifts."""
 
-    def __init__(self, range_window: int = 20, trend_shift_threshold: float = 0.20):
+    def __init__(self, range_window: int = 20, trend_shift_threshold: float = 0.20, **kwargs):
         self.range_window = max(10, int(range_window))
         self.trend_shift_threshold = max(0.05, float(trend_shift_threshold))
 

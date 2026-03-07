@@ -14,7 +14,7 @@ class DecayDetector:
         min_trades: int = 200,
         profit_factor_floor: float = 1.0,
         expectancy_floor: float = 0.0,
-        drawdown_expansion_threshold: float = 1.25,
+        drawdown_expansion_threshold: float = 1.25, **kwargs
     ):
         self.sharpe_floor = float(sharpe_floor)
         self.min_trades = max(20, int(min_trades))

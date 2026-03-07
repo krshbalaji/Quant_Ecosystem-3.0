@@ -9,7 +9,7 @@ from typing import Dict
 class ResearchScheduler:
     """Controls generation/evaluation cadence."""
 
-    def __init__(self, generate_every_sec: int = 1800, evaluate_every_sec: int = 900):
+    def __init__(self, generate_every_sec: int = 1800, evaluate_every_sec: int = 900, **kwargs):
         self.generate_every_sec = max(30, int(generate_every_sec))
         self.evaluate_every_sec = max(30, int(evaluate_every_sec))
         self._last_generate_ts = 0.0

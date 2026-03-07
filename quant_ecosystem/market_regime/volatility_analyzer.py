@@ -10,7 +10,7 @@ from typing import Deque, Dict, List
 class VolatilityAnalyzer:
     """Computes ATR/realized volatility and percentile state."""
 
-    def __init__(self, atr_period: int = 14, percentile_window: int = 200):
+    def __init__(self, atr_period: int = 14, percentile_window: int = 200, **kwargs):
         self.atr_period = max(5, int(atr_period))
         self.percentile_window = max(50, int(percentile_window))
         self._history: Deque[float] = deque(maxlen=self.percentile_window)

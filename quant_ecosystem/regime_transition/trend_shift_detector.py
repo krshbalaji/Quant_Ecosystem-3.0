@@ -12,7 +12,7 @@ class TrendShiftDetector:
         self,
         slope_change_threshold: float = 0.20,
         curvature_threshold: float = 0.0015,
-        divergence_threshold: float = 0.010,
+        divergence_threshold: float = 0.010, **kwargs
     ):
         self.slope_change_threshold = max(0.0, float(slope_change_threshold))
         self.curvature_threshold = max(0.0, float(curvature_threshold))

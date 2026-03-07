@@ -12,7 +12,7 @@ class BollingerReversionStrategy(BaseStrategy):
     Bollinger-band based mean reversion strategy.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 20,
             "num_std": 2.0,

@@ -10,7 +10,7 @@ from typing import Dict
 class TaskDispatcher:
     """Dispatches queued tasks to available workers using worker threads."""
 
-    def __init__(self, task_queue, result_aggregator, max_parallel_dispatch: int = 64):
+    def __init__(self, task_queue, result_aggregator, max_parallel_dispatch: int = 64, **kwargs):
         self.task_queue = task_queue
         self.result_aggregator = result_aggregator
         self.max_parallel_dispatch = max(1, int(max_parallel_dispatch))

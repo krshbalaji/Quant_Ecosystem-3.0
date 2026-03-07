@@ -19,7 +19,7 @@ class AdaptiveLearningEngine:
         trade_feedback_collector: Optional[TradeFeedbackCollector] = None,
         learning_memory: Optional[LearningMemory] = None,
         regime_performance_analyzer: Optional[RegimePerformanceAnalyzer] = None,
-        parameter_optimizer: Optional[ParameterOptimizer] = None,
+        parameter_optimizer: Optional[ParameterOptimizer] = None, **kwargs
     ):
         self.trade_feedback_collector = trade_feedback_collector or TradeFeedbackCollector()
         self.learning_memory = learning_memory or LearningMemory()

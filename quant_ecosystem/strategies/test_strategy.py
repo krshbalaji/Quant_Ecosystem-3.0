@@ -1,6 +1,6 @@
 class TestStrategy:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.id = "test_strategy"
         self.name = "Test Strategy"
         self.timeframe = "5m"

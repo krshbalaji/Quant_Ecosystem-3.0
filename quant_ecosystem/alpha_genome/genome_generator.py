@@ -16,7 +16,7 @@ class GenomeGenerator:
     def __init__(
         self,
         mutator: GenomeMutator | None = None,
-        crossbreeder: GenomeCrossbreeder | None = None,
+        crossbreeder: GenomeCrossbreeder | None = None, **kwargs
     ):
         self.mutator = mutator or GenomeMutator()
         self.crossbreeder = crossbreeder or GenomeCrossbreeder()

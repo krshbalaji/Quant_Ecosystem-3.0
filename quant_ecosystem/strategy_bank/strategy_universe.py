@@ -23,7 +23,7 @@ class StrategyUniverse:
     Responsible for instantiating and registering all core strategies.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         self._strategies = self._build_universe()
 
     def _build_universe(self):

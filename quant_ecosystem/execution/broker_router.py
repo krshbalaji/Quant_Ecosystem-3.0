@@ -9,7 +9,7 @@ class BrokerRouter:
     Supports multiple brokers (Fyers, Zerodha, Paper broker etc.)
     """
 
-    def __init__(self, broker=None):
+    def __init__(self, broker=None, **kwargs):
         self.broker = broker
         logger.info("BrokerRouter initialized")
 

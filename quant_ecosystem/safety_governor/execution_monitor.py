@@ -13,7 +13,7 @@ class ExecutionMonitor:
         self,
         trades_per_minute_limit: int = 30,
         rejection_rate_limit: float = 0.5,
-        slippage_bps_limit: float = 12.0,
+        slippage_bps_limit: float = 12.0, **kwargs
     ):
         self.trades_per_minute_limit = int(trades_per_minute_limit)
         self.rejection_rate_limit = float(rejection_rate_limit)

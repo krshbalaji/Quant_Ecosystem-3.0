@@ -12,7 +12,7 @@ class RiskMonitor:
         self,
         max_drawdown_limit: float = 20.0,
         max_exposure_pct: float = 90.0,
-        max_leverage_like: float = 1.5,
+        max_leverage_like: float = 1.5, **kwargs
     ):
         self.max_drawdown_limit = float(max_drawdown_limit)
         self.max_exposure_pct = float(max_exposure_pct)

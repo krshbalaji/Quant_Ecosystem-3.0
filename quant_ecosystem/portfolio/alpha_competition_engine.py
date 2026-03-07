@@ -11,7 +11,7 @@ class AlphaCompetitionEngine:
         evaluation_interval=120,
         min_trades=30,
         retirement_sharpe=0.3,
-        promotion_sharpe=1.2,
+        promotion_sharpe=1.2, **kwargs
     ):
 
         self.registry = strategy_registry

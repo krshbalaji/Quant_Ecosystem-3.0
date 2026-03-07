@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Optional
 class SignalRanker:
     """Ranks confidence-scored signals and returns top-N per cycle."""
 
-    def __init__(self, top_n: int = 10, min_confidence: float = 0.0):
+    def __init__(self, top_n: int = 10, min_confidence: float = 0.0, **kwargs):
         self.top_n = max(1, int(top_n))
         self.min_confidence = max(0.0, min(1.0, float(min_confidence)))
 

@@ -29,7 +29,7 @@ class StrategyBankEngine:
         lifecycle: Optional[LifecycleManager] = None,
         correlation: Optional[CorrelationManager] = None,
         allocator: Optional[CapitalAllocator] = None,
-        regime_mapper: Optional[RegimeMapper] = None,
+        regime_mapper: Optional[RegimeMapper] = None, **kwargs
     ):
         self.config = config or Config()
         self.enabled = bool(getattr(self.config, "enable_strategy_bank", True))

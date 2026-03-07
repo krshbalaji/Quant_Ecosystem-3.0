@@ -11,7 +11,7 @@ from typing import Dict, Tuple
 class GenomeMutator:
     """Applies bounded mutations to genome genes."""
 
-    def __init__(self, mutation_rate: float = 0.25, numeric_jitter_pct: float = 0.20):
+    def __init__(self, mutation_rate: float = 0.25, numeric_jitter_pct: float = 0.20, **kwargs):
         self.mutation_rate = float(mutation_rate)
         self.numeric_jitter_pct = float(numeric_jitter_pct)
 

@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List
 class UniverseManager:
     """Maintains and filters large, multi-asset instrument universes."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._groups: Dict[str, List[str]] = {
             "nse_large_caps": ["NSE:RELIANCE-EQ", "NSE:INFY-EQ", "NSE:HDFCBANK-EQ", "NSE:SBIN-EQ"],
             "nse_mid_caps": ["NSE:TATAMOTORS-EQ", "NSE:LT-EQ", "NSE:ITC-EQ"],

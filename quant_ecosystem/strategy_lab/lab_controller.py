@@ -24,7 +24,7 @@ class StrategyLabController:
         backtest_engine: Optional[BacktestEngine] = None,
         validator: Optional[StrategyValidator] = None,
         repository: Optional[StrategyRepository] = None,
-        sandbox_mode: bool = True,
+        sandbox_mode: bool = True, **kwargs
     ):
         self.strategy_bank_layer = strategy_bank_layer
         self.mutation_layer = mutation_layer

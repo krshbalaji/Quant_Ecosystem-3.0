@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 class StrategyIngestionEngine:
 
-    def __init__(self, candidate_dir="strategy_bank/candidate"):
+    def __init__(self, candidate_dir="strategy_bank/candidate", **kwargs):
         self.candidate_dir = Path(candidate_dir)
         self.candidate_dir.mkdir(parents=True, exist_ok=True)
 

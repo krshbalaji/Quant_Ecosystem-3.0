@@ -4,7 +4,7 @@
 class StrategyBankLayer:
     """Facade over existing strategy bank engine with safe fallbacks."""
 
-    def __init__(self, bank_engine=None):
+    def __init__(self, bank_engine=None, **kwargs):
         self.bank_engine = bank_engine
 
     def is_enabled(self):

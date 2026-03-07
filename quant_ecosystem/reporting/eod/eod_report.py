@@ -9,7 +9,7 @@ from quant_ecosystem.reporting.analytics.institutional_report_engine import Inst
 
 class EODReport:
 
-    def __init__(self, output_dir="reporting/output"):
+    def __init__(self, output_dir="reporting/output", **kwargs):
         self.config = Config()
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)

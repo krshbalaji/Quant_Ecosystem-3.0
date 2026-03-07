@@ -22,7 +22,7 @@ from quant_ecosystem.alpha_genome.alpha_gene_pool import AlphaGenePool
 class PopulationStats:
     """Tracks population fitness statistics for adaptive mutation."""
 
-    def __init__(self, window: int = 10) -> None:
+    def __init__(self, window: int = 10, **kwargs) -> None:
         self._history: List[float] = []
         self._window = window
 
@@ -65,7 +65,7 @@ class AlphaMutationEngine:
         elite_pct: float = 0.10,
         tournament_size: int = 4,
         max_mutation_rate: float = 0.60,
-        min_mutation_rate: float = 0.10,
+        min_mutation_rate: float = 0.10, **kwargs
     ) -> None:
         self.gene_pool = gene_pool
         self._base_rate = float(base_mutation_rate)

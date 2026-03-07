@@ -1,6 +1,6 @@
 class MetaAlphaEngine:
 
-    def __init__(self, strategy_registry):
+    def __init__(self, strategy_registry, **kwargs):
         self.strategy_registry = strategy_registry
 
     def build_meta_strategy(self):

@@ -3,7 +3,7 @@ import time
 
 class WebhookWatchdog:
 
-    def __init__(self, timeout_sec=180):
+    def __init__(self, timeout_sec=180, **kwargs):
         self.timeout_sec = max(30, int(timeout_sec))
         self.last_callback_ts = 0.0
         self.seen_callback = False

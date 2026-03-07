@@ -10,7 +10,7 @@ from typing import Awaitable, Callable, Dict, List, Optional
 class EventBus:
     """Central communication hub for publish/subscribe event flow."""
 
-    def __init__(self, max_queue_size: int = 2000):
+    def __init__(self, max_queue_size: int = 2000, **kwargs):
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=max(100, int(max_queue_size)))
         self._subscribers: Dict[str, List[Callable]] = defaultdict(list)
 

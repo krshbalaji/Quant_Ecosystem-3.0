@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 class CorrelationManager:
     """Computes pairwise rolling correlation and returns allocation penalties."""
 
-    def __init__(self, threshold: float = 0.7):
+    def __init__(self, threshold: float = 0.7, **kwargs):
         self.threshold = float(threshold)
 
     def matrix(self, rows: List[Dict]) -> Dict[str, Dict[str, float]]:

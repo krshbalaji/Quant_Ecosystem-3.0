@@ -6,7 +6,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class OutcomeMemory:
 
-    def __init__(self, path="core/persistence/outcome_memory.json"):
+    def __init__(self, path="core/persistence/outcome_memory.json", **kwargs):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.memory = self._load()

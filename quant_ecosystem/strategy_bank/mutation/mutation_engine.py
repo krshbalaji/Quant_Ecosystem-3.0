@@ -28,7 +28,7 @@ class MutationEngine:
         config: Optional[Config] = None,
         backtest: Optional[BacktestEngine] = None,
         mutator: Optional[ParameterMutator] = None,
-        crossover: Optional[CrossoverEngine] = None,
+        crossover: Optional[CrossoverEngine] = None, **kwargs
     ):
         self.config = config or Config()
         self.enabled = bool(getattr(self.config, "enable_strategy_mutation", False))

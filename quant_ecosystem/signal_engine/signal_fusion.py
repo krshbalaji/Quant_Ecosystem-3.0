@@ -17,7 +17,7 @@ class SignalFusion:
         confidence_engine: Optional[SignalConfidenceEngine] = None,
         ranker: Optional[SignalRanker] = None,
         max_per_symbol: int = 1,
-        max_per_correlation_cluster: int = 2,
+        max_per_correlation_cluster: int = 2, **kwargs
     ):
         self.confidence_engine = confidence_engine or SignalConfidenceEngine(min_confidence=0.0)
         self.ranker = ranker or SignalRanker(top_n=10, min_confidence=0.0)

@@ -5,7 +5,7 @@ from quant_ecosystem.strategies.factory.strategy_factory import StrategyFactory
 
 class AlphaFactory:
 
-    def __init__(self, strategy_registry):
+    def __init__(self, strategy_registry, **kwargs):
 
         self.registry = strategy_registry
         self.genome = StrategyGenome()

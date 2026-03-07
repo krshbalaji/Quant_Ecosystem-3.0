@@ -3,7 +3,7 @@ import datetime
 
 class Scheduler:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.blocks = [
             ("07:30", "08:30", "HEALTH_CHECK"),
             ("08:30", "09:15", "GLOBAL_INTELLIGENCE"),

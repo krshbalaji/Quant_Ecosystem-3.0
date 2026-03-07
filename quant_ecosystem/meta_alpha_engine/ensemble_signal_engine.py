@@ -98,7 +98,7 @@ class EnsembleSignalEngine:
         min_ensemble_agreement: float = 0.40,
         ic_weight_floor: float = 0.10,
         ic_weight_cap: float = 3.0,
-        learning_rate: float = 0.10,
+        learning_rate: float = 0.10, **kwargs
     ) -> None:
         self._quality = quality_engine or SignalQualityEngine()
         self._combiner = AlphaCombinationEngine(method="ic_weighted", quality_engine=self._quality)

@@ -3,7 +3,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class PortfolioEngine:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.positions = {}
 
     def apply_fill(self, symbol, side, qty, price):

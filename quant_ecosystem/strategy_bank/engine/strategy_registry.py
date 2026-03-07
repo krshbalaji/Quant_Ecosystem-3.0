@@ -55,7 +55,7 @@ class StrategyMetadata:
 class StrategyRegistryStore:
     """Persistent metadata store for strategy lifecycle and allocation decisions."""
 
-    def __init__(self, metadata_path: str = "strategy_bank/metadata/strategy_registry.json"):
+    def __init__(self, metadata_path: str = "strategy_bank/metadata/strategy_registry.json", **kwargs):
         self.metadata_file = Path(metadata_path)
         self.metadata_file.parent.mkdir(parents=True, exist_ok=True)
         self._items: Dict[str, Dict] = {}

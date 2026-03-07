@@ -4,7 +4,7 @@
 class ExecutionRouterLayer:
     """Facade for manual/assisted/autonomous execution calls."""
 
-    def __init__(self, router=None):
+    def __init__(self, router=None, **kwargs):
         self.router = router
 
     async def execute(self, signal=None, market_bias="NEUTRAL", regime="RANGING"):

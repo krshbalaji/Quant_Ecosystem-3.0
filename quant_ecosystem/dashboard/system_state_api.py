@@ -11,7 +11,7 @@ class SystemStateAPI:
     """Aggregates live router state into dashboard-friendly payloads."""
     _GLOBAL_EVENTS: Deque[Dict] = deque(maxlen=5000)
 
-    def __init__(self, router_provider: Optional[Callable[[], object]] = None, max_events: int = 2000):
+    def __init__(self, router_provider: Optional[Callable[[], object]] = None, max_events: int = 2000, **kwargs):
         self.router_provider = router_provider
         self._events: Deque[Dict] = deque(maxlen=max_events)
 

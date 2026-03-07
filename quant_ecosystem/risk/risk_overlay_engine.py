@@ -8,7 +8,7 @@ class RiskOverlayEngine:
     Applies portfolio-level risk constraints to target weights.
     """
 
-    def __init__(self, risk_engine, portfolio_engine, state):
+    def __init__(self, risk_engine, portfolio_engine, state, **kwargs):
         self.risk_engine = risk_engine
         self.portfolio_engine = portfolio_engine
         self.state = state

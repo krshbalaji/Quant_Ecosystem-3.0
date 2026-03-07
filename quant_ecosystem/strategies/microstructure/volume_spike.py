@@ -13,7 +13,7 @@ class VolumeSpikeStrategy(BaseStrategy):
     Detects abnormal increases in per-bar volume relative to recent history.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 30,
             "spike_factor": 2.0,

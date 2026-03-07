@@ -9,7 +9,7 @@ from typing import Optional
 class RebalanceManager:
     """Determines when rebalancing should be executed."""
 
-    def __init__(self, interval_minutes: int = 30):
+    def __init__(self, interval_minutes: int = 30, **kwargs):
         self.interval = timedelta(minutes=max(1, int(interval_minutes)))
         self.last_rebalance_at: Optional[datetime] = None
         self.last_regime: Optional[str] = None

@@ -9,7 +9,7 @@ class GitSyncManager:
         workdir=".",
         auto_commit_message="auto: session sync",
         include_paths=None,
-        exclude_paths=None,
+        exclude_paths=None, **kwargs
     ):
         self.workdir = workdir
         self.auto_commit_message = auto_commit_message

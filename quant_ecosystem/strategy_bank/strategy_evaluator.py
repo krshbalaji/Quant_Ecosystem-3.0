@@ -7,7 +7,7 @@ from quant_ecosystem.strategy_bank.strategy_scorer import StrategyScorer
 
 class StrategyEvaluator:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.config = Config()
         self.backtest = BacktestEngine()
         self.scorer = StrategyScorer()

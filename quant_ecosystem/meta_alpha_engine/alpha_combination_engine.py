@@ -153,7 +153,7 @@ class AlphaCombinationEngine:
         quality_engine: Optional[SignalQualityEngine] = None,
         min_contributors: int = 1,
         min_agreement: float = 0.0,
-        regime: str = "UNKNOWN",
+        regime: str = "UNKNOWN", **kwargs
     ) -> None:
         self._method = str(method).lower()
         self._quality_engine = quality_engine or SignalQualityEngine()

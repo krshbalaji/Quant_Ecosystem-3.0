@@ -11,7 +11,7 @@ class CapitalAllocator:
     (Sharpe, drawdown, win-rate, profit factor).
     """
 
-    def __init__(self, max_strategies: int = 10):
+    def __init__(self, max_strategies: int = 10, **kwargs):
         self.max_strategies = max_strategies
 
     def allocate(self, metrics: Dict[str, Dict[str, float]]) -> Dict[str, float]:

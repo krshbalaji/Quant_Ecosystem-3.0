@@ -12,7 +12,7 @@ from typing import Any, Callable, Deque, Dict, List, Optional
 class GlobalEventBus:
     """Single event bus instance for all engines."""
 
-    def __init__(self, history_limit: int = 1000, queue_limit: int = 5000):
+    def __init__(self, history_limit: int = 1000, queue_limit: int = 5000, **kwargs):
         self._history: Deque[Dict[str, Any]] = deque(maxlen=max(50, int(history_limit)))
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=max(100, int(queue_limit)))
         self._subs: Dict[str, List[Callable]] = defaultdict(list)

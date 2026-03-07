@@ -13,7 +13,7 @@ class TimeSeriesMomentumStrategy(BaseStrategy):
     Trades a single symbol based on its own trend strength over a lookback window.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 40,
             "threshold": 0.02,

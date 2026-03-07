@@ -6,7 +6,7 @@ class AlphaCompetitionEngine:
     PerformanceStore and exposes rankings for downstream consumers.
     """
 
-    def __init__(self, strategy_registry, performance_store=None):
+    def __init__(self, strategy_registry, performance_store=None, **kwargs):
 
         self.strategy_registry = strategy_registry
         self.performance_store = performance_store

@@ -45,7 +45,7 @@ class RegimeFilter:
         self,
         current_regime: str = "UNKNOWN",
         strategy_rule_map: Optional[Dict[str, str]] = None,
-        strict: bool = False,
+        strict: bool = False, **kwargs
     ) -> None:
         self.regime = str(current_regime).upper()
         self._strat_rule_map: Dict[str, str] = strategy_rule_map or {}
@@ -66,7 +66,7 @@ class RegimeFilter:
 class StrengthFilter:
     """Drop signals below a minimum strength threshold."""
 
-    def __init__(self, min_strength: float = 0.15) -> None:
+    def __init__(self, min_strength: float = 0.15, **kwargs) -> None:
         self.min_strength = float(min_strength)
 
     def passes(self, signal: RawSignal) -> bool:
@@ -79,7 +79,7 @@ class CorrelationFilter:
     Handles the case where multiple strategies fire on the same symbol.
     """
 
-    def __init__(self, window_seconds: float = 60.0, max_per_symbol: int = 3) -> None:
+    def __init__(self, window_seconds: float = 60.0, max_per_symbol: int = 3, **kwargs) -> None:
         self._window = float(window_seconds)
         self._max = int(max_per_symbol)
         self._history: Dict[str, List[float]] = defaultdict(list)
@@ -106,7 +106,7 @@ class CorrelationFilter:
 class CooldownFilter:
     """Enforce per-(symbol, strategy) cooldown periods in seconds."""
 
-    def __init__(self, cooldown_seconds: float = 300.0) -> None:
+    def __init__(self, cooldown_seconds: float = 300.0, **kwargs) -> None:
         self._cooldown = float(cooldown_seconds)
         self._last_signal: Dict[str, float] = {}
 
@@ -148,7 +148,7 @@ class ExposureFilter:
         "CDS:": "forex",
     }
 
-    def __init__(self, max_per_class: int = 4) -> None:
+    def __init__(self, max_per_class: int = 4, **kwargs) -> None:
         self._max = int(max_per_class)
         self._current_counts: Dict[str, int] = defaultdict(int)
         self._session_symbols: Dict[str, Set[str]] = defaultdict(set)
@@ -181,7 +181,7 @@ class ExposureFilter:
 class FilterResult:
     """Carries filtering output with rejection audit trail."""
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         self.passed: List[RawSignal] = []
         self.rejected: Dict[str, List[RawSignal]] = {
             "regime": [],
@@ -226,7 +226,7 @@ class SignalFilterEngine:
         max_per_symbol: int = 3,
         max_per_asset_class: int = 4,
         strategy_rule_map: Optional[Dict[str, str]] = None,
-        strict_regime: bool = False,
+        strict_regime: bool = False, **kwargs
     ) -> None:
         self._regime_filter = RegimeFilter(
             regime, strategy_rule_map=strategy_rule_map, strict=strict_regime

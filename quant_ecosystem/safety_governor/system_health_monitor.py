@@ -11,7 +11,7 @@ class SystemHealthMonitor:
     def __init__(
         self,
         max_feed_latency_ms: float = 2500.0,
-        max_api_errors_per_cycle: int = 5,
+        max_api_errors_per_cycle: int = 5, **kwargs
     ):
         self.max_feed_latency_ms = float(max_feed_latency_ms)
         self.max_api_errors_per_cycle = int(max_api_errors_per_cycle)

@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 class TrendAnalyzer:
     """Computes trend strength and direction from multi-series price data."""
 
-    def __init__(self, ema_fast: int = 12, ema_slow: int = 26, adx_period: int = 14, momentum_lookback: int = 10):
+    def __init__(self, ema_fast: int = 12, ema_slow: int = 26, adx_period: int = 14, momentum_lookback: int = 10, **kwargs):
         self.ema_fast = max(2, int(ema_fast))
         self.ema_slow = max(self.ema_fast + 1, int(ema_slow))
         self.adx_period = max(5, int(adx_period))

@@ -8,7 +8,7 @@ from typing import Dict, List
 class LiquidityAnalyzer:
     """Computes liquidity score from volume, spread, and order-flow proxies."""
 
-    def __init__(self, volume_window: int = 20):
+    def __init__(self, volume_window: int = 20, **kwargs):
         self.volume_window = max(5, int(volume_window))
 
     def analyze(self, market_data: Dict) -> Dict:

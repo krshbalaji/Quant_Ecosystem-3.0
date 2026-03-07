@@ -20,7 +20,7 @@ class PulseEventDetector:
         volume_monitor: Optional[VolumeMonitor] = None,
         breakout_monitor: Optional[BreakoutMonitor] = None,
         liquidity_monitor: Optional[LiquidityMonitor] = None,
-        min_strength: float = 0.2,
+        min_strength: float = 0.2, **kwargs
     ):
         self.volatility_monitor = volatility_monitor or VolatilityMonitor()
         self.volume_monitor = volume_monitor or VolumeMonitor()

@@ -6,7 +6,7 @@ class AutonomousController:
 
     MODES = {"MANUAL", "ASSISTED", "AUTONOMOUS"}
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.mode = "AUTONOMOUS"
 
     def set_mode(self, router, mode):

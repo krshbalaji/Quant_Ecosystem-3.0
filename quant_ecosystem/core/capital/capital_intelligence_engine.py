@@ -3,7 +3,7 @@ class CapitalIntelligenceEngine:
     Dynamic capital allocator and risk optimizer.
     """
 
-    def __init__(self, portfolio_engine, risk_engine):
+    def __init__(self, portfolio_engine, risk_engine, **kwargs):
 
         self.portfolio_engine = portfolio_engine
         self.risk_engine = risk_engine

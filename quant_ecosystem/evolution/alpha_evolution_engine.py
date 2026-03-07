@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class AlphaEvolutionEngine:
 
-    def __init__(self, config=None, genome_engine=None):
+    def __init__(self, config=None, genome_engine=None, **kwargs):
         self.config = config
         self.genome_engine = genome_engine
 

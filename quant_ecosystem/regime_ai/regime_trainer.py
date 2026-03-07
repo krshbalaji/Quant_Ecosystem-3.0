@@ -12,7 +12,7 @@ from quant_ecosystem.regime_ai.regime_classifier import REGIMES
 class _CentroidModel:
     """Lightweight fallback classifier when sklearn is unavailable."""
 
-    def __init__(self, centroids: Dict[str, List[float]]):
+    def __init__(self, centroids: Dict[str, List[float]], **kwargs):
         self.centroids = centroids
 
     def predict(self, X: List[List[float]]) -> List[str]:
@@ -53,7 +53,7 @@ class _CentroidModel:
 class RegimeTrainer:
     """Trains and saves AI regime model (with robust fallback path)."""
 
-    def __init__(self, model_path: str = "quant_ecosystem/regime_ai/models/regime_model.pkl"):
+    def __init__(self, model_path: str = "quant_ecosystem/regime_ai/models/regime_model.pkl", **kwargs):
         self.model_path = Path(model_path)
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -66,7 +66,7 @@ class _HeuristicModel:
 class RegimeClassifier:
     """Loads trained model and predicts regime with probability."""
 
-    def __init__(self, model_path: str = "quant_ecosystem/regime_ai/models/regime_model.pkl"):
+    def __init__(self, model_path: str = "quant_ecosystem/regime_ai/models/regime_model.pkl", **kwargs):
         self.model_path = Path(model_path)
         self.model = self._load_model()
 

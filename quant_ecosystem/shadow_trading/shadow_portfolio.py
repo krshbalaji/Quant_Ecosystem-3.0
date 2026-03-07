@@ -8,7 +8,7 @@ from typing import Dict
 class ShadowPortfolio:
     """Maintains simulated capital and shadow positions."""
 
-    def __init__(self, initial_capital: float = 100000.0):
+    def __init__(self, initial_capital: float = 100000.0, **kwargs):
         self.initial_capital = float(initial_capital)
         self.cash = float(initial_capital)
         self.equity = float(initial_capital)

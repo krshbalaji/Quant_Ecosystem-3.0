@@ -10,7 +10,7 @@ from typing import Dict, List
 class LearningMemory:
     """Long-term performance memory store by strategy and regime."""
 
-    def __init__(self, path: str = "quant_ecosystem/adaptive_learning/memory/learning_memory.json"):
+    def __init__(self, path: str = "quant_ecosystem/adaptive_learning/memory/learning_memory.json", **kwargs):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._data = self._load()

@@ -12,7 +12,7 @@ class EMATrendStrategy(BaseStrategy):
     Simple institutional-grade EMA crossover trend strategy.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "fast_ema": 20,
             "slow_ema": 50,

@@ -2,7 +2,7 @@ import json
 
 class AlphaStore:
 
-    def __init__(self, path="data/alphas.json"):
+    def __init__(self, path="data/alphas.json", **kwargs):
         self.path = path
 
     def save(self, alpha):

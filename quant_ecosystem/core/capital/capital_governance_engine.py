@@ -4,7 +4,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class CapitalGovernanceEngine:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         cfg = Config()
         self.max_strategy_pct = cfg.max_strategy_capital_pct
         self.max_asset_class_pct = cfg.max_asset_class_capital_pct

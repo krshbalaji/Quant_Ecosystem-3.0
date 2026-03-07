@@ -1,6 +1,6 @@
 class FyersAdapter:
 
-    def __init__(self, app_id, access_token):
+    def __init__(self, app_id, access_token, **kwargs):
         self.app_id = app_id
         self.access_token = access_token
         self.client = None

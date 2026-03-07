@@ -10,7 +10,7 @@ from typing import Dict, List
 class ShadowPerformanceTracker:
     """Computes win rate, PF, Sharpe, drawdown for shadow strategies."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.trades_by_strategy: Dict[str, List[Dict]] = defaultdict(list)
 
     def record(self, row: Dict) -> None:

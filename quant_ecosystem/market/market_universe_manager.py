@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class MarketUniverseManager:
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, **kwargs):
         self.config = config
         self.symbols = ["NSE:RELIANCE-EQ"]
 

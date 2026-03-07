@@ -7,7 +7,7 @@ import requests
 
 class FirstTimeOnboarding:
 
-    def __init__(self, env_path=".env"):
+    def __init__(self, env_path=".env", **kwargs):
         self.env_path = Path(env_path)
 
     def ensure(self):

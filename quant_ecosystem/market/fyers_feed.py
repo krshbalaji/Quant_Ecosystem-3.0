@@ -1,6 +1,6 @@
 class FyersFeed:
 
-    def __init__(self, broker):
+    def __init__(self, broker, **kwargs):
         # The high-level broker wrapper (FyersBroker instance).
         self.broker = broker
 

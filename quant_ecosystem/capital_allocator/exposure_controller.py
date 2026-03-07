@@ -12,7 +12,7 @@ class ExposureController:
         self,
         max_strategy_allocation: float = 25.0,
         max_sector_exposure: float = 40.0,
-        max_portfolio_drawdown: float = 20.0,
+        max_portfolio_drawdown: float = 20.0, **kwargs
     ):
         self.max_strategy_allocation = float(max_strategy_allocation)
         self.max_sector_exposure = float(max_sector_exposure)

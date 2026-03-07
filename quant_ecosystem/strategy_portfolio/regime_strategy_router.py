@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Set
 class RegimeStrategyRouter:
     """Maps regime states to strategy families and filters candidates."""
 
-    def __init__(self, regime_map: Dict[str, Iterable[str]] | None = None):
+    def __init__(self, regime_map: Dict[str, Iterable[str]] | None = None, **kwargs):
         default = {
             "TRENDING_BULL": {"trend_following", "breakout"},
             "TRENDING_BEAR": {"trend_following", "breakout"},

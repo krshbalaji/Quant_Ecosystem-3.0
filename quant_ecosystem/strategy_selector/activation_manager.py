@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Set
 class ActivationManager:
     """Controls active strategy set with safety limits."""
 
-    def __init__(self, strategy_engine=None, strategy_bank_engine=None, max_active_strategies: int = 5):
+    def __init__(self, strategy_engine=None, strategy_bank_engine=None, max_active_strategies: int = 5, **kwargs):
         self.strategy_engine = strategy_engine
         self.strategy_bank_engine = strategy_bank_engine
         self.max_active_strategies = max(1, int(max_active_strategies))

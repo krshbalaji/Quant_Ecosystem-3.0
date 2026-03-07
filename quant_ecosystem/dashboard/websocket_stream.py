@@ -10,7 +10,7 @@ from typing import Set
 class WebSocketStreamHub:
     """Fan-out hub for dashboard event/state messages."""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._clients: Set[object] = set()
         self._lock = asyncio.Lock()
 

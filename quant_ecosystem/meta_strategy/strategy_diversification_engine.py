@@ -14,7 +14,7 @@ class StrategyDiversificationEngine:
         correlation_threshold: float = 0.75,
         max_per_family: int = 2,
         max_per_asset_class: int = 3,
-        max_per_timeframe: int = 3,
+        max_per_timeframe: int = 3, **kwargs
     ):
         self.correlation_threshold = max(0.0, min(0.99, float(correlation_threshold)))
         self.max_per_family = max(1, int(max_per_family))

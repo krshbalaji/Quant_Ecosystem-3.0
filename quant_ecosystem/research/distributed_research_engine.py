@@ -54,7 +54,7 @@ if _RAY:
         against provided price series.
         """
 
-        def __init__(self) -> None:
+        def __init__(self, **kwargs) -> None:
             self._eval_count = 0
 
         def evaluate_batch(
@@ -111,7 +111,7 @@ class DistributedResearchEngine:
         system: Any = None,
         n_workers: int = 4,
         batch_size: int = 25,
-        use_ray: bool = True,
+        use_ray: bool = True, **kwargs
     ) -> None:
         self.system = system
         self.n_workers = n_workers

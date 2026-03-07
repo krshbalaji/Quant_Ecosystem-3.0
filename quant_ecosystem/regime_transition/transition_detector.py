@@ -23,7 +23,7 @@ class RegimeTransitionDetector:
         self,
         volatility_shift_detector: Optional[VolatilityShiftDetector] = None,
         trend_shift_detector: Optional[TrendShiftDetector] = None,
-        transition_threshold: float = 0.60,
+        transition_threshold: float = 0.60, **kwargs
     ):
         self.volatility_shift_detector = volatility_shift_detector or VolatilityShiftDetector()
         self.trend_shift_detector = trend_shift_detector or TrendShiftDetector()

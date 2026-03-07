@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class StrategyDiscoveryEngine:
 
-    def __init__(self, market_data=None, factor_library=None, config=None):
+    def __init__(self, market_data=None, factor_library=None, config=None, **kwargs):
         self.market_data = market_data
         self.factor_library = factor_library
         self.config = config

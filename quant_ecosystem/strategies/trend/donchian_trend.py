@@ -13,7 +13,7 @@ class DonchianTrendStrategy(BaseStrategy):
     Uses channel highs/lows over a lookback window to detect breakouts.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 20,
             "stop_loss_pct": 1.0,

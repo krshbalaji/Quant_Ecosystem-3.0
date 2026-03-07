@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List
 class DrawdownGuard:
     """Evaluates drawdown constraints for portfolio and strategies."""
 
-    def __init__(self, portfolio_dd_limit_pct: float = 20.0, strategy_dd_limit_pct: float = 10.0):
+    def __init__(self, portfolio_dd_limit_pct: float = 20.0, strategy_dd_limit_pct: float = 10.0, **kwargs):
         self.portfolio_dd_limit_pct = float(portfolio_dd_limit_pct)
         self.strategy_dd_limit_pct = float(strategy_dd_limit_pct)
 

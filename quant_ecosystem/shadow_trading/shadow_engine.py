@@ -21,7 +21,7 @@ class ShadowTradingEngine:
         shadow_portfolio: Optional[ShadowPortfolio] = None,
         performance_tracker: Optional[ShadowPerformanceTracker] = None,
         promotion_evaluator: Optional[PromotionEvaluator] = None,
-        max_signals_per_cycle: int = 3,
+        max_signals_per_cycle: int = 3, **kwargs
     ):
         self.shadow_execution = shadow_execution or ShadowExecution()
         self.shadow_portfolio = shadow_portfolio or ShadowPortfolio(initial_capital=initial_capital)
@@ -134,7 +134,7 @@ class ShadowEngine:
     Delegates to :class:`ShadowTradingEngine` when available.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         import logging as _logging
         self._log = _logging.getLogger(__name__)
         self._delegate = None

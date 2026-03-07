@@ -9,7 +9,7 @@ class SignalAggregator:
     Aggregates strategy-level signals into symbol-level intents.
     """
 
-    def __init__(self, method: Literal["majority_vote", "strength_weighted", "volatility_adjusted"] = "majority_vote"):
+    def __init__(self, method: Literal["majority_vote", "strength_weighted", "volatility_adjusted"] = "majority_vote", **kwargs):
         self.method = method
 
     def aggregate(self, signals: List[Dict], feature_engine=None) -> List[Dict]:

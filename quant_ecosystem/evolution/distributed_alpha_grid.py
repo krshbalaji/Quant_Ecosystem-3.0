@@ -1,6 +1,6 @@
 class DistributedAlphaGrid:
 
-    def __init__(self, alpha_factory):
+    def __init__(self, alpha_factory, **kwargs):
 
         self.alpha_factory = alpha_factory
 

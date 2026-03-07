@@ -223,7 +223,7 @@ class RegimeDetectionEngine:
     def __init__(
         self,
         smoothing_alpha: float = 0.3,
-        min_confidence: float = 0.50,
+        min_confidence: float = 0.50, **kwargs
     ) -> None:
         self._trend_layer = TrendLayer()
         self._vol_layer = VolatilityLayer()

@@ -16,7 +16,7 @@ from quant_ecosystem.telegram_control.command_handler import CommandHandler
 class QuantTelegramBot:
     """Remote Telegram control bot with authorization gate."""
 
-    def __init__(self, token: str, command_handler: CommandHandler):
+    def __init__(self, token: str, command_handler: CommandHandler, **kwargs):
         self.token = (token or "").strip()
         self.command_handler = command_handler
         self.app: Optional[Application] = None

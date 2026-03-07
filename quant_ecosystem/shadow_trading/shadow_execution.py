@@ -8,7 +8,7 @@ from typing import Dict
 class ShadowExecution:
     """Simulates entry/exit fills with slippage and fees."""
 
-    def __init__(self, fee_bps: float = 2.5, base_slippage_bps: float = 1.5):
+    def __init__(self, fee_bps: float = 2.5, base_slippage_bps: float = 1.5, **kwargs):
         self.fee_bps = float(fee_bps)
         self.base_slippage_bps = float(base_slippage_bps)
 

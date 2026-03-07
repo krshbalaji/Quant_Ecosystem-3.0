@@ -8,7 +8,7 @@ from typing import Dict, Iterable, Set
 class RegimeStrategyMap:
     """Maps market regimes to preferred strategy categories."""
 
-    def __init__(self, mapping: Dict[str, Iterable[str]] | None = None):
+    def __init__(self, mapping: Dict[str, Iterable[str]] | None = None, **kwargs):
         default = {
             "TRENDING_BULL": {"trend_following", "breakout", "momentum"},
             "TRENDING_BEAR": {"trend_following", "breakout", "momentum"},

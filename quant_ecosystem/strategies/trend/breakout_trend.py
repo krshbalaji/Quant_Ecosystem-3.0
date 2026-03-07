@@ -12,7 +12,7 @@ class BreakoutTrendStrategy(BaseStrategy):
     Simple price-channel breakout trend strategy.
     """
 
-    def __init__(self, params: Optional[Dict[str, object]] = None):
+    def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "lookback": 20,
             "stop_loss_pct": 1.0,

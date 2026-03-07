@@ -27,7 +27,7 @@ class BusEvent:
 class EventBus:
     """Lightweight thread-safe pub/sub bus with background dispatcher."""
 
-    def __init__(self, queue_size: int = 2000):
+    def __init__(self, queue_size: int = 2000, **kwargs):
         self._subs: Dict[str, List[EventHandler]] = {}
         self._queue: Queue = Queue(maxsize=max(100, int(queue_size)))
         self._lock = RLock()

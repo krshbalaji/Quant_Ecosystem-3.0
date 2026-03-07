@@ -3,7 +3,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class SystemState:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.initial_equity = 100000.0
         self.cash_balance = 100000.0
         self.equity = 100000.0

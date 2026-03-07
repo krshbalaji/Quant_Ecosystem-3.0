@@ -68,7 +68,7 @@ class ResearchDatasetBuilder:
         feature_engine: Optional[FeatureEngineeringEngine] = None,
         feature_store: Optional[FeatureStore] = None,
         market_data_engine: Optional[Any] = None,
-        label_threshold: float = 0.001,  # min abs return to assign UP/DOWN label
+        label_threshold: float = 0.001,  # min abs return to assign UP/DOWN label, **kwargs
     ) -> None:
         self.feature_engine = feature_engine
         self.store = feature_store or FeatureStore()

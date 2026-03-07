@@ -9,7 +9,7 @@ from typing import Dict, List
 class CorrelationClusterer:
     """Builds pairwise correlation matrix and connected-component clusters."""
 
-    def __init__(self, max_correlation: float = 0.75):
+    def __init__(self, max_correlation: float = 0.75, **kwargs):
         self.max_correlation = max(0.0, min(0.99, float(max_correlation)))
 
     def analyze(self, strategy_rows: List[Dict]) -> Dict:

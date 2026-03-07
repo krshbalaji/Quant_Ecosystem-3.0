@@ -5,7 +5,7 @@ from pathlib import Path
 
 class RuntimeStore:
 
-    def __init__(self, output_dir="reporting/output/runtime"):
+    def __init__(self, output_dir="reporting/output/runtime", **kwargs):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

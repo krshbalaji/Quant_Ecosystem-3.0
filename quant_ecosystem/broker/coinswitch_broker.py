@@ -11,7 +11,7 @@ class CoinSwitchBroker:
     The class mirrors the existing broker interface used by BrokerRouter.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         cfg = Config()
         self.api_key = (cfg.coinswitch_api_key or "").strip()
         self.api_secret = (cfg.coinswitch_api_secret or "").strip()

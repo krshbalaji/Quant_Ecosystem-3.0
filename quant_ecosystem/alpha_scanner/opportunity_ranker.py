@@ -13,7 +13,7 @@ class OpportunityRanker:
         w_signal: float = 0.4,
         w_volatility: float = 0.2,
         w_liquidity: float = 0.2,
-        w_trend: float = 0.2,
+        w_trend: float = 0.2, **kwargs
     ):
         self.w_signal = float(w_signal)
         self.w_volatility = float(w_volatility)

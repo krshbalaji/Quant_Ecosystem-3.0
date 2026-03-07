@@ -7,7 +7,7 @@ import json
 
 class AlphaDiscoveryEngine:
 
-    def __init__(self, strategy_lab_path="strategy_lab/research_strategies"):
+    def __init__(self, strategy_lab_path="strategy_lab/research_strategies", **kwargs):
 
         self.strategy_path = Path(strategy_lab_path)
         self.strategy_path.mkdir(parents=True, exist_ok=True)

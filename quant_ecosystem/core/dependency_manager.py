@@ -5,7 +5,7 @@ import sys
 
 class DependencyManager:
 
-    def __init__(self, req_file="requests.txt"):
+    def __init__(self, req_file="requests.txt", **kwargs):
         self.req_file = req_file
 
     def install_from_file(self):

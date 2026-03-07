@@ -3,7 +3,7 @@ import re
 
 class SymbolMapper:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         self.index_map = {
             "NIFTY50": {

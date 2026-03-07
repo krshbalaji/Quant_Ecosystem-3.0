@@ -10,7 +10,7 @@ class LifecycleManager:
 
     STAGES = ("CANDIDATE", "BACKTESTED", "PAPER", "SHADOW", "LIVE", "RETIRED")
 
-    def __init__(self, min_trades_for_promotion: int = 100, retire_dd_threshold: float = 20.0):
+    def __init__(self, min_trades_for_promotion: int = 100, retire_dd_threshold: float = 20.0, **kwargs):
         self.min_trades_for_promotion = int(max(10, min_trades_for_promotion))
         self.retire_dd_threshold = float(max(5.0, retire_dd_threshold))
 

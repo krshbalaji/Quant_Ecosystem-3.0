@@ -1,61 +1,64 @@
 """
-main.py  (patched boot sequence)
-==================================
-Quant Ecosystem 3.0 — reference boot entry point.
-
-CHANGES FROM ORIGINAL
-─────────────────────
-The three lines marked NEW are the only additions needed.
-Everything else is your existing boot sequence — unchanged.
-
-Run:
-    python main.py              # PAPER mode (default)
-    QUANT_MODE=LIVE python main.py
+Quant Ecosystem 3.0 — Main Boot Entry
+Institutional Boot Loader
 """
 
-import os
+import logging
 import sys
 
-# ── 0. Determine mode from environment ───────────────────────────────────────
-MODE   = os.environ.get("QUANT_MODE", "PAPER").upper()
-CONFIG = {
-    "mode":              MODE,
-    "DAILY_LOSS_LIMIT":  float(os.environ.get("DAILY_LOSS_LIMIT", "-5000")),
-    "MAX_DRAWDOWN_PCT":  float(os.environ.get("MAX_DRAWDOWN_PCT",  "-0.05")),
-    "STARTING_EQUITY":   float(os.environ.get("STARTING_EQUITY",  "100000")),
-    "TELEGRAM_TOKEN":    os.environ.get("TELEGRAM_TOKEN",    ""),
-    "TELEGRAM_CHAT_ID":  os.environ.get("TELEGRAM_CHAT_ID",  ""),
-    "RESET_CODE":        os.environ.get("RESET_CODE",        ""),
-}
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s"
+)
 
-print(f"[main] Quant Ecosystem 3.0 booting — mode={MODE}")
+logger = logging.getLogger("main")
 
 
-def shutdown(reason: str = "Shutdown requested") -> None:
-    """Graceful exit hook — called on CRITICAL diagnostic in LIVE mode."""
-    print(f"[main] shutdown() called: {reason}")
-    sys.exit(1)
+class Config:
+    """
+    Minimal runtime config container.
+    Later this will load from .env / config.yaml.
+    """
+    def __init__(self):
 
+        self.mode = "PAPER"
+        self.symbols = ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ", "NSE:TCS-EQ"]
 
-import logging
+        # risk defaults
+        self.max_daily_loss_pct = 5
 
-logging.basicConfig(level=logging.INFO)
-
-from quant_ecosystem.core.system_factory import SystemFactory
+        # telegram
+        self.telegram_token = None
+        self.telegram_chat_id = None
 
 
 def main():
 
-    config = {}
+    config = Config()
 
-    print("[main] Quant Ecosystem 3.0 booting — mode=PAPER")
+    print(f"[main] Quant Ecosystem 3.0 booting — mode={config.mode}")
 
-    factory = SystemFactory(config)
+    try:
 
-    router = factory.build()
+        from quant_ecosystem.core.system_factory import SystemFactory
 
-    if router.telegram:
-        router.telegram.send("🚀 Quant Ecosystem booted")
+        factory = SystemFactory(config)
+
+        router = factory.build()
+
+    except Exception as e:
+
+        logger.exception("System boot failed")
+        sys.exit(1)
+
+    # Telegram boot notification
+    try:
+
+        if router.telegram:
+            router.telegram.send("🚀 Quant Ecosystem boot completed")
+
+    except Exception:
+        pass
 
     print("Boot completed.")
 

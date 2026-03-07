@@ -17,7 +17,7 @@ class CommandHandler:
         system_status_reporter=None,
         capital_allocator_layer=None,
         trading_loop=None,
-        router=None,
+        router=None, **kwargs
     ):
         self.authorized_users = {str(uid).strip() for uid in (authorized_users or []) if str(uid).strip()}
         self.autonomous_controller = autonomous_controller

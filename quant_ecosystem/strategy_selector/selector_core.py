@@ -21,7 +21,7 @@ class AutonomousStrategySelector:
         ranker: Optional[PerformanceRanker] = None,
         regime_map: Optional[RegimeStrategyMap] = None,
         activation_manager: Optional[ActivationManager] = None,
-        max_active_strategies: int = 5,
+        max_active_strategies: int = 5, **kwargs
     ):
         self.strategy_bank_layer = strategy_bank_layer
         self.strategy_engine = strategy_engine
@@ -186,7 +186,7 @@ class SelectorCore:
     otherwise returns the full input list unchanged.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         import logging as _logging
         self._log = _logging.getLogger(__name__)
         self._delegate = None

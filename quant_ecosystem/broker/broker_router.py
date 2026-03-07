@@ -1,6 +1,6 @@
 class BrokerRouter:
 
-    def __init__(self, broker):
+    def __init__(self, broker, **kwargs):
 
         self.broker = broker
 

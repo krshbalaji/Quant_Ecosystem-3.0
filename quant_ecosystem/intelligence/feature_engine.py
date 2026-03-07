@@ -13,7 +13,7 @@ class FeatureEngine:
     beyond basic per-session caching.
     """
 
-    def __init__(self, market_data_engine):
+    def __init__(self, market_data_engine, **kwargs):
         self.market_data = market_data_engine
 
     # --- Low-level helpers -------------------------------------------------

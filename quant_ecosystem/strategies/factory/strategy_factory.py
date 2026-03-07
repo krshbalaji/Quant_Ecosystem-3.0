@@ -11,7 +11,7 @@ class StrategyFactory:
     Central factory for creating, cloning and mutating strategies.
     """
 
-    def __init__(self, registry=None):
+    def __init__(self, registry=None, **kwargs):
         self.registry = registry
 
     def create_from_class(self, cls: Type[BaseStrategy], params: Dict[str, object] | None = None) -> BaseStrategy:

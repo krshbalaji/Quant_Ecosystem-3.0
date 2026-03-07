@@ -4,7 +4,7 @@ from pathlib import Path
 
 class StrategyConverter:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         self.raw_path = Path("strategy_bank/raw")
         self.validated_path = Path("strategy_bank/validated")

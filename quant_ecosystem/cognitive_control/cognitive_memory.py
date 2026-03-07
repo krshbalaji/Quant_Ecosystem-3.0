@@ -11,7 +11,7 @@ from typing import Dict, List
 class CognitiveMemory:
     """Stores historical cognitive state snapshots and stress patterns."""
 
-    def __init__(self, path: str = "quant_ecosystem/cognitive_control/memory/cognitive_memory.json"):
+    def __init__(self, path: str = "quant_ecosystem/cognitive_control/memory/cognitive_memory.json", **kwargs):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._data = self._load()

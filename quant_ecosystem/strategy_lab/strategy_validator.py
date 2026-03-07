@@ -13,7 +13,7 @@ class StrategyValidator:
         max_drawdown: float = 25.0,
         min_profit_factor: float = 1.2,
         min_sharpe: float = 1.0,
-        min_sample_size: int = 80,
+        min_sample_size: int = 80, **kwargs
     ):
         self.max_drawdown = float(max_drawdown)
         self.min_profit_factor = float(min_profit_factor)

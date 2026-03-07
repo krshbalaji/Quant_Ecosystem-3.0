@@ -28,7 +28,7 @@ class PortfolioOptimizer:
         self,
         max_strategies: int = 5,
         correlation_threshold: float = 0.7,
-        weights: OptimizerWeights | None = None,
+        weights: OptimizerWeights | None = None, **kwargs
     ):
         self.max_strategies = max(1, int(max_strategies))
         self.correlation_threshold = max(0.0, min(0.99, float(correlation_threshold)))

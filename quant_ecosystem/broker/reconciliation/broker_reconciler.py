@@ -5,7 +5,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class BrokerReconciler:
 
-    def __init__(self, broker_router, portfolio_engine, state):
+    def __init__(self, broker_router, portfolio_engine, state, **kwargs):
         self.broker = broker_router
         self.portfolio = portfolio_engine
         self.state = state

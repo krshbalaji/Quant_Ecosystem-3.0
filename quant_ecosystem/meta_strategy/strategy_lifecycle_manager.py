@@ -17,7 +17,7 @@ class StrategyLifecycleManager:
         promote_to_live_score: float = 0.65,
         reduce_live_score: float = 0.40,
         retire_reduced_score: float = 0.30,
-        min_trades_live: int = 100,
+        min_trades_live: int = 100, **kwargs
     ):
         self.promote_to_shadow_score = float(promote_to_shadow_score)
         self.promote_to_paper_score = float(promote_to_paper_score)

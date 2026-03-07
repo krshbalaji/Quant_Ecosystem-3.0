@@ -11,7 +11,7 @@ from typing import Dict, Iterable, List
 class StrategyRepository:
     """Stores research, validated, and archived strategy artifacts."""
 
-    def __init__(self, base_dir: str = "strategy_lab"):
+    def __init__(self, base_dir: str = "strategy_lab", **kwargs):
         self.base_dir = Path(base_dir)
         self.research_dir = self.base_dir / "research_strategies"
         self.validated_dir = self.base_dir / "validated_strategies"

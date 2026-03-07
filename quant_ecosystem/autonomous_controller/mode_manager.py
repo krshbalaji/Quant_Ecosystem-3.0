@@ -17,7 +17,7 @@ class ControlMode:
 class ModeManager:
     """Thread-safe mode state holder with policy checks."""
 
-    def __init__(self, initial_mode: str = ControlMode.AUTONOMOUS):
+    def __init__(self, initial_mode: str = ControlMode.AUTONOMOUS, **kwargs):
         self._mode = str(initial_mode).strip().upper() or ControlMode.AUTONOMOUS
         self._lock = RLock()
         self._valid = {ControlMode.MANUAL, ControlMode.ASSISTED, ControlMode.AUTONOMOUS}

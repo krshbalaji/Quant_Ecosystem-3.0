@@ -8,7 +8,7 @@ from typing import Dict
 class BehaviorManager:
     """Applies high-level decisions to optional subsystem knobs."""
 
-    def __init__(self, min_risk_pct: float = 0.5, max_risk_pct: float = 3.0):
+    def __init__(self, min_risk_pct: float = 0.5, max_risk_pct: float = 3.0, **kwargs):
         self.min_risk_pct = float(min_risk_pct)
         self.max_risk_pct = float(max_risk_pct)
 

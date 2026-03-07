@@ -43,7 +43,7 @@ class AlphaCrossoverEngine:
         self,
         k_points: int = 2,
         blend_alpha: float = 0.3,
-        fitness_bias: bool = True,
+        fitness_bias: bool = True, **kwargs
     ) -> None:
         self._k = max(1, int(k_points))
         self._blend_alpha = float(blend_alpha)

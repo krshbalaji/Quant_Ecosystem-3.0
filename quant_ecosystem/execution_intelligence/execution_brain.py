@@ -21,7 +21,7 @@ class ExecutionBrain:
         slippage_estimator: Optional[SlippageEstimator] = None,
         order_optimizer: Optional[OrderOptimizer] = None,
         policy_manager: Optional[ExecutionPolicyManager] = None,
-        microstructure_simulator=None,
+        microstructure_simulator=None, **kwargs
     ):
         self.liquidity_analyzer = liquidity_analyzer or LiquidityAnalyzer()
         self.slippage_estimator = slippage_estimator or SlippageEstimator()

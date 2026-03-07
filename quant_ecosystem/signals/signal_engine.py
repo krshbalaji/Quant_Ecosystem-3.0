@@ -14,7 +14,7 @@ class SignalEngine:
     list of signal intents. No orders are created here.
     """
 
-    def __init__(self, strategy_registry, market_data):
+    def __init__(self, strategy_registry, market_data, **kwargs):
         self.strategy_registry = strategy_registry
         self.market_data = market_data
 

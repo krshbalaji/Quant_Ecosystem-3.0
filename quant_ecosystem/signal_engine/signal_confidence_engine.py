@@ -11,7 +11,7 @@ class SignalConfidenceEngine:
     def __init__(
         self,
         weights: Optional[Dict[str, float]] = None,
-        min_confidence: float = 0.0,
+        min_confidence: float = 0.0, **kwargs
     ):
         default_weights = {
             "trend_strength": 0.3,

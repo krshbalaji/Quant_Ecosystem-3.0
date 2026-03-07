@@ -262,7 +262,7 @@ class FactorDatasetBuilder:
     def __init__(
         self,
         benchmark_symbol: Optional[str] = None,
-        benchmark_data: Optional[np.ndarray] = None,
+        benchmark_data: Optional[np.ndarray] = None, **kwargs
     ) -> None:
         self.benchmark_symbol = benchmark_symbol
         self.benchmark_data = benchmark_data  # shape (N, 5) OHLCV

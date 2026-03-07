@@ -8,7 +8,7 @@ class PerformanceAttributionEngine:
     Breaks down PnL by strategy and updates PerformanceStore.
     """
 
-    def __init__(self, performance_store):
+    def __init__(self, performance_store, **kwargs):
         self.store = performance_store
 
     def attribute_trade(self, trade_record: Dict, equity_before: float) -> None:

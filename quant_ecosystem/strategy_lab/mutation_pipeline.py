@@ -10,7 +10,7 @@ from typing import Dict, Iterable, List, Optional
 class MutationPipeline:
     """Generates controlled mutations using existing mutation engine when available."""
 
-    def __init__(self, mutation_layer=None, seed: Optional[int] = None):
+    def __init__(self, mutation_layer=None, seed: Optional[int] = None, **kwargs):
         self.mutation_layer = mutation_layer
         self._rng = random.Random(seed)
         self._indicator_swaps = {

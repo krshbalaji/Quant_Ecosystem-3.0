@@ -11,7 +11,7 @@ class StrategyMutationEngine:
     Part of the Alpha Genome layer.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         logger.info("StrategyMutationEngine initialized")
 
     def mutate(self, strategy):

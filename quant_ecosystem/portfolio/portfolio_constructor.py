@@ -9,7 +9,7 @@ class PortfolioConstructor:
     target exposure map expressed as fraction of portfolio equity.
     """
 
-    def __init__(self, capital_allocator=None):
+    def __init__(self, capital_allocator=None, **kwargs):
         self.capital_allocator = capital_allocator
 
     def build_target_portfolio(

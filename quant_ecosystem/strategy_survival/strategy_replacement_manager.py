@@ -17,7 +17,7 @@ class StrategyReplacementManager:
         reduction_factor: float = 0.5,
         min_replacement_sharpe: float = 1.0,
         min_replacement_profit_factor: float = 1.2,
-        max_replacement_drawdown: float = 25.0,
+        max_replacement_drawdown: float = 25.0, **kwargs
     ):
         self.archive_dir = Path(archive_dir)
         self.archive_dir.mkdir(parents=True, exist_ok=True)

@@ -176,7 +176,7 @@ class AlphaGene:
     """A single alpha gene — atomic trading logic with parameters."""
 
     def __init__(self, gene_type: str, params: Dict[str, float],
-                 gene_id: Optional[str] = None, fitness: float = 0.0) -> None:
+                 gene_id: Optional[str] = None, fitness: float = 0.0, **kwargs) -> None:
         if gene_type not in GENE_TEMPLATES:
             raise ValueError(f"Unknown gene type: {gene_type}")
         self.gene_id = gene_id or str(uuid.uuid4())[:12]
@@ -228,7 +228,7 @@ class AlphaGenePool:
     Provides sampling, ranking, and persistence.
     """
 
-    def __init__(self, pool_path: Optional[Path] = None) -> None:
+    def __init__(self, pool_path: Optional[Path] = None, **kwargs) -> None:
         self._path = pool_path or _POOL_PATH / "gene_pool.json"
         self._genes: Dict[str, AlphaGene] = {}
         self._lock = threading.Lock()

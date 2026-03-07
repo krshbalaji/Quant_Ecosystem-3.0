@@ -8,7 +8,7 @@ from typing import Dict, List
 class ParameterOptimizer:
     """Optimizes strategy parameters using rolling performance heuristics."""
 
-    def __init__(self, min_trades: int = 30):
+    def __init__(self, min_trades: int = 30, **kwargs):
         self.min_trades = max(10, int(min_trades))
 
     def optimize(self, strategy_id: str, regime_rows: List[Dict], current_params: Dict | None = None) -> Dict:

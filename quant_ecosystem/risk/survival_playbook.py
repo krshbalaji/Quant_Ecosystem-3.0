@@ -4,7 +4,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class SurvivalPlaybook:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.config = Config()
         self.mode = "NORMAL"
         self.skip_streak = 0

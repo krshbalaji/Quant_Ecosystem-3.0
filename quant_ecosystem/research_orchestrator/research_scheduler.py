@@ -83,7 +83,7 @@ class ResearchScheduler:
         - Chain jobs via dependencies to manage resource usage
     """
 
-    def __init__(self, max_concurrent: int = 4, poll_interval: float = 1.0) -> None:
+    def __init__(self, max_concurrent: int = 4, poll_interval: float = 1.0, **kwargs) -> None:
         self._jobs: Dict[str, ScheduledJob] = {}
         self._heap: List[ScheduledJob] = []
         self._lock = threading.Lock()

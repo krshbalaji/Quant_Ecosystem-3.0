@@ -33,7 +33,7 @@ class MetaStrategyBrain:
         scoring_engine: Optional[StrategyScoringEngine] = None,
         lifecycle_manager: Optional[StrategyLifecycleManager] = None,
         diversification_engine: Optional[StrategyDiversificationEngine] = None,
-        retirement_engine: Optional[StrategyRetirementEngine] = None,
+        retirement_engine: Optional[StrategyRetirementEngine] = None, **kwargs
     ):
         self.strategy_bank_layer = strategy_bank_layer
         self.capital_allocator_engine = capital_allocator_engine

@@ -4,7 +4,7 @@
 class RiskEngineLayer:
     """Non-invasive facade for exposure and drawdown telemetry."""
 
-    def __init__(self, risk_engine=None):
+    def __init__(self, risk_engine=None, **kwargs):
         self.risk_engine = risk_engine
 
     def limits(self):

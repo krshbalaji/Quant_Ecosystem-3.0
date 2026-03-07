@@ -10,7 +10,7 @@ from typing import Dict, Iterable, List, Optional
 class MarketDataAdapter:
     """Fetches market data from connected engines/adapters with safe fallbacks."""
 
-    def __init__(self, market_data_engine=None, broker_router=None, max_concurrency: int = 64):
+    def __init__(self, market_data_engine=None, broker_router=None, max_concurrency: int = 64, **kwargs):
         self.market_data_engine = market_data_engine
         self.broker_router = broker_router
         self.max_concurrency = max(1, int(max_concurrency))

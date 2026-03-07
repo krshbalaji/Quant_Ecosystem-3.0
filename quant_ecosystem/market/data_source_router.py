@@ -1,6 +1,6 @@
 class DataSourceRouter:
 
-    def __init__(self, primary_feed):
+    def __init__(self, primary_feed, **kwargs):
 
         self.primary = primary_feed
 

@@ -96,7 +96,7 @@ class SignalQualityEngine:
         self,
         max_history: int = 1000,
         min_ic_threshold: float = 0.03,
-        ic_window: int = 60,
+        ic_window: int = 60, **kwargs
     ) -> None:
         self._max_history = int(max_history)
         self._min_ic = float(min_ic_threshold)

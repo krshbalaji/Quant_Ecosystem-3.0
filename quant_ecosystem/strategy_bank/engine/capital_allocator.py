@@ -8,7 +8,7 @@ from typing import Dict, List
 class CapitalAllocator:
     """Allocates <= 100% capital with rank-weighted and capped sizing."""
 
-    def __init__(self, max_per_strategy_pct: float = 30.0):
+    def __init__(self, max_per_strategy_pct: float = 30.0, **kwargs):
         self.max_per_strategy_pct = float(max_per_strategy_pct)
 
     def allocate(self, ranked_rows: List[Dict]) -> Dict[str, float]:

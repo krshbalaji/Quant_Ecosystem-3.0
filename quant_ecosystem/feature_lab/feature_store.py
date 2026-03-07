@@ -26,7 +26,7 @@ _STORE_ROOT.mkdir(parents=True, exist_ok=True)
 class LRUCache:
     """Thread-safe LRU cache backed by OrderedDict."""
 
-    def __init__(self, maxsize: int = 2048):
+    def __init__(self, maxsize: int = 2048, **kwargs):
         self._cache: OrderedDict[str, Any] = OrderedDict()
         self._maxsize = maxsize
         self._lock = threading.Lock()
@@ -79,7 +79,7 @@ class FeatureStore:
                 cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, maxsize: int = 4096, ttl_seconds: int = 3600):
+    def __init__(self, maxsize: int = 4096, ttl_seconds: int = 3600, **kwargs):
         if self._initialized:
             return
         self._cache = LRUCache(maxsize=maxsize)

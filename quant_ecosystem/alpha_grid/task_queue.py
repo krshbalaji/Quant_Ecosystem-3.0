@@ -35,7 +35,7 @@ class GridTask:
 class GridTaskQueue:
     """Thread-safe prioritized task queue."""
 
-    def __init__(self, maxsize: int = 50000):
+    def __init__(self, maxsize: int = 50000, **kwargs):
         self._queue: PriorityQueue = PriorityQueue(maxsize=maxsize)
         self._lock = threading.Lock()
         self._tasks_by_id: Dict[str, GridTask] = {}

@@ -20,7 +20,7 @@ class MarketRegimeDetector:
         volatility_analyzer: Optional[VolatilityAnalyzer] = None,
         liquidity_analyzer: Optional[LiquidityAnalyzer] = None,
         classifier: Optional[RegimeClassifier] = None,
-        timeframe_weights: Optional[Dict[str, float]] = None,
+        timeframe_weights: Optional[Dict[str, float]] = None, **kwargs
     ):
         self.trend_analyzer = trend_analyzer or TrendAnalyzer()
         self.volatility_analyzer = volatility_analyzer or VolatilityAnalyzer()

@@ -21,7 +21,7 @@ class WorkerNode:
         genome_generator=None,
         genome_evaluator=None,
         strategy_lab=None,
-        shadow_trading_engine=None,
+        shadow_trading_engine=None, **kwargs
     ):
         self.node_id = str(node_id)
         self.genome_generator = genome_generator

@@ -27,7 +27,7 @@ class PortfolioAI:
         risk_parity_engine: Optional[RiskParityEngine] = None,
         correlation_analyzer: Optional[CorrelationAnalyzer] = None,
         volatility_targeting: Optional[VolatilityTargeting] = None,
-        state_manager: Optional[PortfolioStateManager] = None,
+        state_manager: Optional[PortfolioStateManager] = None, **kwargs
     ):
         self.strategy_bank_layer = strategy_bank_layer
         self.capital_allocator_engine = capital_allocator_engine

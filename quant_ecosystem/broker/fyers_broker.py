@@ -7,7 +7,7 @@ from quant_ecosystem.utils.decimal_utils import quantize
 
 class FyersBroker:
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, **kwargs):
         """
         Optional config parameter is accepted for compatibility with the
         SystemFactory wiring. The broker itself currently sources runtime

@@ -8,7 +8,7 @@ from typing import Dict
 class SlippageModel:
     """Computes slippage using volatility, size, and liquidity."""
 
-    def __init__(self, multiplier: float = 1.0):
+    def __init__(self, multiplier: float = 1.0, **kwargs):
         self.multiplier = max(0.1, float(multiplier))
 
     def estimate(self, volatility: float, order_size: float, liquidity_score: float) -> Dict:

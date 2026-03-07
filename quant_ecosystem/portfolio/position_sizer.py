@@ -3,7 +3,7 @@ from quant_ecosystem.core.config_loader import Config
 
 class PositionSizer:
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.config = Config()
 
     def size(self, equity, price, volatility, risk_pct=1.0):
