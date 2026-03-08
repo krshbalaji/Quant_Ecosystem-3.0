@@ -1,14 +1,24 @@
+import logging
 import random
 import uuid
-import time
-
-from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class StrategyDiscoveryEngine:
+    """
+    Generates new candidate strategy genomes.
+    Used by AutonomousResearchLoop.
+    """
+
+    INDICATORS = [
+        "momentum",
+        "rsi",
+        "ma_cross",
+        "breakout",
+        "mean_reversion",
+        "volatility_breakout",
+    ]
 
     def __init__(self, market_data=None, factor_library=None, config=None, **kwargs):
         self.market_data = market_data
@@ -17,91 +27,32 @@ class StrategyDiscoveryEngine:
 
         logger.info("StrategyDiscoveryEngine initialized")
 
-    def start(self):
+    def _generate_random_genome(self):
 
-        logger.info("Autonomous Strategy Discovery Engine started")
+        indicator = random.choice(self.INDICATORS)
 
-        while True:
-
-            try:
-
-                strategies = self.discover()
-
-                if self.research_grid:
-
-                    logger.info("Submitting strategies to ResearchGrid")
-
-                    self.research_grid.submit_genome_sweep(
-                        strategies,
-                        symbols=["NSE:SBIN", "NSE:RELIANCE", "NSE:TCS"]
-                    )
-
-                time.sleep(60)
-
-            except Exception as e:
-
-                logger.warning(f"Discovery loop error: {e}")
-                time.sleep(10)
-                
-    def discover(self):
-
-        logger.info("Running strategy discovery")
-
-        strategy = {
-            "type": random.choice(["trend", "mean_reversion"]),
-            "factor": random.choice(["momentum", "rsi", "volatility"]),
+        genome = {
+            "genome_id": f"arl_{indicator}_{uuid.uuid4().hex[:8]}",
+            "signal_gene": {
+                "indicator": indicator,
+                "lookback": random.randint(5, 50),
+                "threshold": round(random.uniform(0.1, 2.0), 2),
+            },
         }
 
-        logger.info(f"Discovered strategy: {strategy}")
+        return genome
 
-        return strategy
+    def discover(self, count=20, symbols=None, **kwargs):
+        """
+        Generate new random strategy genomes.
+        """
 
-    # -------------------------------------------------
+        genomes = []
 
-    def generate(self):
+        for _ in range(count):
+            genome = self._generate_random_genome()
+            genomes.append(genome)
 
-        new_strategies = []
+        logger.info("StrategyDiscoveryEngine generated %d genomes", len(genomes))
 
-        for _ in range(self.max_new_strategies):
-
-            strategy = self._generate_strategy()
-
-            if strategy:
-                self.registry.register(strategy)
-                new_strategies.append(strategy)
-
-        return new_strategies
-
-    # -------------------------------------------------
-
-    def _generate_strategy(self):
-
-        feature = random.choice([
-            "rsi",
-            "momentum",
-            "volatility",
-            "atr",
-            "vwap"
-        ])
-
-        threshold = random.uniform(20, 80)
-
-        strategy_id = f"generated_{uuid.uuid4().hex[:8]}"
-
-        return GeneratedStrategy(
-            strategy_id,
-            feature,
-            threshold
-        )
-
-        genome_lib = getattr(self.router, "genome_library", None)
-
-        if not genome_lib:
-            logger.warning("Genome library not available")
-            return
-
-        fitness = random.uniform(-1, 2)
-
-        result = {
-            "fitness_score": fitness
-        }
+        return genomes

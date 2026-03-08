@@ -17,3 +17,10 @@ from quant_ecosystem.alpha_genome.genome_library import (  # noqa: F401
 )
 
 __all__ = ["GenomeLibrary", "AlphaGenomeLibrary", "GenomeRecord"]
+
+def save_genome(self, genome):
+
+    path = os.path.join(self.storage_path, f"{genome.id}.json")
+
+    with open(path, "w") as f:
+        json.dump(genome.to_dict(), f)

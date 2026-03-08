@@ -935,7 +935,8 @@ class ResearchGrid:
 
         logger.info(
             "ResearchGrid initialized (workers=%d, promote_thresh=%.2f)",
-            self._n_workers, self.promote_threshold,
+            self._n_workers,
+            self.promote_threshold,
         )
 
     # ------------------------------------------------------------------
