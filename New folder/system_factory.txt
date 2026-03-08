@@ -159,9 +159,6 @@ class SystemRouter:
         # ── Meta-Research AI (guides discovery via memory analysis) ← NEW ────
         self.meta_research_ai:         Optional[Any] = None
 
-        # ── Autonomous Research Loop (continuous hedge-fund lab) ─────────────
-        self.autonomous_research_loop: Optional[Any] = None
-
     # ── MasterOrchestrator compatibility ──────────────────────────────────────
 
     @property
@@ -294,11 +291,9 @@ class SystemFactory:
         self._boot_genome_memory(router)         # 9. genome_memory
         self._boot_synthetic_market(router)      # 10. synthetic_market
         self._boot_autonomous_lab(router)        # 11. autonomous_lab
-        self._boot_research_grid(router) 
-        self._boot_autonomous_research(router)        # 12. research_grid ← NEW
+        self._boot_research_grid(router)         # 12. research_grid ← NEW
         self._boot_meta_research(router)         # 13. meta_research  ← NEW
         self._boot_dashboard_layer(router)       # 14. dashboard
-        # 15. autonomous research loop  ← NEW
 
         router._log_mode_summary(self._mode)
         return router
@@ -1244,19 +1239,17 @@ class SystemFactory:
             return
 
         try:
-            from quant_ecosystem.control.telegram_controller import (  # noqa: PLC0415
-                TelegramController,
+            from quant_ecosystem.control.telegram_control_center import (  # noqa: PLC0415
+                TelegramControlCenter,
             )
-            tg = TelegramController()
-            tg.bind_router(router)
-            router.telegram = tg
+            router.telegram = TelegramControlCenter()
             # Propagate to ExecutionRouter
             if router._execution_router is not None:
-                router._execution_router.telegram = tg
-            logger.debug("TelegramController initialized and router bound.")
+                router._execution_router.telegram = router.telegram
+            logger.debug("TelegramControlCenter initialized.")
         except Exception:
             logger.warning(
-                "TelegramController unavailable — running without Telegram.",
+                "TelegramControlCenter unavailable — running without Telegram.",
                 exc_info=True,
             )
 
@@ -1292,124 +1285,6 @@ class SystemFactory:
                 router.cockpit_service_config["port"],
             )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Boot step 15 — Autonomous Research Loop  ← NEW
-    # ─────────────────────────────────────────────────────────────────────────
-
-    def _boot_autonomous_research(self, router: SystemRouter) -> None:
-        """
-        Boot step 15 — Autonomous Research Loop.
-
-        Creates and starts the AutonomousResearchLoop, which continuously runs
-        the discover -> mutate -> evolve -> evaluate -> promote -> learn cycle
-        in a background daemon thread.
-
-        Attached to router.autonomous_research_loop for runtime introspection:
-
-            router.autonomous_research_loop.status()
-            router.autonomous_research_loop.trigger_now()
-            router.autonomous_research_loop.stop()
-
-        Config keys (all optional with safe defaults)
-        ---------------------------------------------
-        enable_autonomous_research      bool    True
-        autonomous_cycle_interval_sec   float   120.0
-        autonomous_eval_timeout_sec     float   90.0
-        autonomous_genome_batch_size    int     20
-        autonomous_mutation_batch_size  int     10
-        autonomous_promote_top_n        int     5
-        autonomous_promote_threshold    float   0.45
-        autonomous_startup_delay_sec    float   5.0
-
-        Fail-safe
-        ---------
-        Any exception here leaves router.autonomous_research_loop = None and
-        the system continues normally.  No exception propagates to the caller.
-        """
-        logger.info("[boot] autonomous_research …")
-        cfg = self._config
-
-        if not getattr(cfg, "enable_autonomous_research", True):
-            logger.info(
-                "AutonomousResearchLoop disabled via config "
-                "(enable_autonomous_research=False)."
-            )
-            router.autonomous_research_loop = None
-            return
-
-        try:
-            from quant_ecosystem.autonomous_research import (  # noqa: PLC0415
-                AutonomousResearchLoop,
-                LoopConfig,
-            )
-
-            loop_cfg = LoopConfig(
-                cycle_interval_sec   = float(getattr(cfg, "autonomous_cycle_interval_sec",  120.0)),
-                eval_timeout_sec     = float(getattr(cfg, "autonomous_eval_timeout_sec",     90.0)),
-                startup_delay_sec    = float(getattr(cfg, "autonomous_startup_delay_sec",    5.0)),
-                discovery_batch_size = int(getattr(cfg,   "autonomous_genome_batch_size",   20)),
-                mutation_batch_size  = int(getattr(cfg,   "autonomous_mutation_batch_size", 10)),
-                promote_top_n        = int(getattr(cfg,   "autonomous_promote_top_n",        5)),
-                promote_threshold    = float(getattr(cfg, "autonomous_promote_threshold",    0.45)),
-                eval_symbols         = list(getattr(cfg,  "autonomous_eval_symbols", None) or ["SYNTH"]),
-                eval_periods         = int(getattr(cfg,   "autonomous_eval_periods",        260)),
-                enable_walk_forward  = bool(getattr(cfg,  "autonomous_enable_walk_forward", True)),
-                enable_monte_carlo   = bool(getattr(cfg,  "autonomous_enable_monte_carlo",  False)),
-            )
-
-            # Resolve the StrategyDiscoveryEngine — may live on multiple attrs
-            discovery = (
-                getattr(router, "strategy_discovery",    None)
-                or getattr(router, "discovery_engine",   None)
-            )
-
-            # Resolve the MutationEngine — may live on multiple attrs
-            mutation = (
-                getattr(router, "mutation_engine",        None)
-                or getattr(router, "genome_mutator",      None)
-            )
-
-            # Resolve the EvolutionEngine — may live on multiple attrs
-            evolution = (
-                getattr(router, "alpha_evolution",        None)
-                or getattr(router, "evolution_engine",    None)
-            )
-
-            loop = AutonomousResearchLoop(
-                discovery_engine     = discovery,
-                mutation_engine      = mutation,
-                evolution_engine     = evolution,
-                research_grid        = getattr(router, "research_grid",        None),
-                genome_library       = getattr(router, "genome_library",       None),
-                meta_research_ai     = getattr(router, "meta_research_ai",     None),
-                strategy_bank_engine = getattr(router, "strategy_bank_engine", None),
-                cfg                  = loop_cfg,
-            )
-
-            router.autonomous_research_loop = loop
-            loop.start()
-
-            logger.info(
-                "[boot] AutonomousResearchLoop started | "
-                "cycle=%.0fs batch=%d+%d promote_top=%d "
-                "discovery=%s grid=%s meta_ai=%s",
-                loop_cfg.cycle_interval_sec,
-                loop_cfg.discovery_batch_size,
-                loop_cfg.mutation_batch_size,
-                loop_cfg.promote_top_n,
-                "yes" if discovery                             is not None else "no",
-                "yes" if getattr(router, "research_grid", None) is not None else "no",
-                "yes" if getattr(router, "meta_research_ai", None) is not None else "no",
-            )
-
-        except Exception as exc:
-            logger.warning(
-                "[boot] AutonomousResearchLoop boot failed (%s) — "
-                "system continues without autonomous research.",
-                exc,
-                exc_info=True,
-            )
-            router.autonomous_research_loop = None
 
 # ─────────────────────────────────────────────────────────────────────────────
 # No-Op Broker Fallback

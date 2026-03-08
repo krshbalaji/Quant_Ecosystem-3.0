@@ -368,3 +368,8 @@ class TelegramControlCenter:
         if len(updates) > 5:
             lines.append(f"... +{len(updates) - 5} more")
         return "\n".join(lines)
+
+    def consume_webhook_events(self):
+        """Fallback polling loop."""
+        if hasattr(self, "controller"):
+            self.controller.consume_webhook_events()

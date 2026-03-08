@@ -1,5 +1,6 @@
 import random
 import uuid
+import time
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
 import logging
@@ -16,6 +17,32 @@ class StrategyDiscoveryEngine:
 
         logger.info("StrategyDiscoveryEngine initialized")
 
+    def start(self):
+
+        logger.info("Autonomous Strategy Discovery Engine started")
+
+        while True:
+
+            try:
+
+                strategies = self.discover()
+
+                if self.research_grid:
+
+                    logger.info("Submitting strategies to ResearchGrid")
+
+                    self.research_grid.submit_genome_sweep(
+                        strategies,
+                        symbols=["NSE:SBIN", "NSE:RELIANCE", "NSE:TCS"]
+                    )
+
+                time.sleep(60)
+
+            except Exception as e:
+
+                logger.warning(f"Discovery loop error: {e}")
+                time.sleep(10)
+                
     def discover(self):
 
         logger.info("Running strategy discovery")

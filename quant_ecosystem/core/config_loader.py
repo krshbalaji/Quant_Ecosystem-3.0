@@ -18,10 +18,12 @@ class Config:
         self.coinswitch_api_secret = os.getenv("COINSWITCH_API_SECRET", "")
         self.coinswitch_base_url = os.getenv("COINSWITCH_BASE_URL", "https://api.coinswitch.co")
         self.coinswitch_enable_live = os.getenv("COINSWITCH_ENABLE_LIVE", "false").lower() == "true"
+        self.telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
         # Telegram
-        self.telegram_token = self._pick_env("TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN")
-        self.telegram_chat_id = self._pick_env("TELEGRAM_CHAT_ID")
+        #self.telegram_token = self._pick_env("TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN")
+        #self.telegram_chat_id = self._pick_env("TELEGRAM_CHAT_ID")
         self.telegram_webhook_url = self._pick_env("TELEGRAM_WEBHOOK_URL")
         self.telegram_webhook_secret = self._pick_env("TELEGRAM_WEBHOOK_SECRET")
         self.telegram_webhook_host = os.getenv("TELEGRAM_WEBHOOK_HOST", "127.0.0.1")
