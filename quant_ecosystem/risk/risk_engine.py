@@ -97,11 +97,8 @@ class RiskEngine:
         config=None,
         state=None,
         portfolio_engine=None,
-<<<<<<< Updated upstream
         equity_provider=None,
-=======
-        equity_provider=None, **kwargs
->>>>>>> Stashed changes
+        **kwargs
     ) -> None:
         if config is None:
             try:

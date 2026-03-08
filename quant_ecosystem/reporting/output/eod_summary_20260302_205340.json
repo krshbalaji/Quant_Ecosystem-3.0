@@ -1,0 +1,27 @@
+{
+  "timestamp": "20260302_205340",
+  "equity": 101289.21,
+  "peak_equity": 101289.21,
+  "drawdown_pct": 0.0,
+  "trades_count": 3,
+  "intelligence": {
+    "volatility": 0.1612,
+    "trend": 0,
+    "regime": "SIDEWAYS",
+    "bias": "NEUTRAL"
+  },
+  "strategy_reports": [
+    {
+      "id": "core_momentum_v1",
+      "name": "core_momentum_v1",
+      "metrics": {
+        "win_rate": 57.368,
+        "expectancy": 0.10021,
+        "max_dd": 5.724,
+        "profit_factor": 1.298
+      },
+      "score": 22.57,
+      "stage": "PAPER"
+    }
+  ]
+}

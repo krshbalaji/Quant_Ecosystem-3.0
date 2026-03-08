@@ -1,0 +1,46 @@
+{
+  "timestamp": "20260302_221751",
+  "equity": 99997.6,
+  "peak_equity": 100000.0,
+  "drawdown_pct": 0.0,
+  "cash_balance": 94356.88,
+  "realized_pnl": 0.0,
+  "unrealized_pnl": -0.99,
+  "fees_paid": 1.41,
+  "turnover": 5641.71,
+  "trades_count": 1,
+  "realized_stats": {
+    "win_rate_pct": 0.0,
+    "expectancy_abs": -2.4,
+    "expectancy_bps": -0.24,
+    "profit_factor": 0.0,
+    "warnings": []
+  },
+  "intelligence": {
+    "volatility": 0.1852,
+    "trend": 1,
+    "regime": "BULL",
+    "bias": "LONG_BIAS"
+  },
+  "strategy_reports": [
+    {
+      "id": "core_momentum_v1",
+      "name": "core_momentum_v1",
+      "metrics": {
+        "win_rate": 54.211,
+        "expectancy": 0.07868,
+        "max_dd": 8.151,
+        "profit_factor": 1.238
+      },
+      "score": 20.71,
+      "stage": "REJECTED"
+    }
+  ],
+  "adaptation": {
+    "action": "DECREASE_RISK",
+    "new_trade_risk_pct": 9.0,
+    "win_rate_pct": 0.0,
+    "expectancy_abs": -2.4048,
+    "reason": "Drawdown/expectancy deterioration detected."
+  }
+}

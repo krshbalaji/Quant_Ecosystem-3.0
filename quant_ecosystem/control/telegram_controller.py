@@ -1,4 +1,7 @@
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 from quant_ecosystem.control.telegram_control_center import TelegramControlCenter
 from quant_ecosystem.control.telegram.audit_logger import TelegramAuditLogger
@@ -445,12 +448,7 @@ class TelegramController:
                 data=None if use_json else payload,
                 timeout=(5, 15)  # connect timeout, read timeout
             )
-
-            except requests.exceptions.RequestException as e:
-                logger.warning(f"Telegram API error: {e}")
-                return False, None
-            
-                data = response.json()
+            data = response.json()
             if not data.get("ok"):
                 description = str(data.get("description", "unknown error"))
                 if "message is not modified" in description.lower():
@@ -458,7 +456,8 @@ class TelegramController:
                 print(f"Telegram API failed: {description}")
                 return False, data
             return True, data
-        except (requests.RequestException, ValueError):
+        except (requests.RequestException, ValueError) as exc:
+            logger.warning("Telegram API error: %s", exc)
             print("Telegram API failed: network/API error.")
             return False, {}
 

@@ -1,0 +1,118 @@
+{
+  "equity_curve": [
+    {
+      "index": 1,
+      "equity": 99996.71,
+      "cycle_pnl": -3.2867
+    },
+    {
+      "index": 2,
+      "equity": 99963.53,
+      "cycle_pnl": -32.4731
+    },
+    {
+      "index": 3,
+      "equity": 99987.19,
+      "cycle_pnl": 23.6671
+    },
+    {
+      "index": 4,
+      "equity": 100051.36,
+      "cycle_pnl": 22.0275
+    },
+    {
+      "index": 5,
+      "equity": 100075.44,
+      "cycle_pnl": 44.6578
+    },
+    {
+      "index": 6,
+      "equity": 100079.8,
+      "cycle_pnl": 4.359
+    },
+    {
+      "index": 7,
+      "equity": 100046.92,
+      "cycle_pnl": 6.7136
+    }
+  ],
+  "rolling_sharpe": [
+    {
+      "index": 1,
+      "rolling_sharpe": 0.0
+    },
+    {
+      "index": 2,
+      "rolling_sharpe": -19.4498
+    },
+    {
+      "index": 3,
+      "rolling_sharpe": -2.7912
+    },
+    {
+      "index": 4,
+      "rolling_sharpe": 1.7265
+    },
+    {
+      "index": 5,
+      "rolling_sharpe": 6.5428
+    },
+    {
+      "index": 6,
+      "rolling_sharpe": 6.4169
+    },
+    {
+      "index": 7,
+      "rolling_sharpe": 6.6098
+    }
+  ],
+  "rolling_drawdown": [
+    {
+      "index": 1,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 2,
+      "drawdown_pct": 0.0332
+    },
+    {
+      "index": 3,
+      "drawdown_pct": 0.0095
+    },
+    {
+      "index": 4,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 5,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 6,
+      "drawdown_pct": 0.0
+    },
+    {
+      "index": 7,
+      "drawdown_pct": 0.0329
+    }
+  ],
+  "trade_distribution_histogram": {
+    "<-50": 0,
+    "-50:-10": 1,
+    "-10:0": 1,
+    "0:10": 2,
+    "10:50": 3,
+    ">50": 0
+  },
+  "regime_performance_split": {
+    "LOW_VOLATILITY": {
+      "trades": 7,
+      "pnl": 65.6652
+    }
+  },
+  "exposure_heatmap": {
+    "LOW_VOLATILITY": {
+      "EQUITY": 69
+    }
+  }
+}

@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 import time
 
-from quant_ecosystem.control.telegram_control_center2 import TelegramControlCenter
+from quant_ecosystem.control.telegram_control_center import TelegramControlCenter
 from quant_ecosystem.core.health.health_check import HealthCheck
 from quant_ecosystem.core.persistence.runtime_store import RuntimeStore
 from quant_ecosystem.core.scheduler import Scheduler
