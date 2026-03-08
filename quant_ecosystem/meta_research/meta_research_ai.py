@@ -1,7 +1,7 @@
 import logging
 import time
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ResearchPriorities:
     focus_family: str = "momentum"
     mutation_rate: float = 0.15
-    target_markets: tuple = ("NSE", "CRYPTO")
+    focus_markets: list = field(default_factory=lambda: ["NSE", "CRYPTO"])
     confidence: float = 0.0
 
 

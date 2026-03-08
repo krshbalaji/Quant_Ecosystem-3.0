@@ -150,9 +150,55 @@ class SystemFactory:
         self._boot_communication(router)
         self._boot_research_memory(router)
         self._boot_genome_memory(router)
+        self._boot_meta_research(router)
         self._boot_autonomous_lab(router)
+        #self._boot_autonomous_research_loop(router)
+        
+        
+
+        if hasattr(router, "meta_research_ai"):
+            logger.info(
+                "MetaResearchAI ready | focus=%s mutation=%s markets=%s confidence=%s",
+                router.meta_research_ai.priorities.focus_family,
+                router.meta_research_ai.priorities.mutation_rate,
+                router.meta_research_ai.priorities.focus_markets,
+                router.meta_research_ai.priorities.confidence
+            )
+        
+        return router
+
+        from quant_ecosystem.research_memory.layer import ResearchMemoryLayer
+        from quant_ecosystem.evaluation.genome_evaluator import GenomeEvaluator
+        from quant_ecosystem.alpha_genome.genome_library import GenomeLibrary
+        from quant_ecosystem.autonomous_lab.strategy_discovery_engine import StrategyDiscoveryEngine
+
+
+        logger.info("[boot] research memory layer")
+
+        router.research_memory = ResearchMemoryLayer()
+
+
+        logger.info("[boot] genome memory integration")
+
+        router.genome_library = GenomeLibrary(
+            research_memory=router.research_memory
+        )
+
+
+        logger.info("[boot] genome evaluator")
+
+        router.genome_evaluator = GenomeEvaluator(router)
+
+
+        logger.info("[boot] autonomous strategy lab")
+
+        router.strategy_discovery_engine = StrategyDiscoveryEngine(
+            router=router,
+            genome_library=router.genome_library
+        )
 
         # Post-boot wiring: inject market_data into global_intelligence
+        
         if router.global_intelligence and router.market_data:
             try:
                 router.global_intelligence.set_market_data(router.market_data)
@@ -162,6 +208,20 @@ class SystemFactory:
         logger.info("SystemFactory.build() complete")
         return router
 
+        from quant_ecosystem.autonomous_research.autonomous_research_loop import AutonomousResearchLoop
+        
+        router.autonomous_research_loop = AutonomousResearchLoop(
+    discovery_engine=router.strategy_discovery_engine,
+    mutation_engine=router.strategy_mutation_engine,
+    evolution_engine=router.alpha_evolution_engine,
+    research_grid=router.research_grid,
+    genome_library=router.genome_library,
+)
+
+
+        router.autonomous_research_loop.start()
+
+    
     def _boot_autonomous_lab(self, router):
 
         logger.info("[boot] autonomous strategy lab")
@@ -169,10 +229,27 @@ class SystemFactory:
         try:
             from quant_ecosystem.autonomous_lab.strategy_discovery_engine import StrategyDiscoveryEngine
 
-            router.strategy_discovery_engine = StrategyDiscoveryEngine(router)
+            discovery = StrategyDiscoveryEngine(
+                router=router,
+                genome_library=router.genome_library
+            )
+            
+            router.strategy_discovery_engine = discovery
 
         except Exception as e:
             logger.warning(f"Autonomous lab unavailable: {e}")
+    
+    def _boot_meta_research(self, router):
+
+        from quant_ecosystem.meta_research.meta_research_ai import MetaResearchAI
+
+        router.meta_research_ai = MetaResearchAI(
+            genome_library=getattr(router, "genome_library", None),
+            research_grid=getattr(router, "research_grid", None),
+            performance_store=None,
+            regime_engine=None,
+        )
+
     
     def _boot_core(self, router):
         logger.info("[boot] core layer")

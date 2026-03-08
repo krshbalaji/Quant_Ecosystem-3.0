@@ -66,3 +66,15 @@ class StrategyDiscoveryEngine:
             feature,
             threshold
         )
+
+        genome_lib = getattr(self.router, "genome_library", None)
+
+        if not genome_lib:
+            logger.warning("Genome library not available")
+            return
+
+        fitness = random.uniform(-1, 2)
+
+        result = {
+            "fitness_score": fitness
+        }

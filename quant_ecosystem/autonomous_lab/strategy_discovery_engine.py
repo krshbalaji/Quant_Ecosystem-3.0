@@ -7,8 +7,9 @@ logger = logging.getLogger(__name__)
 
 class StrategyDiscoveryEngine:
 
-    def __init__(self, router):
+    def __init__(self, router=None, genome_library=None):
         self.router = router
+        self.genome_library = genome_library
         self.running = False
 
     def start(self):
@@ -53,4 +54,9 @@ class StrategyDiscoveryEngine:
 
         logger.info(
             f"Genome evaluated | fitness={result.get('fitness_score')}"
-        )
+        ) 
+
+        def _store_genome(self, genome):
+
+            if self.genome_library:
+                self.genome_library.store_genome(genome)
