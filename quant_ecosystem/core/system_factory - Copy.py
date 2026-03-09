@@ -162,17 +162,6 @@ class SystemRouter:
         # ── Autonomous Research Loop (continuous hedge-fund lab) ─────────────
         self.autonomous_research_loop: Optional[Any] = None
 
-        # ── AlphaBank ─────────────────────────────
-        self.alpha_bank: Optional[Any] = None
-
-        # ── Regime Intelligence ───────────────────
-        self.regime_intelligence: Optional[Any] = None
-
-        # ── Telegram Control Center ───────────────
-        self.telegram_control_center: Optional[Any] = None
-        self.telegram_notifier: Optional[Any] = None
-        self.telegram_bot: Optional[Any] = None
-
     # ── MasterOrchestrator compatibility ──────────────────────────────────────
 
     @property
@@ -317,10 +306,7 @@ class SystemFactory:
         self._boot_autonomous_lab(router)        # 11. autonomous_lab
         self._boot_research_grid(router) 
         self._boot_autonomous_research(router)        # 12. research_grid ← NEW
-        self._boot_meta_research(router)
-        self._boot_alpha_bank(router)
-        self._boot_regime_intelligence(router)
-        self._boot_telegram_control_center(router)         # 13. meta_research  ← NEW
+        self._boot_meta_research(router)         # 13. meta_research  ← NEW
         self._boot_dashboard_layer(router)       # 14. dashboard
         # 15. autonomous research loop  ← NEW
 
@@ -1291,57 +1277,6 @@ class SystemFactory:
                 exc_info=True,
             )
 
-    def _boot_alpha_bank(self, router: SystemRouter) -> None:
-        logger.info("[boot] alpha_bank …")
-
-        try:
-            from quant_ecosystem.alpha_bank.alpha_bank import AlphaBank
-            router.alpha_bank = AlphaBank(mode="sqlite")
-
-            logger.debug("AlphaBank initialized.")
-
-        except Exception:
-            logger.warning("AlphaBank unavailable.", exc_info=True)
-
-
-    def _boot_regime_intelligence(self, router: SystemRouter) -> None:
-        logger.info("[boot] regime_intelligence …")
-
-        try:
-            from quant_ecosystem.regime_intelligence.engine import RegimeIntelligenceEngine
-
-            router.regime_intelligence = RegimeIntelligenceEngine()
-
-            logger.debug("RegimeIntelligence initialized.")
-
-        except Exception:
-            logger.warning("RegimeIntelligence unavailable.", exc_info=True)
-
-    def _boot_telegram_control_center(self, router: SystemRouter) -> None:
-        logger.info("[boot] telegram_control_center …")
-
-        cfg = self._config
-
-        token = getattr(cfg, "telegram_token", "")
-        chat_id = getattr(cfg, "telegram_chat_id", "")
-
-        if not token or not chat_id:
-            logger.info("Telegram Control Center disabled.")
-            return
-
-        try:
-            from quant_ecosystem.communication.telegram_bot import QuantTelegramBot
-
-            bot = QuantTelegramBot(token)
-
-            router.telegram_bot = bot
-            router.telegram_control_center = bot
-
-            logger.debug("TelegramControlCenter initialized.")
-
-        except Exception:
-            logger.warning("Telegram Control Center unavailable.", exc_info=True)
-                
     def _boot_dashboard_layer(self, router: SystemRouter) -> None:
         """Dashboard and cockpit service configs (servers are started by orchestrator)."""
         logger.info("[boot] dashboard layer …")
