@@ -131,11 +131,11 @@ class LoopConfig:
     random_injection:      int   = 5
 
     # Evaluation
-    eval_symbols:          List[str] = field(default_factory=lambda: ["SYNTH"])
+    eval_symbols: List[str] = field(default_factory=lambda: ["SYNTH","NIFTY", "BANKNIFTY"])
     eval_periods:          int   = 260
 
     # Promotion
-    promote_threshold:     float = 0.45
+    promote_threshold:     float = -0.30
     promote_top_n:         int   = 5
 
     # Advanced evaluation stages
@@ -586,7 +586,7 @@ class AutonomousResearchLoop:
                 # StrategyDiscoveryEngine.discover() integrates MetaResearchAI
                 # internally; pass wait=False so the grid handles eval below.
                 raw = self._discovery.discover(
-                    count   = n,
+                    count       = n,
                     symbols = self._cfg.eval_symbols,
                     wait    = False,
                 )

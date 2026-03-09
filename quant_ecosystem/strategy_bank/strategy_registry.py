@@ -76,10 +76,25 @@ class StrategyRegistry:
 
         self._strategies = strategies
         return strategies
+    
+    def load(self):
+        return list(self._strategies.values())
 
     def all(self):
         return self.load()
 
+class StrategyRegistry:
+
+    def __init__(self):
+        self._strategies = {}
+
+    def register(self, strategy):
+        self._strategies[strategy["id"]] = strategy
+
+    def load(self):
+        """Return all registered strategies."""
+        return list(self._strategies.values())
+    
     # ------------------------------------------------------------------
     # Explicit registration
     # ------------------------------------------------------------------

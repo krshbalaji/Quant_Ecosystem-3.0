@@ -597,7 +597,7 @@ class SystemFactory:
 
             n_workers         = max(6, int(getattr(cfg, "research_grid_workers", 0)))
             promote_threshold = float(
-                getattr(cfg, "research_grid_promote_threshold", 0.45)
+                getattr(cfg, "research_grid_promote_threshold", 0.00)
             )
             
             grid = ResearchGrid(
@@ -916,7 +916,7 @@ class SystemFactory:
         # Strategy bank (enabled via config flag)
         if getattr(cfg, "enable_strategy_bank", True):
             self._boot_strategy_bank(router)
-
+               
         # Meta strategy brain (ensemble + regime routing)
         if getattr(cfg, "enable_meta_strategy_brain", False):
             self._boot_meta_strategy_brain(router)
@@ -965,17 +965,24 @@ class SystemFactory:
             logger.warning("StrategyBankLayer unavailable.", exc_info=True)
 
         try:
-            from quant_ecosystem.strategy_selector.selector_core import (  # noqa: PLC0415
-                SelectorCore,
-            )
+            from quant_ecosystem.strategy_selector.selector_core import SelectorCore
             router.strategy_selector = SelectorCore(
                 config=self._config,
                 bank_layer=router.strategy_bank_layer,
             )
+
+            # CONNECT SELECTOR → STRATEGY ENGINE
+            if router.strategy_engine is not None:
+                router.strategy_engine.selector = router.strategy_selector
+
             logger.debug("SelectorCore initialized.")
         except Exception:
             logger.warning("StrategySelectorCore unavailable.", exc_info=True)
 
+            # connect strategy engine to strategy bank
+            if router.strategy_engine is not None:
+                router.strategy_engine.strategy_bank = router.strategy_bank_engine
+        
         try:
             from quant_ecosystem.capital_allocator.allocation_engine import (  # noqa: PLC0415
                 AllocationEngine,

@@ -43,19 +43,57 @@ class StrategyDiscoveryEngine:
                 logger.warning(f"Discovery loop error: {e}")
                 time.sleep(10)
                 
-    def discover(self):
+    def discover(self, count=20, symbols=None, wait=False):
+        """
+        Generate strategy genomes for evaluation.
 
-        logger.info("Running strategy discovery")
+        Compatible with AutonomousResearchLoop which calls discover(count=...)
+        """
+        genomes = []
 
-        strategy = {
-            "type": random.choice(["trend", "mean_reversion"]),
-            "factor": random.choice(["momentum", "rsi", "volatility"]),
+        try:
+            for _ in range(count):
+
+                genome = {
+                    "genome_id": f"arl_{self._random_family()}_{self._timestamp()}",
+                    "family": self._random_family(),
+                    "parameters": self._generate_parameters()
+                }
+
+                genomes.append(genome)
+
+        except Exception as e:
+            logger.warning(f"Strategy discovery failed: {e}")
+
+        return genomes
+    
+    import random
+    import time
+
+
+    def _random_family(self):
+        families = [
+            "momentum",
+            "mean_reversion",
+            "breakout",
+            "volatility",
+            "trend",
+        ]
+        return random.choice(families)
+
+
+    def _timestamp(self):
+        return time.strftime("%Y%m%d_%H%M%S")
+
+
+    def _generate_parameters(self):
+
+        return {
+            "lookback": random.randint(5, 50),
+            "threshold": round(random.uniform(0.5, 3.0), 2),
+            "exit": round(random.uniform(0.5, 2.0), 2),
         }
-
-        logger.info(f"Discovered strategy: {strategy}")
-
-        return strategy
-
+    
     # -------------------------------------------------
 
     def generate(self):

@@ -174,3 +174,10 @@ candles/
 *.orig
 
 research_memory/
+
+quant_ecosystem/reporting/output/
+quant_ecosystem/strategy_lab/archived_strategies/
+quant_ecosystem/strategy_lab/research_strategies/
+quant_ecosystem/strategy_lab/validated_strategies/
+*.pdf
+*.json
