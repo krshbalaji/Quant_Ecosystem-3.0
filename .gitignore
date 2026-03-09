@@ -78,9 +78,14 @@ datasets/
 # RUNTIME OUTPUT
 ################################
 
-reporting/output/
+reporting/output/*
 reporting/runtime/
 reporting/audit/
+*.pdf
+*.json
+*.zip
+data/
+logs/
 
 ################################
 # MODEL FILES
