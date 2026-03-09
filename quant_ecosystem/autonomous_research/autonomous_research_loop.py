@@ -152,7 +152,10 @@ class LoopConfig:
     log_prefix:            str   = _LOG_TAG
     history_size:          int   = 100
 
+    
+
     def __post_init__(self) -> None:
+        
         self.cycle_interval_sec    = max(10.0,  float(self.cycle_interval_sec))
         self.eval_timeout_sec      = max(10.0,  float(self.eval_timeout_sec))
         self.startup_delay_sec     = max(0.0,   float(self.startup_delay_sec))
@@ -206,6 +209,7 @@ class CycleState:
     phases_skipped:     List[str] = field(default_factory=list)
     ok:                 bool  = False
 
+    
     def mark_started(self) -> None:
         self.started_at = time.time()
 
@@ -260,10 +264,12 @@ class AutonomousResearchLoop:
         self,
         discovery_engine        = None,
         mutation_engine         = None,
-        evolution_engine        = None,
+        evolution_engine        =None,
+        alpha_bank              = None,
         research_grid           = None,
         genome_library          = None,
-        meta_research_ai        = None,
+        meta_research_ai        =None,
+        interval                =120,
         strategy_bank_engine    = None,
         cfg: Optional[LoopConfig] = None,
         **kwargs,
@@ -276,6 +282,7 @@ class AutonomousResearchLoop:
         self._meta_ai    = meta_research_ai
         self._bank       = strategy_bank_engine
         self._cfg        = cfg or LoopConfig()
+        self.alpha_bank  = alpha_bank
 
         # Thread control primitives
         self._thread:        Optional[threading.Thread] = None
@@ -471,13 +478,14 @@ class AutonomousResearchLoop:
 
             if self._stop_event.is_set():
                 break
-
+            
             # Wait for next interval or an immediate trigger
             self._trigger_event.clear()
             self._trigger_event.wait(timeout=self._cfg.cycle_interval_sec)
 
         logger.info("%s research loop exiting.", tag)
 
+            
     # ------------------------------------------------------------------
     # Cycle orchestration
     # ------------------------------------------------------------------
@@ -938,6 +946,14 @@ class AutonomousResearchLoop:
                 },
                 "parameters": genome.get("parameters", {}),
             })
+
+            # Save promoted genome to AlphaBank
+            if self.alpha_bank:
+                try:
+                    self.alpha_bank.save_strategy(genome)
+                except Exception as exc:
+                    logger.debug("%s alpha_bank.save_strategy error: %s", tag, exc)
+            
             promoted += 1
 
         # Ingest into StrategyBankEngine

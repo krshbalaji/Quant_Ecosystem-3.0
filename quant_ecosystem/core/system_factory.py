@@ -18,7 +18,8 @@ at a glance and easy to audit.
 """
 
 from __future__ import annotations
-
+from quant_ecosystem.alpha_bank.alpha_bank import AlphaBank
+from quant_ecosystem.communication.telegram_control_center import TelegramControlCenter
 import logging
 from enum import Enum
 from typing import Any, Optional
@@ -162,6 +163,19 @@ class SystemRouter:
         # ── Autonomous Research Loop (continuous hedge-fund lab) ─────────────
         self.autonomous_research_loop: Optional[Any] = None
 
+        # --------------------------------------------------
+        # Alpha Bank
+        # --------------------------------------------------
+
+        logger.info("[boot] alpha_bank …")
+
+        from quant_ecosystem.alpha_bank.alpha_bank import AlphaBank
+
+        alpha_bank = AlphaBank(mode="sqlite")
+
+        # attach to router
+        self.alpha_bank = alpha_bank
+
     # ── MasterOrchestrator compatibility ──────────────────────────────────────
 
     @property
@@ -288,6 +302,22 @@ class SystemFactory:
 
         router = SystemRouter(config=self._config)
 
+        logger.info("[boot] communication layer …")
+
+        try:
+            from quant_ecosystem.communication.telegram_control_center import TelegramControlCenter
+
+            telegram = TelegramControlCenter(router)
+
+            # attach to router
+            router.telegram = telegram
+
+            logger.info("TelegramControlCenter initialized")
+
+        except Exception as exc:
+            logger.warning(f"TelegramControlCenter unavailable: {exc}")
+            
+        
         self._boot_core_layer(router)           # 1. core
 
         if self._mode in (OperatingMode.PAPER, OperatingMode.LIVE):
@@ -539,7 +569,12 @@ class SystemFactory:
             logger.debug("GenomeEvaluator initialized.")
         except Exception:
             logger.warning("GenomeEvaluator unavailable.", exc_info=True)
+        if promoted and self.notifier:
 
+            self.notifier.notify(
+                event="new_strategy",
+                message=f"{len(promoted)} strategies discovered"
+            )
     # ─────────────────────────────────────────────────────────────────────────
     # Boot step 10 — Synthetic market
     # ─────────────────────────────────────────────────────────────────────────
@@ -735,6 +770,9 @@ class SystemFactory:
                 exc,
             )
             router.meta_research_ai = None
+
+    def _boot_dashboard_layer(self, router):
+        logger.info("[boot] dashboard layer … (disabled)")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Alpha factory helper (used by _boot_genome_memory)
@@ -1277,37 +1315,43 @@ class SystemFactory:
                 exc_info=True,
             )
 
-    def _boot_dashboard_layer(self, router: SystemRouter) -> None:
-        """Dashboard and cockpit service configs (servers are started by orchestrator)."""
-        logger.info("[boot] dashboard layer …")
-        cfg = self._config
+            
+    def _boot_communication_layer(self, router):
 
-        if getattr(cfg, "enable_dashboard_server", False):
-            router.dashboard_service_config = {
-                "enabled":            True,
-                "host":               getattr(cfg, "dashboard_host",                "127.0.0.1"),
-                "port":               int(getattr(cfg, "dashboard_port",            8090)),
-                "update_interval_sec": float(getattr(cfg, "dashboard_update_interval_sec", 0.25)),
-            }
-            logger.debug(
-                "Dashboard service configured: http://%s:%d",
-                router.dashboard_service_config["host"],
-                router.dashboard_service_config["port"],
-            )
+        import os
+        import threading
+        import asyncio
 
-        if getattr(cfg, "enable_cockpit_server", False):
-            router.cockpit_service_config = {
-                "enabled":            True,
-                "host":               getattr(cfg, "cockpit_host",                 "127.0.0.1"),
-                "port":               int(getattr(cfg, "cockpit_port",             8091)),
-                "update_interval_sec": float(getattr(cfg, "cockpit_update_interval_sec", 0.25)),
-                "auth_token":         getattr(cfg, "cockpit_auth_token",           ""),
-            }
-            logger.debug(
-                "Cockpit service configured: http://%s:%d",
-                router.cockpit_service_config["host"],
-                router.cockpit_service_config["port"],
-            )
+        from quant_ecosystem.communication.telegram_bot import QuantTelegramBot
+        from quant_ecosystem.communication.telegram_control_center import TelegramControlCenter
+
+        token = os.getenv("TELEGRAM_BOT_TOKEN")
+
+        if not token:
+            logger.info("Telegram credentials not set — control center disabled.")
+            return
+
+        control_center = TelegramControlCenter(
+            system_router=router,
+            research_grid=router.research_grid,
+            autonomous_loop=router.autonomous_research_loop,
+            alpha_bank=router.alpha_bank,
+        )
+
+        router.telegram = control_center
+
+        bot = QuantTelegramBot(
+            token=token,
+            control_center=control_center,
+            authorized_users=[]
+        )
+
+        def run_bot():
+            asyncio.run(bot.start())
+
+        threading.Thread(target=run_bot, daemon=True).start()
+
+        logger.info("Telegram bot started")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Boot step 15 — Autonomous Research Loop  ← NEW
@@ -1393,13 +1437,14 @@ class SystemFactory:
             )
 
             loop = AutonomousResearchLoop(
-                discovery_engine     = discovery,
-                mutation_engine      = mutation,
-                evolution_engine     = evolution,
-                research_grid        = getattr(router, "research_grid",        None),
-                genome_library       = getattr(router, "genome_library",       None),
-                meta_research_ai     = getattr(router, "meta_research_ai",     None),
-                strategy_bank_engine = getattr(router, "strategy_bank_engine", None),
+                discovery_engine     = router.strategy_discovery,
+                mutation_engine      = router.mutation_engine,
+                evolution_engine     = router.alpha_evolution,
+                alpha_bank           = router.alpha_bank,
+                research_grid        = router.research_grid,
+                genome_library       = router.genome_library,
+                meta_research_ai     = router.meta_research_ai,
+                strategy_bank_engine = router.strategy_bank_engine,
                 cfg                  = loop_cfg,
             )
 

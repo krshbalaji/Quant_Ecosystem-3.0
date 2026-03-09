@@ -661,3 +661,12 @@ def _mode(values: List[str]) -> str:
     for v in values:
         counts[v] = counts.get(v, 0) + 1
     return max(counts, key=counts.get)
+
+def update_from_alpha_bank(self, alpha_bank):
+
+    strategies = alpha_bank.get_top_strategies(limit=50)
+
+    if not strategies:
+        return
+
+    # analyze strategy families
