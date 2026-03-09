@@ -34,5 +34,26 @@ def main():
             break
 
 
+from quant_ecosystem.infra.telegram_listener import listen_for_commands
+from quant_ecosystem.infra.telegram_router import handle_command
+import threading
+
+
+def start_telegram():
+
+    listen_for_commands(handle_command)
+
+
+t = threading.Thread(target=start_telegram)
+t.daemon = True
+t.start()
+
+from quant_ecosystem.config.telegram_config import telegram_enabled
+
+if telegram_enabled():
+    t = threading.Thread(target=start_telegram)
+    t.daemon = True
+    t.start()
+
 if __name__ == "__main__":
     main()

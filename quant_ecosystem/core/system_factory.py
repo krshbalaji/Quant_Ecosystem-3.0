@@ -174,6 +174,16 @@ class SystemRouter:
         """Expose internal ExecutionRouter for legacy compatibility checks."""
         return self._execution_router
 
+    from quant_ecosystem.intelligence.market.regime_detector import RegimeDetector
+
+    def build_intelligence_layer():
+
+        regime_engine = RegimeDetector()
+
+        regime_engine.initialize()
+
+        return regime_engine
+
     # ── ExecutionRouter delegation ────────────────────────────────────────────
 
     async def execute(self, signal: Any = None, market_bias: str = "NEUTRAL",
@@ -585,9 +595,9 @@ class SystemFactory:
         try:
             from quant_ecosystem.research.grid import ResearchGrid  # noqa: PLC0415
 
-            n_workers         = max(1, int(getattr(cfg, "research_grid_workers", 0)))
+            n_workers         = max(6, int(getattr(cfg, "research_grid_workers", 0)))
             promote_threshold = float(
-                getattr(cfg, "research_grid_promote_threshold", 0.5)
+                getattr(cfg, "research_grid_promote_threshold", 0.45)
             )
             
             grid = ResearchGrid(
@@ -1503,3 +1513,4 @@ def build_router(config: Any) -> SystemRouter:
         A SystemRouter ready to be passed to MasterOrchestrator.
     """
     return SystemFactory(config).build()
+
