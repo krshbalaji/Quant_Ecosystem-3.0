@@ -31,6 +31,8 @@ class VolatilityExpansionStrategy(BaseStrategy):
             required_symbols=[],
         )
 
+    STRATEGY_ID = "volatility_expansion"
+
     def generate_signal(self, market_data) -> Optional[Signal]:
         symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])
         if not symbols:

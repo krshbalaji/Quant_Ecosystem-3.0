@@ -29,6 +29,8 @@ class DonchianTrendStrategy(BaseStrategy):
             required_symbols=[],
         )
 
+    STRATEGY_ID = "donchian_trend"
+
     def generate_signal(self, market_data) -> Optional[Signal]:
         symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])
         if not symbols:
@@ -85,4 +87,3 @@ class DonchianTrendStrategy(BaseStrategy):
         }
 
         return signal if self.validate_signal(signal) else None
-

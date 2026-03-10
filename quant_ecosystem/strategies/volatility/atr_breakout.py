@@ -12,6 +12,8 @@ class ATRBreakoutStrategy(BaseStrategy):
     ATR-based volatility breakout strategy.
     """
 
+    STRATEGY_ID = "atr_breakout"
+
     def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "atr_length": 14,
@@ -88,4 +90,3 @@ class ATRBreakoutStrategy(BaseStrategy):
         }
 
         return signal if self.validate_signal(signal) else None
-

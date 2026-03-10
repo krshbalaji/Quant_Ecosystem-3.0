@@ -29,7 +29,8 @@ class CrossSectionMomentumStrategy(BaseStrategy):
             required_timeframes=["5m"],
             required_symbols=[],
         )
-
+    STRATEGY_ID = "cross_section_momentum"
+    
     def _rank_symbols(self, market_data) -> List[Tuple[str, float]]:
         symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])
         lookback = int(max(5, float(self.params.get("lookback", 20))))

@@ -12,6 +12,8 @@ class EMATrendStrategy(BaseStrategy):
     Simple institutional-grade EMA crossover trend strategy.
     """
 
+    STRATEGY_ID = "ema_trend"
+
     def __init__(self, params: Optional[Dict[str, object]] = None, **kwargs):
         default_params: Dict[str, object] = {
             "fast_ema": 20,
@@ -22,7 +24,7 @@ class EMATrendStrategy(BaseStrategy):
         }
         merged = {**default_params, **(params or {})}
         super().__init__(
-            id="ema_trend",
+            id=self.STRATEGY_ID,
             name="EMA Trend",
             family="trend",
             params=merged,
@@ -90,27 +92,3 @@ class EMATrendStrategy(BaseStrategy):
         }
 
         return signal if self.validate_signal(signal) else None
-
-import pandas as pd
-
-class EMATrendStrategy:
-
-    id = "ema_trend"
-
-    def generate_signal(self, candles):
-
-        if not candles or len(candles) < 50:
-            return None
-
-        df = pd.DataFrame(candles)
-
-        df["ema_fast"] = df["close"].ewm(span=20).mean()
-        df["ema_slow"] = df["close"].ewm(span=50).mean()
-
-        if df["ema_fast"].iloc[-1] > df["ema_slow"].iloc[-1]:
-            return "BUY"
-
-        if df["ema_fast"].iloc[-1] < df["ema_slow"].iloc[-1]:
-            return "SELL"
-
-        return None

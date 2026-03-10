@@ -29,6 +29,7 @@ class LiquidityImbalanceStrategy(BaseStrategy):
             required_timeframes=["5m"],
             required_symbols=[],
         )
+    STRATEGY_ID = "liquidity_imbalance"
 
     def generate_signal(self, market_data) -> Optional[Signal]:
         symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])

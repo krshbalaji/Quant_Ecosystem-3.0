@@ -19,7 +19,7 @@ def main():
 
     config = {
         "mode": mode,
-        "telegram_token": os.getenv("TELEGRAM_TOKEN"),
+        "telegram_token": os.getenv("TELEGRAM_BOT_TOKEN"),
         "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID"),
     }
 
@@ -27,6 +27,11 @@ def main():
 
     router = factory.build()
 
+    from quant_ecosystem.extensions.extensions_bootstrap import bootstrap_extensions
+
+    bootstrap_extensions(router, config)
+
+    
     logger.info("Boot completed.")
 
     while True:

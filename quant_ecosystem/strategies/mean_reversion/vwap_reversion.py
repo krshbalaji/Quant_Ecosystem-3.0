@@ -30,6 +30,8 @@ class VWAPReversionStrategy(BaseStrategy):
             required_symbols=[],
         )
 
+    STRATEGY_ID = "vwap_reversion"
+
     def generate_signal(self, market_data) -> Optional[Signal]:
         symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])
         if not symbols:

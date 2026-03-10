@@ -895,43 +895,63 @@ class SystemFactory:
             raise
 
     def _boot_strategy_layer(self, router: SystemRouter) -> None:
-        """
-        Strategy registry, live strategy engine, strategy bank,
-        selector, capital allocator, meta alpha engine.
-        """
+
         logger.info("[boot] strategy layer …")
+
         cfg = self._config
 
-        # Strategy registry
         try:
-            from quant_ecosystem.core.strategy_registry import (  # noqa: PLC0415
-                StrategyRegistry,
+            from quant_ecosystem.strategy_bank.strategy_registry import StrategyRegistry
+            from quant_ecosystem.strategies.strategy_autoloader import auto_register
+            from quant_ecosystem.strategy_selector.selector_core import SelectorCore
+
+            registry = StrategyRegistry()
+
+            auto_register(registry)
+
+            router.strategy_registry = registry
+
+            logger.info(
+                "Strategy layer initialized (%d strategies)",
+                registry.count(),
             )
-            router.strategy_registry = StrategyRegistry()
-            logger.debug("StrategyRegistry initialized.")
-        except Exception:
-            logger.warning("StrategyRegistry unavailable.", exc_info=True)
+
+            logger.info(
+                "[strategy_loader] active strategies in registry: %d",
+                registry.count(),
+            )
+
+            selector = SelectorCore()
+
+            router.strategy_selector = selector
+
+        except Exception as e:
+            logger.warning("Strategy layer failed to initialize: %s", e)
+            return
 
         # Live strategy engine
         try:
-            from quant_ecosystem.strategy_bank.live_strategy_engine import (  # noqa: PLC0415
+            from quant_ecosystem.strategy_bank.live_strategy_engine import (
                 LiveStrategyEngine,
             )
+
             router.strategy_engine = LiveStrategyEngine(
                 strategy_registry=router.strategy_registry
             )
-            # Propagate to ExecutionRouter
+
             if router._execution_router is not None:
                 router._execution_router.strategy_engine = router.strategy_engine
+
             logger.debug("LiveStrategyEngine initialized.")
+
         except Exception:
             logger.warning("LiveStrategyEngine unavailable.", exc_info=True)
 
-        # Strategy bank (enabled via config flag)
+        # Strategy bank
         if getattr(cfg, "enable_strategy_bank", True):
             self._boot_strategy_bank(router)
-               
-        # Meta strategy brain (ensemble + regime routing)
+
+        # Meta strategy brain
         if getattr(cfg, "enable_meta_strategy_brain", False):
             self._boot_meta_strategy_brain(router)
 
@@ -1322,25 +1342,48 @@ class SystemFactory:
 
         cfg = self._config
 
-        token = getattr(cfg, "telegram_token", "")
-        chat_id = getattr(cfg, "telegram_chat_id", "")
+        token = str(getattr(cfg, "telegram_token", "") or "").strip()
+        chat_id = str(getattr(cfg, "telegram_chat_id", "") or "").strip()
 
         if not token or not chat_id:
-            logger.info("Telegram Control Center disabled.")
+            logger.info("[telegram] control center disabled: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID missing")
             return
 
         try:
             from quant_ecosystem.communication.telegram_bot import QuantTelegramBot
+            from quant_ecosystem.communication.telegram_control_center import TelegramControlCenter
+            from quant_ecosystem.communication.telegram_notifier import TelegramNotifier
 
-            bot = QuantTelegramBot(token)
+            authorized_users = [str(user_id) for user_id in getattr(cfg, "telegram_admin_ids", [])]
+            default_chat_id = int(chat_id)
 
+            control_center = TelegramControlCenter(
+                system_router=router,
+                research_grid=router.research_grid,
+                autonomous_loop=router.autonomous_research_loop,
+                alpha_bank=router.alpha_bank,
+                authorized_users=authorized_users,
+            )
+            bot = QuantTelegramBot(
+                token=token,
+                control_center=control_center,
+                default_chat_id=default_chat_id,
+                authorized_users=authorized_users,
+                authorized_chats=[default_chat_id],
+            )
+            notifier = TelegramNotifier(send_callback=bot.send_to_default_chat)
+
+            notifier.start()
+            bot.start_in_background()
+
+            router.telegram_control_center = control_center
             router.telegram_bot = bot
-            router.telegram_control_center = bot
+            router.telegram_notifier = notifier
 
-            logger.debug("TelegramControlCenter initialized.")
+            logger.info("[telegram] control center enabled")
 
         except Exception:
-            logger.warning("Telegram Control Center unavailable.", exc_info=True)
+            logger.warning("[telegram] control center unavailable; continuing without Telegram", exc_info=True)
                 
     def _boot_dashboard_layer(self, router: SystemRouter) -> None:
         """Dashboard and cockpit service configs (servers are started by orchestrator)."""
@@ -1585,4 +1628,3 @@ def build_router(config: Any) -> SystemRouter:
         A SystemRouter ready to be passed to MasterOrchestrator.
     """
     return SystemFactory(config).build()
-
