@@ -40,7 +40,7 @@ class StrategyRegistry:
     # Auto-discovery
     # ------------------------------------------------------------------
 
-        import importlib
+import importlib
 import pkgutil
 import logging
 
@@ -143,7 +143,12 @@ class StrategyRegistry:
         except Exception:
             if sid:
                 self._strategies[sid] = strategy
-
+    def load(self):
+        """
+        Compatibility method so external engines
+        expecting a load() function don't fail.
+        """
+        return list(self._registry.values())
     # ------------------------------------------------------------------
     # Read
     # ------------------------------------------------------------------

@@ -905,7 +905,7 @@ class ResearchGrid:
 
     Example
     -------
-    >>> grid = ResearchGrid(n_workers=4)
+    >>> grid = ResearchGrid(n_workers=8)
     >>> grid.start()
     >>> job_ids = grid.submit_genome_sweep(genomes, symbols=["NSE:INFY","NSE:TCS"])
     >>> time.sleep(30)
@@ -916,7 +916,7 @@ class ResearchGrid:
     def __init__(
         self,
         n_workers:          int   = 0,
-        promote_threshold:  float = 0.5,
+        promote_threshold:  float = 0.0,
         genome_library      = None,
         backtest_engine     = None,
         result_callback:    Optional[Callable[[GridResult], None]] = None,
