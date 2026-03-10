@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 import time
 import os
@@ -16,7 +19,7 @@ def main():
 
     config = {
         "mode": mode,
-        "telegram_token": os.getenv("TELEGRAM_BOT_TOKEN"),
+        "telegram_token": os.getenv("TELEGRAM_TOKEN"),
         "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID"),
     }
 

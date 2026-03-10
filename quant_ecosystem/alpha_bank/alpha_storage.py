@@ -98,29 +98,65 @@ class JSONStorage(StorageBackend):
         └── index.json (metadata index)
     """
     
-    def __init__(self, storage_path: str = "alpha_bank") -> None:
-        self.storage_path = Path(storage_path)
-        self.strategies_dir = self.storage_path / "strategies"
-        self.index_path = self.storage_path / "index.json"
-        self._lock = threading.RLock()
-        self._index_cache: Dict[str, Dict[str, Any]] = {}
-    
     def init(self) -> None:
-        """Initialize directories."""
+        """Create database and tables."""
         try:
-            self.storage_path.mkdir(parents=True, exist_ok=True)
-            self.strategies_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Initialize index if not exists
-            if not self.index_path.exists():
-                self._save_index({})
-            else:
-                self._load_index()
-            
-            logger.info("JSONStorage initialized at %s", self.storage_path)
-        
+            with self._lock:
+                conn = self._get_connection()
+                cursor = conn.cursor()
+
+                # Create strategies table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS strategies (
+                        strategy_id TEXT PRIMARY KEY,
+                        data TEXT NOT NULL,
+                        symbol TEXT,
+                        fitness REAL DEFAULT 0,
+                        sharpe REAL DEFAULT 0,
+                        sortino REAL DEFAULT 0,
+                        annual_return REAL DEFAULT 0,
+                        max_drawdown REAL DEFAULT 0,
+                        win_rate REAL DEFAULT 0,
+                        num_trades INTEGER DEFAULT 0,
+                        indicator TEXT,
+                        source TEXT,
+                        created_at TEXT,
+                        updated_at TEXT
+                    )
+                """)
+
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_fitness ON strategies(fitness)"
+                )
+
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_symbol ON strategies(symbol)"
+                )
+
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_indicator ON strategies(indicator)"
+                )
+
+                # Performance history table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS performance_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        strategy_id TEXT NOT NULL,
+                        timestamp TEXT,
+                        sharpe REAL,
+                        sortino REAL,
+                        annual_return REAL,
+                        max_drawdown REAL,
+                        FOREIGN KEY (strategy_id) REFERENCES strategies(strategy_id)
+                    )
+                """)
+
+                conn.commit()
+
+                logger.info("SQLiteStorage initialized at %s", self.db_path)
+
         except Exception as exc:
-            logger.error("JSONStorage.init failed: %s", exc)
+            logger.error("SQLiteStorage.init failed: %s", exc)
             raise
     
     def save_strategy(self, strategy_id: str, strategy: Dict[str, Any]) -> None:
@@ -369,12 +405,21 @@ class SQLiteStorage(StorageBackend):
                         indicator TEXT,
                         source TEXT,
                         created_at TEXT,
-                        updated_at TEXT,
-                        INDEX idx_fitness (fitness),
-                        INDEX idx_symbol (symbol),
-                        INDEX idx_indicator (indicator)
+                        updated_at TEXT
                     )
-                """)
+                    """)
+
+                cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_fitness ON strategies(fitness)"
+                    )
+
+                cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_symbol ON strategies(symbol)"
+                    )
+
+                cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_indicator ON strategies(indicator)"
+                    )
                 
                 # Performance history table (for future use)
                 cursor.execute("""
@@ -391,7 +436,7 @@ class SQLiteStorage(StorageBackend):
                 """)
                 
                 conn.commit()
-                logger.info("SQLiteStorage initialized at %s", db_path)
+                logger.info("SQLiteStorage initialized at %s", self.db_path)
         
         except Exception as exc:
             logger.error("SQLiteStorage.init failed: %s", exc)
