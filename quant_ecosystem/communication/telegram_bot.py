@@ -59,8 +59,8 @@ class QuantTelegramBot:
         await self.app.initialize()
         await self.app.start()
         if self.app.updater is not None:
-            await self.app.updater.start_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-        self._running = True
+            #await self.app.updater.start_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+            self._running = True
         logger.info("[telegram] bot polling started")
 
     async def stop(self) -> None:

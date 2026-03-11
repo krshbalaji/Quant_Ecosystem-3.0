@@ -107,21 +107,71 @@ class TelegramConfig:
 # ─────────────────────────────────────────────────────────────────────────────
 # Internal helpers — Telegram HTTP API
 # ─────────────────────────────────────────────────────────────────────────────
-
 class _TelegramHTTP:
-    """
-    Minimal Telegram Bot API client built on stdlib urllib.
-    No third-party dependencies required.
-    """
+    """Minimal Telegram HTTP client used by TelegramControlCenter."""
 
-    BASE = "https://api.telegram.org/bot{token}/{method}"
-
-    def __init__(self, token: str, timeout: int = 30) -> None:
-        self._token   = token
+    def __init__(self, token: str, timeout: int = 30):
+        self.token = token
         self._timeout = timeout
+        self._base = f"https://api.telegram.org/bot{token}/"
 
     def _url(self, method: str) -> str:
-        return self.BASE.format(token=self._token, method=method)
+        return self._base + method
+
+    def get_updates(self, offset=None, timeout=30):
+        params = {
+            "timeout": timeout,
+            "offset": offset
+        }
+
+        url = self._url("getUpdates") + "?" + urllib.parse.urlencode(params)
+
+        with urllib.request.urlopen(url, timeout=self._timeout + 5) as resp:
+            data = json.loads(resp.read().decode())
+
+        if not data.get("ok"):
+            return []
+
+        return data.get("result", [])
+
+    def send_message(self, chat_id: int, text: str, parse_mode="Markdown") -> bool:
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": parse_mode
+        }
+
+        data = json.dumps(payload).encode()
+
+        req = urllib.request.Request(
+            self._url("sendMessage"),
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=self._timeout + 5) as resp:
+                result = json.loads(resp.read().decode())
+                return result.get("ok", False)
+        except Exception as e:
+            logger.warning("%s Telegram send error: %s", _TAG, e)
+            return False
+            
+class TelegramControlCenter:
+
+    def __init__(self, token, chat_ids=None):
+        self.token = token
+        self.chat_ids = chat_ids
+        
+        import requests
+
+        self.base_url = f"https://api.telegram.org/bot{self.token}/"
+    
+    def call(self, method, params=None):
+        url = self.base_url + method
+        response = requests.get(url, params=params)
+        return response.json()
 
     def _post(self, method: str, payload: dict) -> dict:
         url  = self._url(method)
@@ -143,12 +193,9 @@ class _TelegramHTTP:
             logger.debug("%s _post error: %s", _TAG, exc)
             return {}
 
-    def get_updates(self, offset: int = 0, timeout: int = 30) -> List[dict]:
-        result = self._post(
-            "getUpdates",
-            {"offset": offset, "timeout": timeout, "allowed_updates": ["message"]},
-        )
-        return result.get("result", []) if result else []
+    def get_updates(self, offset=None):
+        params = {"timeout": 30, "offset": offset}
+        return self.call("getUpdates", params)
 
     def send_message(self, chat_id: int, text: str, parse_mode: str = "Markdown") -> bool:
         # Telegram caps message length at 4096 chars
