@@ -1,14 +1,9 @@
 """
 PATCH: quant_ecosystem/intelligence/global_intelligence_engine.py
-<<<<<<< Updated upstream
-FIX:   BUG #2 — Replaced self-owned MarketDataEngine instantiation with None.
-       MarketDataEngine MUST be injected by SystemRouter, not created here.
-=======
 FIX 1: Duplicate class definition removed.
 FIX 2: Constructor now accepts config=None, **kwargs (SystemFactory compatibility).
 FIX 3: Removed internal MarketDataEngine instantiation (recursion prevention).
        market_data is injected externally via set_market_data().
->>>>>>> Stashed changes
 """
 
 
