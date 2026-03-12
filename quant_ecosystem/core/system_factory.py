@@ -894,8 +894,9 @@ class SystemFactory:
                 LiveStrategyEngine,
             )
             router.strategy_engine = LiveStrategyEngine(
-                strategy_registry=router.strategy_registry
+                strategy_registry = getattr(router, "strategy_registry", None)
             )
+            
             # Propagate to ExecutionRouter
             if router._execution_router is not None:
                 router._execution_router.strategy_engine = router.strategy_engine
