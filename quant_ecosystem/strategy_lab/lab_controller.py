@@ -201,19 +201,9 @@ class StrategyLabController:
             return promoted_ids
 
         # Push into Strategy Bank in SHADOW stage.
-        layer = self.strategy_bank_layer
-        if layer and hasattr(layer, "is_enabled") and layer.is_enabled():
-            try:
-                registry = layer.bank_engine.registry
-                for row in rows:
-                    payload = self._to_registry_payload(row)
-                    payload["stage"] = "SHADOW"
-                    payload["active"] = False
-                    registry.upsert(payload)
-                    promoted_ids.append(payload["id"])
-                registry.save()
-            except Exception:
-                promoted_ids = []
+        # Emit candidates to research loop sovereignty pipeline
+        for row in rows:
+            promoted_ids.append(row["id"])
 
         # Inform Meta Brain for ranking/promotion flow.
         brain = self.meta_strategy_brain
