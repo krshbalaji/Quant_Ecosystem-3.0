@@ -931,6 +931,7 @@ class ExecutionRouter:
         strategy_registry:    Optional[Any] = None,
         registry_governor:    Optional[Any] = None,
         token_authority:      Optional[Any] = None,
+        portfolio_governor: Optional[Any] = None,
         mode:                 str = "PAPER",
     ) -> None:
         # Injected dependencies
@@ -950,6 +951,7 @@ class ExecutionRouter:
         self.registry_governor    = registry_governor
         self.telegram = None
         self.token_authority      = token_authority
+        self.portfolio_governor   = portfolio_governor
         self.mode                 = str(mode).upper()
 
         # Config — lazy import to avoid import-time side effects
@@ -990,6 +992,11 @@ class ExecutionRouter:
             self.mode, len(self.symbols),
         )
 
+        allowed, reason = self.portfolio_governor.allow_execution(signal, regime)
+
+        if not allowed:
+            return _skip(f"PORTFOLIO_BLOCK:{reason}")
+    
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -1264,6 +1271,17 @@ class ExecutionRouter:
                 return _skip("MARKET_CLOSED")
 
         if not self._is_valid_signal(signal):
+            # ---- Portfolio Sovereignty Gate ----
+            if self.portfolio_governor:
+
+                allowed, reason = self.portfolio_governor.allow_execution(
+                    signal,
+                    regime
+                )
+
+                if not allowed:
+                    self._reset_risk_block_state()
+                    return _skip(f"PORTFOLIO_BLOCK:{reason}")
             ok, reason = self._gate_strategy_authority(signal)
 
             if not ok:

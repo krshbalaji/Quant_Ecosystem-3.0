@@ -948,7 +948,7 @@ class AutonomousResearchLoop:
                 "name":   genome.get("family", "unknown"),
                 "stage": "RESEARCH",
                 "active": False,
-                "promotion_source": "autonomous_research"
+                "promotion_source": "autonomous_research",
                 
                 "metrics": {
                     "sharpe":        r.get("sharpe", 0.0),
@@ -977,10 +977,7 @@ class AutonomousResearchLoop:
                 "%s StrategyBankEngine.ingest_reports(%d strategies).",
                 tag, len(bank_batch),
             )
-
-            except Exception as exc:
-            logger.debug("%s strategy_bank.ingest_reports error: %s", tag, exc)
-
+         
         cycle.promoted_count = promoted
         cycle.phases_completed.append("promote")
 

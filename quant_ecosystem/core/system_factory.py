@@ -808,7 +808,14 @@ class SystemFactory:
             logger.debug("BrokerReconciler initialized.")
         except Exception:
             logger.debug("BrokerReconciler unavailable (non-critical).")
+            from quant_ecosystem.portfolio.governance.portfolio_capital_governor import PortfolioCapitalGovernor
+            portfolio_governor = PortfolioCapitalGovernor(state)
 
+            execution_router = ExecutionRouter(
+    
+                portfolio_governor=portfolio_governor,
+            )
+            
         # ExecutionRouter — main execution engine
         try:
             from quant_ecosystem.execution.execution_router import (  # noqa: PLC0415
