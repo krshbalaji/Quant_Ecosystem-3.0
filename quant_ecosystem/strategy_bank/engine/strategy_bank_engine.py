@@ -17,6 +17,7 @@ from quant_ecosystem.strategy_bank.engine.correlation_manager import Correlation
 from quant_ecosystem.strategy_bank.engine.lifecycle_manager import LifecycleManager
 from quant_ecosystem.strategy_bank.engine.regime_mapper import RegimeMapper
 from quant_ecosystem.strategy_bank.engine.strategy_registry import StrategyRegistryStore
+from quant_ecosystem.strategy_bank.governance.registry_lifecycle_governor import RegistryLifecycleGovernor
 
 
 class StrategyBankEngine:
@@ -50,7 +51,8 @@ class StrategyBankEngine:
         self._allocation_map: Dict[str, float] = {}
         self._active_ids: List[str] = []
         self._last_regime = "RANGING"
-
+        self.governor = RegistryLifecycleGovernor(config=self.config)
+        
     def ingest_reports(
         self,
         strategy_reports: List[Dict],
@@ -75,16 +77,16 @@ class StrategyBankEngine:
             row["score"] = round(score, 4)
             row["disabled_by_correlation"] = bool(payload.get("reduce", False))
 
-            next_stage, reason = self.lifecycle.evaluate(row)
-            if next_stage != row["stage"]:
-                self._log_transition(
-                    strategy_id=sid,
-                    previous=row["stage"],
-                    new=next_stage,
-                    reason=reason,
-                    regime=regime,
-                )
-            row["stage"] = next_stage
+            candidate_stage, reason = self.lifecycle.evaluate(row)
+
+            final_stage = self.governor.decide_stage(
+                row=row,
+                candidate_stage=candidate_stage,
+                regime=regime,
+                ranked_universe=ranked
+            )
+
+            row["stage"] = final_stage
 
             row["active"] = (
                 row["stage"] in {"PAPER", "SHADOW", "LIVE"}
