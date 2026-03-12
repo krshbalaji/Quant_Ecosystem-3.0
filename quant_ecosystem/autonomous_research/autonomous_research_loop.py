@@ -963,15 +963,23 @@ class AutonomousResearchLoop:
             promoted += 1
 
         # Ingest into StrategyBankEngine
-        if self._bank is not None and bank_batch:
-            try:
-                self._bank.ingest_reports(bank_batch)
-                logger.debug(
-                    "%s StrategyBankEngine.ingest_reports(%d strategies).",
-                    tag, len(bank_batch),
-                )
+        # Governance ownership:
+        # Research loop no longer pushes directly into StrategyBank.
+        # Candidate rows are already registered into StrategyRegistry.
+        # StrategyBankEngine will ingest via central governance pipeline.
+        if bank_batch:
+            logger.debug(
+                "%s governance mode: bank ingestion skipped (%d candidates).",
+                tag,
+                len(bank_batch),
+            )
+            logger.debug(
+                "%s StrategyBankEngine.ingest_reports(%d strategies).",
+                tag, len(bank_batch),
+            )
+
             except Exception as exc:
-                logger.debug("%s strategy_bank.ingest_reports error: %s", tag, exc)
+            logger.debug("%s strategy_bank.ingest_reports error: %s", tag, exc)
 
         cycle.promoted_count = promoted
         cycle.phases_completed.append("promote")
