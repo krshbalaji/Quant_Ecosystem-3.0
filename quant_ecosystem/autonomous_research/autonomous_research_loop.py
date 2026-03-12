@@ -265,6 +265,7 @@ class AutonomousResearchLoop:
         genome_library          = None,
         meta_research_ai        = None,
         strategy_bank_engine    = None,
+        strategy_registry=None,
         cfg: Optional[LoopConfig] = None,
         **kwargs,
     ) -> None:
@@ -275,6 +276,7 @@ class AutonomousResearchLoop:
         self._lib        = genome_library
         self._meta_ai    = meta_research_ai
         self._bank       = strategy_bank_engine
+        self._registry = strategy_registry
         self._cfg        = cfg or LoopConfig()
 
         # Thread control primitives
@@ -335,6 +337,9 @@ class AutonomousResearchLoop:
     def set_meta_research_ai(self, ai: Any) -> None:
         self._meta_ai = ai
 
+    def set_strategy_registry(self, registry):
+        self._registry = registry
+    
     def set_strategy_bank_engine(self, bank: Any) -> None:
         self._bank = bank
 
@@ -855,6 +860,7 @@ class AutonomousResearchLoop:
 
         ranked = self._rank(results)
 
+         
         # Update cycle quality metrics from ranked list
         if ranked:
             top       = ranked[0]
@@ -921,7 +927,19 @@ class AutonomousResearchLoop:
                     )
                 except Exception as exc:
                     logger.debug("%s genome_library.store_genome error: %s", tag, exc)
-
+            if self._registry:
+                try:
+                    self._registry.register_alpha({
+                        "alpha_id": gid,
+                        "source": "autonomous_research_loop",
+                        "fitness": r["fitness"],
+                        "sharpe": r.get("sharpe", 0.0),
+                        "parameters": genome.get("parameters", {}),
+                        "stage": "SHADOW"
+                    })
+                except Exception as exc:
+                    logger.debug("%s registry.register_alpha error: %s", tag, exc)
+            
             # Accumulate StrategyBank report
             bank_batch.append({
                 "id":     gid,
