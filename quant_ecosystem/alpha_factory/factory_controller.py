@@ -75,12 +75,19 @@ class AlphaFactoryController:
             for rep in reports:
                 rep["trade_count"] = int(rep.get("components", {}).get("shadow", {}).get("trades", 0) or 0)
             filtered = self.candidate_filter.apply(reports)
-            promoted = self.promotion_pipeline.promote(
-                filtered_reports=filtered,
-                strategy_bank_layer=self.strategy_bank_layer,
-                shadow_trading_engine=self.shadow_trading_engine,
-                max_promotions=self.max_promotions,
+            candidates = self.promotion_pipeline.promote(...)
+
+            # Sovereignty mode:
+            # AlphaFactory no longer promotes strategies into StrategyBank / Registry.
+            # It emits validated research candidates for governance decision.
+
+            logger.info(
+                "AlphaFactory emitted %d candidates (promotion authority disabled)",
+                len(candidates),
             )
+
+            emitted_candidates = []
+            
             shadow_candidates = [item for item in filtered if item.get("trade_count", 0) >= 1]
 
         self.last_events = [
