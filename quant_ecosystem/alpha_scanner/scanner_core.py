@@ -183,7 +183,12 @@ class GlobalAlphaScanner:
                             },
                         }
                     )
-                brain.promote_new_strategies(candidates)
+                # Sovereignty: emit scanner candidates into research pipeline (no direct promotion)
+                research_loop = getattr(self, "autonomous_research_loop", None)
+
+                if research_loop and hasattr(research_loop, "submit_external_candidates"):
+                    research_loop.submit_external_candidates(candidates)
+                    
             except Exception:
                 pass
 
