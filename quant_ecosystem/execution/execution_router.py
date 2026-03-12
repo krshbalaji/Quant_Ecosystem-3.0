@@ -928,6 +928,8 @@ class ExecutionRouter:
         symbols:              Optional[List[str]] = None,
         outcome_memory:       Optional[Any] = None,
         capital_intelligence: Optional[Any] = None,
+        strategy_registry: Optional[Any] = None,
+        registry_governor: Optional[Any] = None,
         mode:                 str = "PAPER",
     ) -> None:
         # Injected dependencies
@@ -943,6 +945,8 @@ class ExecutionRouter:
         self.symbols              = symbols or ["NSE:SBIN-EQ", "NSE:RELIANCE-EQ", "NSE:INFY-EQ"]
         self.outcome_memory       = outcome_memory
         self.capital_intelligence = capital_intelligence
+        self.strategy_registry    = strategy_registry
+        self.registry_governor    = registry_governor
         self.telegram             = None
         self.mode                 = str(mode).upper()
 
@@ -1197,6 +1201,38 @@ class ExecutionRouter:
         )
 
     # ------------------------------------------------------------------
+    # Sovereignty Gate
+    # ------------------------------------------------------------------
+
+    def _gate_strategy_authority(self, signal):
+
+        if not self.registry or not self.governor:
+            return True, "sovereignty_disabled"
+
+        sid = str(signal.get("strategy_id", "")).strip()
+
+        if not sid:
+            return False, "missing_strategy_id"
+
+        row = self.registry.get(sid)
+
+        if not row:
+            return False, "strategy_not_registered"
+
+        stage = str(row.get("stage", "")).upper()
+
+        if stage not in {"LIVE", "SHADOW", "PAPER"}:
+            return False, f"stage_not_executable:{stage}"
+
+        if float(row.get("allocation_pct", 0)) <= 0:
+            return False, "no_capital_allocated"
+
+        if sid not in self.governor.get_active_ids():
+            return False, "not_governor_active"
+
+        return True, "ok"
+
+    # ------------------------------------------------------------------
     # Core execution pipeline
     # ------------------------------------------------------------------
 
@@ -1219,6 +1255,12 @@ class ExecutionRouter:
                 return _skip("MARKET_CLOSED")
 
         if not self._is_valid_signal(signal):
+            ok, reason = self._gate_strategy_authority(signal)
+
+            if not ok:
+                self._reset_risk_block_state()
+                return _skip(f"STRATEGY_BLOCKED:{reason}")
+            
             self._reset_risk_block_state()
             return _skip("INVALID_SIGNAL")
 
@@ -1279,7 +1321,7 @@ class ExecutionRouter:
                 logger.warning("risk_engine.allow_trade failed: %s", exc)
 
         self._reset_risk_block_state()
-
+               
         # ---- Quantity allocation ----------------------------------------
         qty, size_reason = self._allocate_quantity(signal)
         if qty <= 0:
