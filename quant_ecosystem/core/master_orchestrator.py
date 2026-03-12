@@ -715,6 +715,57 @@ class MasterOrchestrator:
         except Exception as exc:
             return {"error": str(exc)}
 
+    def _govern_activation(
+        self,
+        router,
+        selector_result=None,
+        diversity_result=None,
+        survival_result=None,
+    ):
+        """
+        CENTRAL STRATEGY ACTIVATION GOVERNOR
+
+        This is the ONLY place allowed to change active strategy set.
+        """
+
+        selector = getattr(router, "strategy_selector", None)
+        layer = getattr(router, "strategy_bank_layer", None)
+
+        if not selector or not hasattr(selector, "activation_manager"):
+            return
+
+        try:
+            rows = layer.registry_rows() if layer and hasattr(layer, "registry_rows") else []
+            available_ids = [str(r.get("id")) for r in rows if r.get("id")]
+
+            # 1️⃣ Selector recommendation
+            recommended = []
+            if selector_result:
+                recommended = selector_result.get("recommended_ids", []) or []
+
+            # 2️⃣ Diversity constraints
+            if diversity_result:
+                allowed = diversity_result.get("allowed", []) or []
+                if allowed:
+                    recommended = [sid for sid in recommended if sid in allowed]
+
+            # 3️⃣ Survival retirements
+            if survival_result:
+                retired = survival_result.get("retired", []) or []
+                recommended = [sid for sid in recommended if sid not in retired]
+
+            # Safety fallback
+            if not recommended and available_ids:
+                recommended = available_ids[:1]
+
+            selector.activation_manager.apply_selection(
+                selected_ids=recommended,
+                available_ids=available_ids,
+            )
+
+        except Exception:
+            pass
+
     def _run_strategy_diversity(self, router):
         engine = getattr(router, "strategy_diversity_engine", None)
         if not engine:
