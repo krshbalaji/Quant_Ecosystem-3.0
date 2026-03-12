@@ -16,7 +16,7 @@ class RegistryLifecycleGovernor:
         ranked_universe=None,
     ):
         stage = str(candidate_stage).upper()
-
+        
         # --- hard terminal protection ---
         if str(row.get("stage")).upper() == "RETIRED":
             return "RETIRED"
@@ -35,5 +35,6 @@ class RegistryLifecycleGovernor:
             )
             if live_count > 8 and stage == "LIVE":
                 return "SHADOW"
-
+        row["stage"] = stage
+        registry.upsert(row, source="governor")
         return stage

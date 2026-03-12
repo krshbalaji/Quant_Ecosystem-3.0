@@ -55,7 +55,8 @@ class StrategyMetadata:
 class StrategyRegistryStore:
     """Persistent metadata store for strategy lifecycle and allocation decisions."""
 
-    def __init__(self, metadata_path: str = "strategy_bank/metadata/strategy_registry.json", **kwargs):
+    def __init__(self, metadata_path: str = "strategy_bank/metadata/strategy_registry.json", governance_mode=True, **kwargs):
+        self.governance_mode = governance_mode
         self.metadata_file = Path(metadata_path)
         self.metadata_file.parent.mkdir(parents=True, exist_ok=True)
         self._items: Dict[str, Dict] = {}
@@ -79,15 +80,9 @@ class StrategyRegistryStore:
     def all(self) -> List[Dict]:
         return [self._items[key] for key in sorted(self._items.keys())]
 
-    def upsert(self, payload: Dict) -> Dict:
-        strategy_id = str(payload.get("id", "")).strip()
-        if not strategy_id:
-            raise ValueError("strategy metadata requires non-empty id")
-        current = self._items.get(strategy_id, {})
-        merged = {**current, **payload}
-        merged["id"] = strategy_id
-        self._items[strategy_id] = merged
-        return merged
+    def upsert(self, row, source="runtime"):
+        if self.governance_mode and source != "governor":
+            return 
 
     def bulk_upsert(self, rows: Iterable[Dict]) -> None:
         for row in rows:
