@@ -759,20 +759,7 @@ class MasterOrchestrator:
         try:
             result = engine.run_cycle()
             # Keep selector activation aligned after retire/reduce/replace outcomes.
-            selector = getattr(router, "strategy_selector", None)
-            layer = getattr(router, "strategy_bank_layer", None)
-            if selector and hasattr(selector, "activation_manager") and layer and hasattr(layer, "registry_rows"):
-                try:
-                    rows = layer.registry_rows()
-                    active_ids = [
-                        str(row.get("id"))
-                        for row in rows
-                        if row.get("id") and bool(row.get("active", False))
-                    ]
-                    available_ids = [str(row.get("id")) for row in rows if row.get("id")]
-                    
-                except Exception:
-                    pass
+            
             return {
                 "decaying": result.get("decaying", []),
                 "reduced": result.get("reduced", []),
