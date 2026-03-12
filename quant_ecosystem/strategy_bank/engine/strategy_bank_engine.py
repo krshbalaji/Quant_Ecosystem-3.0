@@ -52,7 +52,7 @@ class StrategyBankEngine:
         self._active_ids: List[str] = []
         self._last_regime = "RANGING"
         self.governor = RegistryLifecycleGovernor(config=self.config)
-        
+
     def ingest_reports(
         self,
         strategy_reports: List[Dict],
@@ -88,7 +88,7 @@ class StrategyBankEngine:
 
             row["stage"] = final_stage
 
-            row["active"] = (
+            row["eligible"] = (
                 row["stage"] in {"PAPER", "SHADOW", "LIVE"}
                 and not row["disabled_by_correlation"]
                 and self.regime_mapper.enabled_for_regime(row, regime)
@@ -108,15 +108,15 @@ class StrategyBankEngine:
         self._allocation_map = self.allocator.allocate(ranked)
         for row in ranked:
             row["allocation_pct"] = float(self._allocation_map.get(row["id"], 0.0))
-            row["active"] = bool(row.get("active")) and row["allocation_pct"] > 0
+            row["eligible"] = bool(row.get("eligible")) and row["allocation_pct"] > 0
             self.registry.upsert(row)
 
         self.registry.save()
-        self._active_ids = [row["id"] for row in ranked if row.get("active")]
+        self._eligible_ids = [row["id"] for row in ranked if row.get("eligible")]
         return [self._to_legacy_report(row) for row in ranked]
 
-    def get_active_strategies(self) -> List[str]:
-        return list(self._active_ids)
+    def get_eligible_strategies(self) -> List[str]:
+        return list(getattr(self, "_eligible_ids", []))
 
     def get_allocation(self, strategy_id: str) -> float:
         return float(self._allocation_map.get(strategy_id, 0.0))
