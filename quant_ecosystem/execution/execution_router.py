@@ -928,8 +928,9 @@ class ExecutionRouter:
         symbols:              Optional[List[str]] = None,
         outcome_memory:       Optional[Any] = None,
         capital_intelligence: Optional[Any] = None,
-        strategy_registry: Optional[Any] = None,
-        registry_governor: Optional[Any] = None,
+        strategy_registry:    Optional[Any] = None,
+        registry_governor:    Optional[Any] = None,
+        token_authority:      Optional[Any] = None,
         mode:                 str = "PAPER",
     ) -> None:
         # Injected dependencies
@@ -947,7 +948,8 @@ class ExecutionRouter:
         self.capital_intelligence = capital_intelligence
         self.strategy_registry    = strategy_registry
         self.registry_governor    = registry_governor
-        self.telegram             = None
+        self.telegram = None
+        self.token_authority      = token_authority
         self.mode                 = str(mode).upper()
 
         # Config — lazy import to avoid import-time side effects
@@ -1231,7 +1233,14 @@ class ExecutionRouter:
             return False, "not_governor_active"
 
         return True, "ok"
+        token = signal.get("execution_token")
 
+        if not self.token_authority:
+            return False, "token_authority_missing"
+
+        if not self.token_authority.validate(sid, token):
+            return False, "invalid_execution_token"
+    
     # ------------------------------------------------------------------
     # Core execution pipeline
     # ------------------------------------------------------------------
