@@ -737,10 +737,11 @@ class MasterOrchestrator:
                     if layer and hasattr(layer, "registry_rows"):
                         rows = layer.registry_rows()
                     available_ids = [str(row.get("id")) for row in rows if row.get("id")]
-                    selector.activation_manager.apply_selection(
-                        selected_ids=allowed_ids,
-                        available_ids=available_ids,
-                    )
+                    return {
+                        "allowed": allowed_ids,
+                        "blocked": blocked_ids,
+                        
+                    }
                 except Exception:
                     pass
             return {
@@ -769,10 +770,7 @@ class MasterOrchestrator:
                         if row.get("id") and bool(row.get("active", False))
                     ]
                     available_ids = [str(row.get("id")) for row in rows if row.get("id")]
-                    selector.activation_manager.apply_selection(
-                        selected_ids=active_ids,
-                        available_ids=available_ids,
-                    )
+                    
                 except Exception:
                     pass
             return {
