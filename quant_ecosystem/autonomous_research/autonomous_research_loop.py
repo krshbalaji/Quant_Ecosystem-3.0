@@ -935,7 +935,9 @@ class AutonomousResearchLoop:
                         "fitness": r["fitness"],
                         "sharpe": r.get("sharpe", 0.0),
                         "parameters": genome.get("parameters", {}),
-                        "stage": "SHADOW"
+                        "stage": "RESEARCH",
+                        "active": False,
+                        "promotion_source": "autonomous_research"
                     })
                 except Exception as exc:
                     logger.debug("%s registry.register_alpha error: %s", tag, exc)
@@ -944,8 +946,10 @@ class AutonomousResearchLoop:
             bank_batch.append({
                 "id":     gid,
                 "name":   genome.get("family", "unknown"),
-                "stage":  "SHADOW",
-                "active": True,
+                "stage": "RESEARCH",
+                "active": False,
+                "promotion_source": "autonomous_research"
+                
                 "metrics": {
                     "sharpe":        r.get("sharpe", 0.0),
                     "win_rate":      r.get("win_rate", 0.0),
