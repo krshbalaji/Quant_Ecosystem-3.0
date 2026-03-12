@@ -758,9 +758,11 @@ class MasterOrchestrator:
             if not recommended and available_ids:
                 recommended = available_ids[:1]
 
-            selector.activation_manager.apply_selection(
-                selected_ids=recommended,
-                available_ids=available_ids,
+            self._govern_activation(
+                router,
+                selector_result=selector_result,
+                diversity_result=diversity_engine_report,
+                survival_result=survival_engine_report,
             )
 
         except Exception:
