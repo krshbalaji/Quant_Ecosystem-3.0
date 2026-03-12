@@ -51,8 +51,15 @@ class AutonomousController:
             row = bank.registry.get(sid) or {"id": sid}
             row["stage"] = "LIVE"
             row["active"] = True
-            bank.registry.upsert(row)
-            bank.registry.save()
+            # Governance ownership:
+            # AutonomousController no longer mutates StrategyRegistry.
+            # Runtime execution decisions are transient.
+            # Registry persistence handled by StrategyBank governance pipeline.
+
+            logger.debug(
+                "AutonomousController governance mode: registry mutation skipped for %s",
+                row.get("id"),
+            )
 
         active = set(getattr(engine, "active_ids", set()) or set())
         active.add(sid)
