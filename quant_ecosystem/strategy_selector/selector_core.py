@@ -131,7 +131,15 @@ class AutonomousStrategySelector:
         return "RANGE_BOUND"
 
     def _strategy_rows(self) -> List[Dict]:
+        """
+        Institutional Truth Source:
+        StrategyBank Registry ONLY.
+
+        Execution engine is NOT allowed to act as lifecycle truth fallback.
+        """
+
         layer = self.strategy_bank_layer
+
         if layer and hasattr(layer, "is_enabled") and layer.is_enabled():
             try:
                 rows = layer.registry_rows()
@@ -140,21 +148,9 @@ class AutonomousStrategySelector:
             except Exception:
                 pass
 
-        strategies = getattr(self.strategy_engine, "strategies", []) if self.strategy_engine else []
-        out = []
-        for row in strategies:
-            out.append(
-                {
-                    "id": row.get("id"),
-                    "category": row.get("category", "systematic"),
-                    "sharpe": 0.0,
-                    "win_rate": 0.0,
-                    "max_drawdown": 0.0,
-                    "profit_factor": 0.0,
-                    "allocation_pct": 0.0,
-                }
-            )
-        return out
+        # Sovereignty rule:
+        # No registry → no selectable strategies.
+        return []
 
     def _tradeability_reason(self, row: Dict) -> str | None:
         strategy_id = str(row.get("id", "")).strip()
