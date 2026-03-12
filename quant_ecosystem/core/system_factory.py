@@ -1379,10 +1379,11 @@ class SystemFactory:
                 discovery_engine     = discovery,
                 mutation_engine      = mutation,
                 evolution_engine     = evolution,
-                research_grid        = getattr(router, "research_grid",        None),
-                genome_library       = getattr(router, "genome_library",       None),
-                meta_research_ai     = getattr(router, "meta_research_ai",     None),
+                research_grid        = getattr(router, "research_grid", None),
+                genome_library       = getattr(router, "genome_library", None),
+                meta_research_ai     = getattr(router, "meta_research_ai", None),
                 strategy_bank_engine = getattr(router, "strategy_bank_engine", None),
+                strategy_registry    = getattr(router, "strategy_registry", None),
                 cfg                  = loop_cfg,
             )
 
