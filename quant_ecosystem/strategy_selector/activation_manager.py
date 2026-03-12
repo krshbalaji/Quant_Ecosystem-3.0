@@ -100,10 +100,7 @@ class ActivationManager:
         }
 
     def _set_bank_active(self, strategy_id: str, active: bool) -> None:
-        bank = self.strategy_bank_engine
-        if not bank or not getattr(bank, "enabled", False):
-            return
-        row = bank.registry.get(strategy_id) or {"id": strategy_id}
-        row["active"] = bool(active)
-        bank.registry.upsert(row)
-        bank.registry.save()
+        # Governance ownership:
+        # ActivationManager no longer mutates StrategyRegistry.
+        # Central activation governor will update active set.
+        return
