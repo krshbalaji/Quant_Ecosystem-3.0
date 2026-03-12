@@ -129,31 +129,14 @@ class GlobalAlphaScanner:
         if layer and hasattr(layer, "is_enabled") and layer.is_enabled():
             try:
                 registry = layer.bank_engine.registry
-                registry.upsert(
-                    {
-                        "id": "alpha_scanner_feed",
-                        "name": "alpha_scanner_feed",
-                        "asset_class": "multi",
-                        "timeframe": "multi",
-                        "category": "scanner",
-                        "regime_preference": ["TRENDING", "RANGING", "HIGH_VOL", "LOW_VOL", "CRASH"],
-                        "sharpe": 0.0,
-                        "profit_factor": 0.0,
-                        "max_drawdown": 0.0,
-                        "win_rate": 0.0,
-                        "expectancy": 0.0,
-                        "active": False,
-                        "allocation_pct": 0.0,
-                        "correlation_cluster": "scanner_feed",
-                        "stage": "RESEARCH",
-                        "non_deployable": True,
-                        "score": float(len(opportunities)),
-                        "sample_size": int(len(opportunities)),
-                        "returns": [],
-                        "scanner_payload": payload,
-                    }
+                # Governance ownership:
+                # AlphaScanner emits research candidates only.
+                # Registry persistence handled by central governance pipeline.
+
+                logger.debug(
+                    "AlphaScanner governance mode: registry persistence skipped (%d candidates).",
+                    len(candidates),
                 )
-                registry.save()
             except Exception:
                 pass
 
@@ -188,7 +171,7 @@ class GlobalAlphaScanner:
 
                 if research_loop and hasattr(research_loop, "submit_external_candidates"):
                     research_loop.submit_external_candidates(candidates)
-                    
+
             except Exception:
                 pass
 
