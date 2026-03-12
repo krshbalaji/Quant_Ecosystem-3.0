@@ -11,7 +11,7 @@ from quant_ecosystem.portfolio.portfolio_engine import PortfolioEngine
 from quant_ecosystem.portfolio.position_sizer import PositionSizer
 from quant_ecosystem.risk.risk_engine import RiskEngine
 from quant_ecosystem.strategy_bank.live_strategy_engine import LiveStrategyEngine
-from quant_ecosystem.strategy_bank.strategy_registry import StrategyRegistry
+from quant_ecosystem.core.strategy_registry import StrategyRegistry
 
 
 class SmokeRuntimeTests(unittest.TestCase):

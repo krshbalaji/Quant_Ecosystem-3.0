@@ -122,7 +122,7 @@ class FyersAdapter:
 """,
 
 "execution/execution_router.py":"""
-from quant_ecosystem.strategy_bank.strategy_registry import StrategyRegistry
+from quant_ecosystem.core.strategy_registry import StrategyRegistry
 from quant_ecosystem.risk.risk_engine import RiskEngine
 
 class ExecutionRouter:
