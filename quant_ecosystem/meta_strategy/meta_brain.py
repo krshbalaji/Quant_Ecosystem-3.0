@@ -112,21 +112,31 @@ class MetaStrategyBrain:
         return diversified
 
     def promote_new_strategies(self, candidates: Iterable[Dict]) -> List[Dict]:
-        """Promotes superior mutation candidates to SHADOW stage."""
+        """
+        Emits superior mutation candidates.
+        Lifecycle + registry persistence handled by Strategy Governor pipeline.
+        """
+
         rows = self._registry_rows()
         baseline = max([float(row.get("meta_score", 0.0)) for row in rows], default=0.0)
-        promoted: List[Dict] = []
+
+        emitted: List[Dict] = []
+
         for candidate in candidates or []:
             item = self._normalize_mutation_candidate(candidate)
             item["meta_score"] = self.scoring_engine.score(item)
+
             if item["meta_score"] >= max(0.55, baseline):
-                item["stage"] = "SHADOW"
-                item["active"] = False
-                item["promotion_reason"] = "mutation_superior"
-                promoted.append(item)
-        if promoted:
-            self._persist_rows(promoted)
-        return promoted
+
+                emitted.append({
+                    "id": item.get("id"),
+                    "meta_score": item["meta_score"],
+                    "source": "meta_brain",
+                    "promotion_signal": True,
+                    "raw_candidate": item
+                })
+
+        return emitted
 
     def retire_underperforming_strategies(self, strategy_rows: Iterable[Dict]) -> Dict:
         """Retires underperforming strategies and archives them."""
