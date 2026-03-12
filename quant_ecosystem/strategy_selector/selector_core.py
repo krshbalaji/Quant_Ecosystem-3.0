@@ -101,7 +101,7 @@ class AutonomousStrategySelector:
             "regime": market_regime,
             "candidates": filtered,
             "selected": ranked,
-            "activation": activation,
+            "recommended_ids": selected_ids,
             "diagnostics": {
                 "total_rows": len(all_rows),
                 "tradeable_rows": len(rows),
