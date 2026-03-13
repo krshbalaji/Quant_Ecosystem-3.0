@@ -1,6 +1,7 @@
 import logging
 import random
 import uuid
+from quant_ecosystem.research.alpha_templates.structural_library import AlphaStructuralLibrary
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class StrategyDiscoveryEngine:
     def __init__(self, market_data=None, factor_library=None, config=None, **kwargs):
         self.market_data = market_data
         self.factor_library = factor_library
+        self.structural_library = AlphaStructuralLibrary()
         self.config = config
 
         logger.info("StrategyDiscoveryEngine initialized")
@@ -31,14 +33,14 @@ class StrategyDiscoveryEngine:
 
         indicator = random.choice(self.INDICATORS)
 
+        template = self.structural_library.sample_template()
+
         genome = {
-            "genome_id": f"arl_{indicator}_{uuid.uuid4().hex[:8]}",
-            "signal_gene": {
-                "indicator": indicator,
-                "lookback": random.randint(5, 50),
-                "threshold": round(random.uniform(0.1, 2.0), 2),
-            },
+            "id": self._new_id(template["family"]),
+            "structure": template,
+            "mutation_intensity": random.uniform(0.05, 0.25),
         }
+        
 
         return genome
 

@@ -795,27 +795,39 @@ class SystemFactory:
 
         # Reconciler (optional, non-fatal)
         reconciler = None
+        from quant_ecosystem.strategy_bank.governance.portfolio_capital_governor import PortfolioCapitalGovernor
+
+
+        portfolio_governor = PortfolioCapitalGovernor(state=router.state)
+
+        er = ExecutionRouter(
+            portfolio_governor=portfolio_governor,
+        )
+        from quant_ecosystem.execution.execution_router import ExecutionRouter
         try:
             from quant_ecosystem.broker.reconciliation.broker_reconciler import (  # noqa: PLC0415
                 BrokerReconciler,
             )
             reconciler = BrokerReconciler(
-                broker=broker_router,
-                state=router.state,
-                portfolio=router.portfolio_engine,
+                broker_router=getattr(router, "_broker_router", None),
+                portfolio_engine=router.portfolio_engine,
+                state=router.state
             )
             router.reconciler = reconciler
             logger.debug("BrokerReconciler initialized.")
         except Exception:
             logger.debug("BrokerReconciler unavailable (non-critical).")
-            from quant_ecosystem.portfolio.governance.portfolio_capital_governor import PortfolioCapitalGovernor
-            portfolio_governor = PortfolioCapitalGovernor(state)
+            try:
+                from quant_ecosystem.strategy_bank.governance.portfolio_capital_governor import PortfolioCapitalGovernor
+            except Exception:
+                PortfolioCapitalGovernor = None
+            portfolio_governor = PortfolioCapitalGovernor(state) if PortfolioCapitalGovernor else None
 
             execution_router = ExecutionRouter(
     
                 portfolio_governor=portfolio_governor,
             )
-            
+
         # ExecutionRouter — main execution engine
         try:
             from quant_ecosystem.execution.execution_router import (  # noqa: PLC0415
@@ -961,6 +973,9 @@ class SystemFactory:
             logger.debug("StrategyBankLayer initialized.")
         except Exception:
             logger.warning("StrategyBankLayer unavailable.", exc_info=True)
+
+            from quant_ecosystem.strategy_governance.lifecycle_parliament_engine import LifecycleParliamentEngine
+            router.lifecycle_parliament = LifecycleParliamentEngine()
 
         try:
             from quant_ecosystem.strategy_selector.selector_core import (  # noqa: PLC0415

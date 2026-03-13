@@ -86,7 +86,8 @@ class StrategyBankEngine:
                 ranked_universe=ranked
             )
 
-            row["stage"] = final_stage
+            row.setdefault("_lifecycle_votes", [])
+            row["_lifecycle_votes"].append(("strategy_bank", candidate_stage))
 
             row["eligible"] = (
                 row["stage"] in {"PAPER", "SHADOW", "LIVE"}

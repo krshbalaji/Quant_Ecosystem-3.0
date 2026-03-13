@@ -148,6 +148,26 @@ class MasterOrchestrator:
 
             portfolio_plan = self.strategy_portfolio.build_portfolio(strategy_reports)
             strategy_reports = portfolio_plan["reports"]
+            parliament = getattr(router, "lifecycle_parliament", None)
+            bank_engine = getattr(router, "strategy_bank_engine", None)
+
+            if parliament and bank_engine:
+
+                for row in strategy_reports:
+
+                    votes = row.get("_lifecycle_votes", [])
+
+                    final_stage = parliament.decide_stage(
+                        strategy_id=row.get("id"),
+                        proposals=votes
+                    )
+
+                    row["stage"] = bank_engine.governor.decide_stage(
+                        row=row,
+                        candidate_stage=final_stage
+                    )
+
+                    row.pop("_lifecycle_votes", None)
             router.strategy_engine.apply_policy(strategy_reports)
             top = strategy_reports[:3]
             print(f"Strategy evaluation top-3: {top}")

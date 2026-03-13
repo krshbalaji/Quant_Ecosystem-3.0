@@ -93,7 +93,9 @@ class MetaStrategyBrain:
         for row in strategy_rows:
             item = dict(row)
             next_stage, reason = self.lifecycle_manager.transition(item)
-            item["stage"] = next_stage
+            item.setdefault("_lifecycle_votes", [])
+            item["_lifecycle_votes"].append(("meta_brain", next_stage))
+
             item["lifecycle_reason"] = reason
             out.append(item)
         return out
@@ -108,7 +110,8 @@ class MetaStrategyBrain:
         for row in diversified["reduced"]:
             row["active"] = False
             if str(row.get("stage", "")).upper() == "LIVE":
-                row["stage"] = "REDUCED"
+                row.setdefault("_lifecycle_votes", [])
+                row["_lifecycle_votes"].append(("meta_brain", "REDUCED"))
         return diversified
 
     def promote_new_strategies(self, candidates: Iterable[Dict]) -> List[Dict]:
