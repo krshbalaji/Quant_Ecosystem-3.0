@@ -71,6 +71,37 @@ class StrategyRegistryStore:
         except Exception:
             self._items = {}
 
+    def load(self):
+        """
+        Compatibility loader for LiveStrategyEngine.
+        Returns dict[strategy_id → callable strategy_fn]
+        """
+
+        strategies = {}
+
+        try:
+            for sid, obj in self._registry.items():
+
+                # if already callable strategy
+                if callable(obj):
+                    strategies[sid] = obj
+
+                # if structured object with run()
+                elif hasattr(obj, "run"):
+                    strategies[sid] = obj.run
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Registry load fallback: {e}")
+
+        return strategies
+    
+    def load(self):
+        try:
+            return self.get_live_strategies()
+        except Exception:
+            return []
+    
     def save(self) -> None:
         self.metadata_file.write_text(json.dumps(self._items, indent=2), encoding="utf-8")
 
@@ -107,3 +138,16 @@ class StrategyRegistryStore:
         self._items[strategy_id] = current
         self.save()
         return current
+class StrategyRegistry:
+
+    def __init__(self):
+        self._registry = {}
+
+    def register(self, strategy_id, strategy_fn):
+        self._registry[strategy_id] = strategy_fn
+
+    def load(self):
+        return self._registry
+
+    def get_live_strategies(self):
+        return self._registry

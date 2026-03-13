@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional
+from quant_ecosystem.strategy_governance.lifecycle_parliament_engine import LifecycleParliamentEngine
 
 from quant_ecosystem.meta_strategy.strategy_diversification_engine import (
     StrategyDiversificationEngine,
@@ -43,6 +44,7 @@ class MetaStrategyBrain:
         self.lifecycle_manager = lifecycle_manager or StrategyLifecycleManager()
         self.diversification_engine = diversification_engine or StrategyDiversificationEngine()
         self.retirement_engine = retirement_engine or StrategyRetirementEngine()
+        self.parliament = LifecycleParliamentEngine()
         self.last_decisions: Dict = {}
 
     def evaluate_strategy_ecosystem(
@@ -58,6 +60,7 @@ class MetaStrategyBrain:
 
         scored = self.score_strategies(rows)
         with_lifecycle = self.adjust_strategy_lifecycle(scored)
+        with_lifecycle = self._parliament_vote(with_lifecycle)
         diversified = self.rebalance_strategy_portfolio(with_lifecycle, max_active=max_active)
         promoted = self.promote_new_strategies(mutated_candidates or [])
         retired = self.retire_underperforming_strategies(diversified["active"] + diversified["reduced"])
@@ -82,6 +85,23 @@ class MetaStrategyBrain:
         }
         self.last_decisions = decisions
         return decisions
+    
+    def _parliament_vote(self, rows):
+        final_rows = []
+
+        for row in rows:
+            decision = self.parliament.vote(row)
+
+            row["stage"] = decision.get("stage", row.get("stage"))
+            row["allocation_pct"] = decision.get(
+                "allocation_pct",
+                row.get("allocation_pct", 0),
+            )
+            row["executable"] = decision.get("executable", True)
+
+            final_rows.append(row)
+
+        return final_rows
 
     def score_strategies(self, strategy_rows: Iterable[Dict]) -> List[Dict]:
         """Scores all strategies with dynamic meta-scoring."""

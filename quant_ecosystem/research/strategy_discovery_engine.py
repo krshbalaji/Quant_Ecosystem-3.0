@@ -5,6 +5,8 @@ from quant_ecosystem.research.alpha_templates.structural_library import AlphaStr
 
 logger = logging.getLogger(__name__)
 
+def _new_id(self):
+    return "arl_" + uuid.uuid4().hex[:8]
 
 class StrategyDiscoveryEngine:
     """

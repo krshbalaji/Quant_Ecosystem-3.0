@@ -252,7 +252,12 @@ class SystemFactory:
     exact object being injected, making the dependency graph self-documenting.
     """
 
-    def __init__(self, config: Any) -> None:
+    def __init__(
+        self, 
+        max_total_exposure_pct: float = 100.0,
+        max_strategy_exposure_pct: float = 30.0,
+        config = Any
+        ):
         self._config = config
         self._mode = OperatingMode.from_str(
             str(getattr(config, "mode", "PAPER"))
@@ -793,60 +798,56 @@ class SystemFactory:
             logger.warning("BrokerRouter unavailable.", exc_info=True)
             broker_router = broker  # fallback: use broker directly
 
-        # Reconciler (optional, non-fatal)
-        reconciler = None
-        from quant_ecosystem.strategy_bank.governance.portfolio_capital_governor import PortfolioCapitalGovernor
+        portfolio_governor = None
 
+                # ---- Broker Reconciler (optional)
 
-        portfolio_governor = PortfolioCapitalGovernor(state=router.state)
-
-        er = ExecutionRouter(
-            portfolio_governor=portfolio_governor,
-        )
-        from quant_ecosystem.execution.execution_router import ExecutionRouter
         try:
-            from quant_ecosystem.broker.reconciliation.broker_reconciler import (  # noqa: PLC0415
-                BrokerReconciler,
-            )
+            from quant_ecosystem.broker.reconciliation.broker_reconciler import BrokerReconciler
+
             reconciler = BrokerReconciler(
                 broker_router=getattr(router, "_broker_router", None),
                 portfolio_engine=router.portfolio_engine,
-                state=router.state
+                state=router.state,
             )
+
             router.reconciler = reconciler
             logger.debug("BrokerReconciler initialized.")
+
         except Exception:
             logger.debug("BrokerReconciler unavailable (non-critical).")
-            try:
-                from quant_ecosystem.strategy_bank.governance.portfolio_capital_governor import PortfolioCapitalGovernor
-            except Exception:
-                PortfolioCapitalGovernor = None
-            portfolio_governor = PortfolioCapitalGovernor(state) if PortfolioCapitalGovernor else None
 
-            execution_router = ExecutionRouter(
-    
-                portfolio_governor=portfolio_governor,
-            )
+        # ---- Portfolio Governor (sovereign authority)
 
-        # ExecutionRouter — main execution engine
+        portfolio_governor = None
+
         try:
-            from quant_ecosystem.execution.execution_router import (  # noqa: PLC0415
-                ExecutionRouter,
-            )
+            from quant_ecosystem.strategy_bank.governance.portfolio_capital_governor import PortfolioCapitalGovernor
+
+            portfolio_governor = PortfolioCapitalGovernor()
+
+            logger.info("PortfolioCapitalGovernor initialized.")
+
+        except Exception as e:
+            logger.warning(f"PortfolioCapitalGovernor unavailable: {e}")
+
+        # ---- Execution Router
+
+        try:
+            from quant_ecosystem.execution.execution_router import ExecutionRouter
+
             er = ExecutionRouter(
-                broker=broker_router,
+                broker=getattr(router, "_broker_router", None),
                 risk_engine=router.risk_engine,
                 state=router.state,
                 market_data=router.market_data,
-                portfolio_engine=router.portfolio_engine,
-                reconciler=reconciler,
-                symbols=router.symbols or list(getattr(self._config, "trade_symbols", [])),
-                outcome_memory=router.outcome_memory,
+                portfolio_governor=portfolio_governor,
             )
-            router._attach_execution_router(er)
-            logger.debug("ExecutionRouter initialized.")
-        except Exception:
-            logger.exception("ExecutionRouter initialization failed — execution unavailable.")
+
+            router._execution_router = er
+
+        except Exception as e:
+            logger.exception("ExecutionRouter initialization failed.")
 
     def _boot_live_broker(self, router: SystemRouter) -> None:
         """
@@ -902,19 +903,29 @@ class SystemFactory:
             from quant_ecosystem.core.strategy_registry import (  # noqa: PLC0415
                 StrategyRegistry,
             )
+            from quant_ecosystem.strategy_bank.engine.strategy_registry import StrategyRegistry
+            strategy_registry = StrategyRegistry()
             router.strategy_registry = StrategyRegistry()
             logger.debug("StrategyRegistry initialized.")
         except Exception:
             logger.warning("StrategyRegistry unavailable.", exc_info=True)
 
-        # Live strategy engine
-        try:
-            from quant_ecosystem.strategy_bank.live_strategy_engine import (  # noqa: PLC0415
-                LiveStrategyEngine,
+            # Live strategy engine
+            from quant_ecosystem.strategy_bank.engine.strategy_registry import StrategyRegistry
+
+            strategy_registry = StrategyRegistry()
+
+            strategy_engine = LiveStrategyEngine(
+                strategy_registry=strategy_registry,
+                execution_authority=execution_authority
             )
-            router.strategy_engine = LiveStrategyEngine(
-                strategy_registry = getattr(router, "strategy_registry", None)
-            )
+            
+            def test_strategy(md):
+                return {
+                    "symbol": "NIFTY",
+                    "side": "BUY",
+                    "qty": 1
+                }
             
             # Propagate to ExecutionRouter
             if router._execution_router is not None:

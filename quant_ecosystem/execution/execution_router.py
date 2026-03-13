@@ -992,11 +992,8 @@ class ExecutionRouter:
             self.mode, len(self.symbols),
         )
 
-        allowed, reason = self.portfolio_governor.allow_execution(signal, regime)
+      
 
-        if not allowed:
-            return _skip(f"PORTFOLIO_BLOCK:{reason}")
-    
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -1272,24 +1269,19 @@ class ExecutionRouter:
 
         if not self._is_valid_signal(signal):
             # ---- Portfolio Sovereignty Gate ----
-            if self.portfolio_governor:
-
-                allowed, reason = self.portfolio_governor.allow_execution(
-                    signal,
-                    regime
-                )
+            
 
                 if not allowed:
                     self._reset_risk_block_state()
                     return _skip(f"PORTFOLIO_BLOCK:{reason}")
-            ok, reason = self._gate_strategy_authority(signal)
+                ok, reason = self._gate_strategy_authority(signal)
 
-            if not ok:
-                self._reset_risk_block_state()
-                return _skip(f"STRATEGY_BLOCKED:{reason}")
+                if not ok:
+                    self._reset_risk_block_state()
+                    return _skip(f"STRATEGY_BLOCKED:{reason}")
             
-            self._reset_risk_block_state()
-            return _skip("INVALID_SIGNAL")
+                self._reset_risk_block_state()
+                return _skip("INVALID_SIGNAL")
 
         is_rebalance = bool(signal.get("rebalance_assist", False))
         if not is_rebalance and not self._passes_context_filter(signal, regime):
