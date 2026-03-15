@@ -12,13 +12,15 @@ class LiveStrategyEngine:
         self.registry = strategy_registry
         self.execution_authority = execution_authority
 
-        try:
-            self.strategies = strategy_registry.load()
-        except Exception as e:
-            logger.warning(f"Strategy load failed: {e}")
-            self.strategies = {}
+        logger.info("LiveStrategyEngine initialized (dynamic registry mode)")
 
-        logger.info(f"LiveStrategyEngine initialized ({len(self.strategies)} strategies)")
+    def _get_live_strategies(self):
+
+        try:
+            return self.registry.load()
+        except Exception as e:
+            logger.warning(f"Strategy reload failed: {e}")
+            return {}
 
     def _envelope(self, sid, raw_signal):
 
@@ -42,7 +44,9 @@ class LiveStrategyEngine:
 
         signals = []
 
-        for sid, strategy in self.strategies.items():
+        strategies = self._get_live_strategies()
+
+        for sid, strategy in strategies.items():
 
             try:
                 raw_signal = strategy(market_data)

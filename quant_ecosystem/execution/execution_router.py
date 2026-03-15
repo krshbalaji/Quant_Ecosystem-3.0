@@ -957,6 +957,7 @@ class ExecutionRouter:
         # Config — lazy import to avoid import-time side effects
         self.config = self._load_config()
 
+        
         # Indicator engines — lazy import
         self.instrument_policy = self._load_instrument_policy()
         self.candle_pattern    = self._load_candle_pattern()
@@ -987,13 +988,25 @@ class ExecutionRouter:
         self._last_risk_block_reason:     str  = ""
         self._liquidation_cooldown_until: int  = 0
 
+
         logger.info(
             "ExecutionRouter initialised (mode=%s, symbols=%d)",
-            self.mode, len(self.symbols),
+            self.mode,
+            len(self.symbols),
         )
+        return
 
-      
+        
+    def _run_live_strategies(self, market_data):
 
+        if not self.strategy_engine:
+            return []
+
+        try:
+            return self.strategy_engine.run(market_data)
+        except Exception as e:
+            logger.warning("strategy_engine.run failed: %s", e)
+            return []    
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -1050,7 +1063,25 @@ class ExecutionRouter:
                 def calculate(self, closes):
                     return 0.0
             return _NullAngle()
+    def start_execution_loop(self, interval_sec=2):
 
+        import threading
+        import time
+
+        def _loop():
+
+            logger.info("🔥 ExecutionRouter LIVE LOOP started")
+
+            while True:
+                try:
+                    self.run_cycle()
+                except Exception as e:
+                    logger.error("execution loop error: %s", e)
+
+                time.sleep(interval_sec)
+
+        t = threading.Thread(target=_loop, daemon=True)
+        t.start()
     # ------------------------------------------------------------------
     # Broker registration (runtime)
     # ------------------------------------------------------------------
@@ -1205,6 +1236,8 @@ class ExecutionRouter:
             prev_equity=prev_equity,
             prev_realized=prev_realized,
         )
+
+    
 
     # ------------------------------------------------------------------
     # Sovereignty Gate

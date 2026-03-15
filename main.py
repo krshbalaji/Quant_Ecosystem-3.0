@@ -20,9 +20,25 @@ def main():
         "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID"),
     }
 
-    factory = SystemFactory(config)
+    factory = SystemFactory()
+    
+    factory._config.autonomous_promote_threshold = -0.50
 
     router = factory.build()
+
+    # START EXECUTION LOOP
+    if hasattr(router, "execution_router"):
+
+        er = router.execution_router
+
+        if hasattr(er, "start"):
+            er.start()
+
+        elif hasattr(er, "run_forever"):
+            er.run_forever()
+
+        elif hasattr(er, "run"):
+            er.run()
 
     logger.info("Boot completed.")
 

@@ -307,7 +307,10 @@ class SystemFactory:
 
         router._log_mode_summary(self._mode)
         return router
-
+   
+        
+        
+        
     # ── Layer builders ────────────────────────────────────────────────────────
 
     def _boot_core_layer(self, router: SystemRouter) -> None:
@@ -592,7 +595,7 @@ class SystemFactory:
 
             n_workers         = max(1, int(getattr(cfg, "research_grid_workers", 0)))
             promote_threshold = float(
-                getattr(cfg, "research_grid_promote_threshold", 0.5)
+                getattr(cfg, "research_grid_promote_threshold", -0.50)
             )
             
             grid = ResearchGrid(
@@ -769,7 +772,8 @@ class SystemFactory:
             logger.debug("StrategyLabController initialized.")
         except Exception:
             logger.warning("StrategyLab unavailable.", exc_info=True)
-
+        
+        
     def _boot_execution_layer(self, router: SystemRouter) -> None:
         """
         Execution Router wired to a paper (simulated) broker by default.
@@ -841,14 +845,30 @@ class SystemFactory:
                 risk_engine=router.risk_engine,
                 state=router.state,
                 market_data=router.market_data,
+                strategy_engine=router.strategy_engine,
+                portfolio_engine=router.portfolio_engine,
+                reconciler=getattr(router, "reconciler", None),
+                symbols=getattr(router, "symbols", None),
                 portfolio_governor=portfolio_governor,
             )
 
             router._execution_router = er
+            
+                
+                
+        except Exception as e:
+                logger.warning(f"Execution loop failed to start: {e}")
 
         except Exception as e:
             logger.exception("ExecutionRouter initialization failed.")
-
+        # --- start execution loop AFTER strategy wiring ---
+        try:
+            if getattr(router, "_execution_router", None):
+                router._execution_router.start_execution_loop()
+                logger.info("🔥 ExecutionRouter loop started AFTER strategy boot.")
+        except Exception as e:
+            logger.warning(f"Execution loop start failed: {e}")
+            
     def _boot_live_broker(self, router: SystemRouter) -> None:
         """
         LIVE mode: attempt to connect the real broker and swap it in.
@@ -891,76 +911,38 @@ class SystemFactory:
             raise
 
     def _boot_strategy_layer(self, router: SystemRouter) -> None:
-        """
-        Strategy registry, live strategy engine, strategy bank,
-        selector, capital allocator, meta alpha engine.
-        """
+
         logger.info("[boot] strategy layer …")
         cfg = self._config
 
         # Strategy registry
-        try:
-            from quant_ecosystem.core.strategy_registry import (  # noqa: PLC0415
-                StrategyRegistry,
-            )
-            from quant_ecosystem.strategy_bank.engine.strategy_registry import StrategyRegistry
-            strategy_registry = StrategyRegistry()
-            router.strategy_registry = StrategyRegistry()
-            logger.debug("StrategyRegistry initialized.")
-        except Exception:
-            logger.warning("StrategyRegistry unavailable.", exc_info=True)
+        from quant_ecosystem.strategy_bank.engine.strategy_registry import StrategyRegistry
+        from quant_ecosystem.strategy_bank.live_strategy_engine import LiveStrategyEngine
 
-            # Live strategy engine
-            from quant_ecosystem.strategy_bank.engine.strategy_registry import StrategyRegistry
+        strategy_registry = StrategyRegistry()
+        router.strategy_registry = strategy_registry
 
-            strategy_registry = StrategyRegistry()
+        # Live Strategy Engine
+        execution_authority = getattr(router, "execution_authority", None)
 
-            strategy_engine = LiveStrategyEngine(
-                strategy_registry=strategy_registry,
-                execution_authority=execution_authority
-            )
-            
-            def test_strategy(md):
-                return {
-                    "symbol": "NIFTY",
-                    "side": "BUY",
-                    "qty": 1
-                }
-            
-            # Propagate to ExecutionRouter
-            if router._execution_router is not None:
-                router._execution_router.strategy_engine = router.strategy_engine
-            logger.debug("LiveStrategyEngine initialized.")
-        except Exception:
-            logger.warning("LiveStrategyEngine unavailable.", exc_info=True)
+        strategy_engine = LiveStrategyEngine(
+            strategy_registry=strategy_registry,
+            execution_authority=execution_authority
+        )
 
-        # Strategy bank (enabled via config flag)
+        router.strategy_engine = strategy_engine
+
+        # propagate to execution router
+        if getattr(router, "_execution_router", None):
+            router._execution_router.strategy_engine = strategy_engine
+
+        logger.info("LiveStrategyEngine wired into ExecutionRouter.")
+
+        # -----------------------------
+        # Strategy Bank
+        # -----------------------------
         if getattr(cfg, "enable_strategy_bank", True):
             self._boot_strategy_bank(router)
-
-        # Meta strategy brain (ensemble + regime routing)
-        if getattr(cfg, "enable_meta_strategy_brain", False):
-            self._boot_meta_strategy_brain(router)
-
-        # Strategy diversity engine
-        if getattr(cfg, "enable_strategy_diversity", False):
-            self._boot_strategy_diversity(router)
-
-        # Strategy survival engine
-        if getattr(cfg, "enable_strategy_survival", False):
-            self._boot_strategy_survival(router)
-
-        # Alpha scanner
-        if getattr(cfg, "enable_alpha_scanner", False):
-            self._boot_alpha_scanner(router)
-
-        # Portfolio AI
-        if getattr(cfg, "enable_portfolio_ai", False):
-            self._boot_portfolio_ai(router)
-
-        # Shadow trading
-        if getattr(cfg, "enable_shadow_trading", False):
-            self._boot_shadow_trading(router)
 
     def _boot_strategy_bank(self, router: SystemRouter) -> None:
         """Strategy Bank Engine + bank layer."""
@@ -1376,7 +1358,7 @@ class SystemFactory:
                 AutonomousResearchLoop,
                 LoopConfig,
             )
-
+            print("CFG PROMOTE =", getattr(cfg, "autonomous_promote_threshold", "NOT SET"))
             loop_cfg = LoopConfig(
                 cycle_interval_sec   = float(getattr(cfg, "autonomous_cycle_interval_sec",  120.0)),
                 eval_timeout_sec     = float(getattr(cfg, "autonomous_eval_timeout_sec",     90.0)),
@@ -1384,7 +1366,7 @@ class SystemFactory:
                 discovery_batch_size = int(getattr(cfg,   "autonomous_genome_batch_size",   20)),
                 mutation_batch_size  = int(getattr(cfg,   "autonomous_mutation_batch_size", 10)),
                 promote_top_n        = int(getattr(cfg,   "autonomous_promote_top_n",        5)),
-                promote_threshold    = float(getattr(cfg, "autonomous_promote_threshold",    0.45)),
+                promote_threshold    = float(getattr(cfg, "autonomous_promote_threshold",    -0.50)),
                 eval_symbols         = list(getattr(cfg,  "autonomous_eval_symbols", None) or ["SYNTH"]),
                 eval_periods         = int(getattr(cfg,   "autonomous_eval_periods",        260)),
                 enable_walk_forward  = bool(getattr(cfg,  "autonomous_enable_walk_forward", True)),
@@ -1467,6 +1449,8 @@ def _make_grid_result_callback(router):
             (genome_id[:18] if genome_id else "—"),
             result.sharpe, result.fitness,
         )
+        
+        print("REAL THRESHOLD =", self._cfg.promote_threshold)
 
         rg = getattr(router, "research_grid", None)
         if rg is None:
@@ -1492,7 +1476,7 @@ def _make_grid_result_callback(router):
                     logger.debug("genome_library.store_genome failed: %s", exc)
     return _on_result
 
-
+                
 class _NoOpBroker:
     """
     Silent no-op broker used when the real broker class fails to import.

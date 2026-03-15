@@ -31,6 +31,15 @@ class StrategyDiscoveryEngine:
 
         logger.info("StrategyDiscoveryEngine initialized")
 
+    def _new_id(self, family: str) -> str:
+        import time
+        import uuid
+
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        uid = uuid.uuid4().hex[:6]
+
+        return f"arl_{family}_{ts}_{uid}"
+
     def _generate_random_genome(self):
 
         indicator = random.choice(self.INDICATORS)

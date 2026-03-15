@@ -916,7 +916,7 @@ class ResearchGrid:
     def __init__(
         self,
         n_workers:          int   = 0,
-        promote_threshold:  float = 0.5,
+        promote_threshold:  float = -0.50,
         genome_library      = None,
         backtest_engine     = None,
         result_callback:    Optional[Callable[[GridResult], None]] = None,

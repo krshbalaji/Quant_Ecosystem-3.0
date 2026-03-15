@@ -161,7 +161,7 @@ class LoopConfig:
         self.evolution_top_n       = max(0,     int(self.evolution_top_n))
         self.random_injection      = max(0,     int(self.random_injection))
         self.eval_periods          = max(50,    int(self.eval_periods))
-        self.promote_threshold     = max(0.0, min(1.0, float(self.promote_threshold)))
+        self.promote_threshold     = float(self.promote_threshold)
         self.promote_top_n         = max(1,     int(self.promote_top_n))
         self.max_concurrent_cycles = max(1,     int(self.max_concurrent_cycles))
         self.max_genome_batch      = max(10,    int(self.max_genome_batch))
@@ -265,10 +265,12 @@ class AutonomousResearchLoop:
         genome_library          = None,
         meta_research_ai        = None,
         strategy_bank_engine    = None,
-        strategy_registry=None,
+        strategy_registry       =None,
+        promote_top             =5,
         cfg: Optional[LoopConfig] = None,
         **kwargs,
     ) -> None:
+       
         self._discovery  = discovery_engine
         self._mutation   = mutation_engine
         self._evolution  = evolution_engine
@@ -277,8 +279,14 @@ class AutonomousResearchLoop:
         self._meta_ai    = meta_research_ai
         self._bank       = strategy_bank_engine
         self._registry = strategy_registry
-        self._cfg        = cfg or LoopConfig()
+        self.promote_top = promote_top
 
+        # ---------- STRICT CONFIG BIND ----------
+        if cfg is None:
+            self._cfg = LoopConfig()
+        else:
+            self._cfg = cfg   # DO NOT COPY / DO NOT RECREATE
+        # ----------------------------------------
         # Thread control primitives
         self._thread:        Optional[threading.Thread] = None
         self._stop_event:    threading.Event = threading.Event()
@@ -295,6 +303,7 @@ class AutonomousResearchLoop:
         self._last_cycle:      Optional[CycleState] = None
         self._lock:            threading.Lock       = threading.Lock()
 
+        
         present = {
             k for k, v in {
                 "discovery":  discovery_engine,
@@ -314,7 +323,8 @@ class AutonomousResearchLoop:
             self._cfg.mutation_batch_size,
             present,
         )
-
+        
+        
     # ------------------------------------------------------------------
     # Late injection setters
     # ------------------------------------------------------------------
@@ -839,6 +849,8 @@ class AutonomousResearchLoop:
         cycle.phases_completed.append("submit")
         cycle.phases_completed.append("evaluate")
         return results
+    
+
 
     # ------------------------------------------------------------------
     # Phase 7: Promote
@@ -850,6 +862,10 @@ class AutonomousResearchLoop:
         batch:   List[Dict],
         results: List[Any],
     ) -> None:
+        print("🔥 LOOP INTERNAL THRESHOLD =", self._cfg.promote_threshold)
+        
+        logger.warning("GRID ATTRS → %s", dir(self._grid))
+
         tag = self._cfg.log_prefix
         print(f"{tag} promoting top strategies")
         logger.info("%s [7/8] ranking and promoting top genomes …", tag)
@@ -858,133 +874,155 @@ class AutonomousResearchLoop:
             cycle.phases_skipped.append("promote:no_results")
             return
 
-        ranked = self._rank(results)
+        # --- Institutional Promotion Source ---
+        promoted_from_grid = []
 
-         
-        # Update cycle quality metrics from ranked list
-        if ranked:
-            top       = ranked[0]
-            fitnesses = [r["fitness"] for r in ranked if r["fitness"] > 0]
-            cycle.best_fitness   = top["fitness"]
-            cycle.best_sharpe    = top.get("sharpe", 0.0)
-            cycle.best_genome_id = top.get("genome_id", "")
-            cycle.avg_fitness    = (
-                round(sum(fitnesses) / len(fitnesses), 6) if fitnesses else 0.0
+        try:
+            if self._grid:
+                promoted_from_grid = self._grid.top_results(50) or []
+        except Exception:
+            promoted_from_grid = []
+
+        if promoted_from_grid:
+
+            promoted_from_grid.sort(
+                key=lambda g: getattr(g,"fitness", -999),
+                reverse=True,
             )
-            cycle.top_genomes = [
-                {"genome_id": r["genome_id"], "fitness": r["fitness"]}
-                for r in ranked[:5]
-            ]
 
-        # Filter by threshold
-        candidates = [
-            r for r in ranked
-            if r["fitness"] >= self._cfg.promote_threshold
-        ][: self._cfg.promote_top_n]
+            selected = promoted_from_grid[: self.promote_top]
+
+        else:
+            selected = []
+            
+        candidates = promoted_from_grid[: self._cfg.promote_top_n]
+
+        logger.warning(
+            "%s PROMOTE DEBUG → grid_promoted=%d taking=%d",
+            tag,
+            len(promoted_from_grid),
+            len(candidates),
+        )
+
+        if not promoted_from_grid:
+            cycle.phases_skipped.append("promote:no_grid_candidates")
+            return
+
+        top = promoted_from_grid[0]
+
+        if not promoted_from_grid:
+            cycle.phases_skipped.append("promote:no_grid_candidates")
+            return
+
+        ranked = self._rank(promoted_from_grid)
+
+        # -----------------------------
+        # --- institutional adapter ---
+        if hasattr(top, "__dict__"):
+            top = top.__dict__
+        # --------------------------------
+
+        cycle.best_fitness = top.get("fitness", 0.0)
+        cycle.best_sharpe = top.get("sharpe", 0.0)
+        cycle.best_genome_id = top.get("genome_id", "")
+       
+        candidates = []
+
+        for r in ranked:
+            if r.get("fitness", -999) >= self._cfg.promote_threshold:
+                candidates.append(r)
+
+        candidates = candidates[: self._cfg.promote_top_n]
+
+        # --- DEDUP GUARD ---
+        seen_ids = set()
+        unique_candidates = []
+
+        for c in candidates:
+            gid = c.get("genome_id")
+            if gid and gid not in seen_ids:
+                unique_candidates.append(c)
+                seen_ids.add(gid)
+
+        candidates = unique_candidates
+        
+        logger.warning(
+            "%s PROMOTE DEBUG → candidates=%d best=%.4f threshold=%.4f",
+            tag,
+            len(candidates),
+            cycle.best_fitness,
+            self._cfg.promote_threshold,
+        )
 
         if not candidates:
-            logger.info(
-                "%s no genomes cleared threshold %.3f (best=%.4f).",
-                tag, self._cfg.promote_threshold, cycle.best_fitness,
-            )
             cycle.phases_skipped.append("promote:below_threshold")
             return
 
-        # Build genome_id -> genome dict lookup
-        genome_map: Dict[str, Dict] = {
+        genome_map = {
             g["genome_id"]: g for g in batch if g.get("genome_id")
         }
 
-        promoted    = 0
-        bank_batch: List[Dict] = []
+        promoted_count = 0
 
         for r in candidates:
-            gid    = r.get("genome_id", "")
-            genome = genome_map.get(gid) or r.get("genome") or {"genome_id": gid}
 
+            gid = r.get("genome_id")
             if not gid:
                 continue
 
-            # Write to GenomeLibrary
-            if self._lib is not None:
-                try:
-                    enriched = dict(genome)
-                    enriched.update({
-                        "genome_id":     gid,
-                        "fitness_score": r["fitness"],
-                        "sharpe":        r.get("sharpe", 0.0),
-                        "max_dd":        r.get("max_dd", 0.0),
-                        "win_rate":      r.get("win_rate", 0.0),
-                        "profit_factor": r.get("profit_factor", 0.0),
-                        "source":        "autonomous_research_loop",
-                        "cycle_id":      cycle.cycle_id,
-                        "cycle_number":  cycle.cycle_number,
-                    })
-                    self._lib.store_genome(gid, enriched)
-                    logger.debug(
-                        "%s GenomeLibrary: stored %s fitness=%.4f",
-                        tag, gid, r["fitness"],
-                    )
-                except Exception as exc:
-                    logger.debug("%s genome_library.store_genome error: %s", tag, exc)
-            if self._registry:
-                try:
-                    self._registry.register_alpha({
-                        "alpha_id": gid,
-                        "source": "autonomous_research_loop",
-                        "fitness": r["fitness"],
-                        "sharpe": r.get("sharpe", 0.0),
-                        "parameters": genome.get("parameters", {}),
-                        "stage": "RESEARCH",
-                        "active": False,
-                        "promotion_source": "autonomous_research"
-                    })
-                except Exception as exc:
-                    logger.debug("%s registry.register_alpha error: %s", tag, exc)
-            
-            # Accumulate StrategyBank report
-            bank_batch.append({
-                "id":     gid,
-                "name":   genome.get("family", "unknown"),
-                "stage": "RESEARCH",
-                "active": False,
-                "promotion_source": "autonomous_research",
-                
-                "metrics": {
-                    "sharpe":        r.get("sharpe", 0.0),
-                    "win_rate":      r.get("win_rate", 0.0),
-                    "profit_factor": r.get("profit_factor", 0.0),
-                    "max_dd":        r.get("max_dd", 0.0),
-                    "fitness_score": r["fitness"],
-                    "total_trades":  max(5, int(r.get("win_rate", 50.0))),
-                },
-                "parameters": genome.get("parameters", {}),
-            })
-            promoted += 1
+            genome = genome_map.get(gid, {})
 
-        # Ingest into StrategyBankEngine
-        # Governance ownership:
-        # Research loop no longer pushes directly into StrategyBank.
-        # Candidate rows are already registered into StrategyRegistry.
-        # StrategyBankEngine will ingest via central governance pipeline.
-        if bank_batch:
-            logger.debug(
-                "%s governance mode: bank ingestion skipped (%d candidates).",
-                tag,
-                len(bank_batch),
-            )
-            logger.debug(
-                "%s StrategyBankEngine.ingest_reports(%d strategies).",
-                tag, len(bank_batch),
-            )
-         
-        cycle.promoted_count = promoted
+            # ALWAYS PREPARE ENRICHED GENOME
+            enriched = dict(genome)
+            enriched["fitness_score"] = r["fitness"]
+
+            # ---- store in genome library
+            try:
+                if self._lib:
+                    self._lib.store_genome(gid, enriched)
+            except Exception as exc:
+                logger.debug("GenomeLibrary store failed: %s", exc)
+
+            # ---- LIVE strategy activation
+            try:
+                if self._registry:
+
+                    def alpha(md, genome=enriched):
+                        price = md.get("price", 0)
+                        if price <= 0:
+                            return None
+
+                        return {
+                            "symbol": genome.get("symbol", "NIFTY"),
+                            "side": "BUY" if genome.get("fitness_score", 0) > 0 else "SELL",
+                            "qty": 1,
+                            "strategy_id": gid,
+                        }
+
+                    self._registry.register(gid, alpha)
+
+                    logger.info(
+                        "%s LIVE activation → strategy registered: %s",
+                        tag,
+                        gid
+                    )
+
+                    promoted_count += 1
+
+            except Exception as exc:
+                logger.warning(
+                    "%s LIVE activation failed: %s",
+                    tag,
+                    exc
+                )
+
+        cycle.promoted_count = promoted_count
         cycle.phases_completed.append("promote")
 
         logger.info(
             "%s promoted %d/%d candidates | best=%s fitness=%.4f sharpe=%.3f",
             tag,
-            promoted,
+            promoted_count,
             len(candidates),
             cycle.best_genome_id[:20],
             cycle.best_fitness,
@@ -1086,7 +1124,7 @@ class AutonomousResearchLoop:
             })
         ranked.sort(key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
         return ranked
-
+        
     def _normalise_genome(self, item: Any) -> Optional[Dict]:
         """
         Convert any item from discover() / evolve() into a plain dict
