@@ -3,6 +3,7 @@ import time
 import os
 
 from quant_ecosystem.core.system_factory import SystemFactory
+from quant_ecosystem.core.market_mode import MarketModeController, MarketMode
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +27,8 @@ def main():
 
     router = factory.build()
 
+    MarketModeController.set_mode(MarketMode.SYNTH)
+    
     # START EXECUTION LOOP
     if hasattr(router, "execution_router"):
 

@@ -403,6 +403,7 @@ class BacktestEngine:
     # ------------------------------------------------------------------
     # Primary interface (spec-required)
     # ------------------------------------------------------------------
+    from quant_ecosystem.core.market_mode import MarketModeController
 
     def run(
         self,
@@ -410,26 +411,20 @@ class BacktestEngine:
         data: Any,
         symbol: str = "UNKNOWN",
     ) -> BacktestResult:
-        """Run a backtest for *strategy* over *data*.
 
-        Parameters
-        ----------
-        strategy:
-            Either a callable ``f(window_dict) -> "BUY"|"SELL"|"HOLD"``
-            **or** an object with a ``generate_signal(window_dict)`` method.
-        data:
-            - ``List[Dict]``: list of OHLCV candle dicts
-            - ``List[float]``: plain close-price series (legacy support)
-            - ``int``: generate *data* synthetic bars (legacy support)
+        # ⭐ NEW REALITY SWITCH
+        if MarketModeController.is_synth():
+            candles = self._coerce_data(data)
 
-        Returns
-        -------
-        :class:`BacktestResult`
-        """
-        candles  = self._coerce_data(data)
+        elif MarketModeController.is_historical():
+            candles = self._load_historical_data(symbol)
+
+        else:
+            raise Exception("BacktestEngine cannot run in PAPER/LIVE mode")
+
         strategy_fn = self._coerce_strategy(strategy)
         strategy_name = getattr(strategy, "strategy_id", getattr(strategy, "__name__", str(strategy)))
-
+        
         trades, equity_curve = self._vectorized_run(strategy_fn, candles, symbol)
         metrics = _compute_metrics(equity_curve, trades, self.risk_free_rate, self.periods_per_year)
 
@@ -444,7 +439,9 @@ class BacktestEngine:
             equity_curve=equity_curve,
             metrics=metrics,
         )
-
+    def _load_historical_data(self, symbol):
+        raise NotImplementedError("Historical data adapter not yet implemented")
+    
     def evaluate(self, results: Any) -> Dict[str, Any]:
         """Compute or re-compute metrics from a :class:`BacktestResult`.
 
