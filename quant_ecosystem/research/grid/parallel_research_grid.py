@@ -99,7 +99,7 @@ class JobStatus(str, Enum):
     FAILED     = "FAILED"
     CANCELLED  = "CANCELLED"
 
-
+    
 # ---------------------------------------------------------------------------
 # Job / Result dataclasses
 # ---------------------------------------------------------------------------
@@ -172,14 +172,36 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
         from quant_ecosystem.research.backtest.backtest_engine import (  # noqa: lazy
             BacktestEngine, FixedBpsSlippage, FlatCommission
         )
+        from quant_ecosystem.core.market_mode import MarketModeController
+
         engine = BacktestEngine(
             slippage_model  = FixedBpsSlippage(slip_bps),
             commission_model= FlatCommission(commission),
         )
+
         if candles:
             data = candles
+
         else:
-            data = periods
+
+            if MarketModeController.is_synth():
+                data = periods
+
+            else:
+                try:
+                    from quant_ecosystem.core.market_engine import MarketDataEngine
+                    market_engine = MarketDataEngine()
+
+                    symbol = payload.get("symbol", "RELIANCE.NS")
+
+                    data = market_engine.get_candles(
+                        symbol = symbol,
+                        timeframe = "1d",
+                        lookback = periods
+                    )
+
+                except Exception:
+                    data = periods
 
         strategy = _genome_to_callable(genome)
         result   = engine.run(strategy, data, symbol=str(payload.get("symbol", "GRID")))

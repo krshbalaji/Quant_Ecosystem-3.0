@@ -6,7 +6,8 @@ class MarketMode(Enum):
     HISTORICAL = "HISTORICAL"
     PAPER = "PAPER"
     LIVE = "LIVE"
-
+    REALITY_MODE = True
+    PRIMARY_SYMBOL = "RELIANCE.NS"
 
 class MarketModeController:
     _mode = MarketMode.SYNTH
@@ -35,3 +36,7 @@ class MarketModeController:
     @classmethod
     def is_live(cls):
         return cls._mode == MarketMode.LIVE
+
+    from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
+
+    
