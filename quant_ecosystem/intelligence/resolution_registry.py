@@ -55,3 +55,11 @@ class ResolutionRegistry:
 
     def all(self):
         return self._resolutions.values()
+    
+    def list_active_resolutions(self):
+        """
+        Institutional orchestrator interface.
+
+        Returns ordered list of active research horizons.
+        """
+        return list(self._resolutions.keys())

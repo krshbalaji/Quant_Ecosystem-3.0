@@ -258,16 +258,20 @@ class AutonomousResearchLoop:
 
     def __init__(
         self,
-        discovery_engine        = None,
-        mutation_engine         = None,
-        evolution_engine        = None,
-        research_grid           = None,
-        genome_library          = None,
-        meta_research_ai        = None,
-        strategy_bank_engine    = None,
-        strategy_registry       =None,
-        promote_top             =5,
+        discovery_engine=None,
+        mutation_engine=None,
+        evolution_engine=None,
+        research_grid=None,
+        genome_library=None,
+        meta_research_ai=None,
+        strategy_bank_engine=None,
+        strategy_registry=None,
+        promote_top=5,
         cfg: Optional[LoopConfig] = None,
+        *,
+        resolution: str = "GLOBAL",
+        registry=None,
+        fabric_state=None,
         **kwargs,
     ) -> None:
        
@@ -280,6 +284,13 @@ class AutonomousResearchLoop:
         self._bank       = strategy_bank_engine
         self._registry = strategy_registry
         self.promote_top = promote_top
+        self.resolution = resolution
+        self.registry = registry
+        self.fabric_state = fabric_state
+
+        self.loop_id = f"research_loop_{resolution}"
+
+        self._running = False
 
         # ---------- STRICT CONFIG BIND ----------
         if cfg is None:
@@ -353,6 +364,18 @@ class AutonomousResearchLoop:
     def set_strategy_bank_engine(self, bank: Any) -> None:
         self._bank = bank
 
+    def start(self):
+        self._running = True
+
+        if self.fabric_state:
+            self.fabric_state.register_resolution(self.resolution)
+
+    def stop(self):
+        self._running = False
+
+    def is_running(self):
+        return self._running
+    
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
