@@ -157,6 +157,9 @@ class GridResult:
 # ---------------------------------------------------------------------------
 # These MUST be module-level so ProcessPoolExecutor can pickle them.
 
+
+from quant_ecosystem.core.market_mode import REALITY_MODE
+
 def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Worker: backtest a single genome / strategy callable."""
     import random as _rnd
@@ -983,11 +986,13 @@ class ResearchGrid:
     # ------------------------------------------------------------------
     # Submission API
     # ------------------------------------------------------------------
-
+    from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
+    from quant_ecosystem.core.market_mode import PRIMARY_SYMBOL
+    
     def submit_genome_backtest(
         self,
         genome:         Dict,
-        symbol:         str  = "SYNTH",
+        symbol:         str  = PRIMARY_SYMBOL,
         periods:        int  = 260,
         slippage_bps:   float = 5.0,
         commission:     float = 20.0,
@@ -996,6 +1001,8 @@ class ResearchGrid:
         callback:       Optional[Callable[[GridResult], None]] = None,
     ) -> str:
         """Submit a single genome backtest.  Returns job_id."""
+        PRIMARY_SYMBOL = "NSE:NIFTY50-INDEX"
+
         self._ensure_started()
         job = GridJob(
             priority = priority,
@@ -1003,7 +1010,8 @@ class ResearchGrid:
             payload  = {
                 "genome":       genome,
                 "genome_id":    genome.get("genome_id", ""),
-                "symbol":       symbol,
+                "symbol": symbol,
+                "reality_mode": REALITY_MODE,
                 "periods":      periods,
                 "slippage_bps": slippage_bps,
                 "commission":   commission,
@@ -1036,7 +1044,8 @@ class ResearchGrid:
                 payload  = {
                     "genome":       genome,
                     "genome_id":    genome.get("genome_id", ""),
-                    "symbols":      syms,
+                    "symbols": syms,
+                    "reality_mode": REALITY_MODE,
                     "periods":      periods,
                     "slippage_bps": slippage_bps,
                     "commission":   commission,
@@ -1050,7 +1059,7 @@ class ResearchGrid:
         self,
         genome:         Dict,
         param_grid:     Dict[str, List],
-        symbol:         str  = "SYNTH",
+        symbol:         str  = PRIMARY_SYMBOL,
         periods:        int  = 260,
         priority:       int  = 40,
         callback:       Optional[Callable[[GridResult], None]] = None,
@@ -1064,7 +1073,8 @@ class ResearchGrid:
                 "genome":      genome,
                 "genome_id":   genome.get("genome_id", ""),
                 "param_grid":  param_grid,
-                "symbol":      symbol,
+                "symbol": symbol,
+                "reality_mode": REALITY_MODE,
                 "periods":     periods,
             },
         )
@@ -1097,7 +1107,8 @@ class ResearchGrid:
                     payload  = {
                         "genome":     genome,
                         "genome_id":  genome.get("genome_id", ""),
-                        "symbol":     sym,
+                        "symbol": sym,
+                        "reality_mode": REALITY_MODE,
                         "periods":    periods,
                         "n_splits":   n_splits,
                         "train_frac": train_frac,
@@ -1113,7 +1124,7 @@ class ResearchGrid:
         genome:     Dict,
         n_runs:     int   = 200,
         periods:    int   = 260,
-        symbol:     str   = "SYNTH",
+        symbol:     str   = PRIMARY_SYMBOL,
         priority:   int   = 60,
         callback:   Optional[Callable[[GridResult], None]] = None,
     ) -> str:
@@ -1126,7 +1137,8 @@ class ResearchGrid:
             payload      = {
                 "genome":    genome,
                 "genome_id": genome.get("genome_id", ""),
-                "symbol":    symbol,
+                "symbol": symbol,
+                "reality_mode": REALITY_MODE,
                 "n_runs":    n_runs,
                 "periods":   periods,
             },
@@ -1137,7 +1149,7 @@ class ResearchGrid:
         self,
         factor_name:   str,
         factor_params: Optional[Dict] = None,
-        symbol:        str = "SYNTH",
+        symbol:        str = PRIMARY_SYMBOL,
         periods:       int = 260,
         threshold:     float = 0.0,
         priority:      int  = 55,
@@ -1151,7 +1163,8 @@ class ResearchGrid:
             payload  = {
                 "factor_name":   factor_name,
                 "factor_params": factor_params or {},
-                "symbol":        symbol,
+                "symbol": symbol,
+                "reality_mode": REALITY_MODE,
                 "periods":       periods,
                 "threshold":     threshold,
             },
@@ -1163,7 +1176,7 @@ class ResearchGrid:
         genome:     Dict,
         k_folds:    int  = 5,
         periods:    int  = 500,
-        symbol:     str  = "SYNTH",
+        symbol:     str  = PRIMARY_SYMBOL,
         candles:    Optional[List] = None,
         priority:   int  = 45,
         callback:   Optional[Callable[[GridResult], None]] = None,
@@ -1176,7 +1189,8 @@ class ResearchGrid:
             payload  = {
                 "genome":    genome,
                 "genome_id": genome.get("genome_id",""),
-                "symbol":    symbol,
+                "symbol": symbol,
+                "reality_mode": REALITY_MODE,
                 "k_folds":   k_folds,
                 "periods":   periods,
                 "candles":   candles or [],

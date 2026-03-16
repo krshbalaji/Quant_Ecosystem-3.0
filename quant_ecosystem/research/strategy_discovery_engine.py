@@ -3,6 +3,8 @@ import random
 import uuid
 from quant_ecosystem.research.alpha_templates.structural_library import AlphaStructuralLibrary
 
+timeframe = "id"
+
 logger = logging.getLogger(__name__)
 
 def _new_id(self):

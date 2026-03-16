@@ -4,6 +4,12 @@ import os
 
 from quant_ecosystem.core.system_factory import SystemFactory
 from quant_ecosystem.core.market_mode import MarketModeController, MarketMode
+from quant_ecosystem.core.market_mode import MarketModeController, MarketMode
+from quant_ecosystem.core.market_mode import REALITY_MODE
+
+print("🔥 REALITY_MODE =", REALITY_MODE)
+
+MarketModeController.set_mode(MarketMode.PAPER)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

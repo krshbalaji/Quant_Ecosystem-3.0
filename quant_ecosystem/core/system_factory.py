@@ -551,6 +551,15 @@ class SystemFactory:
         logger.info("[boot] synthetic_market …")
         cfg = self._config
 
+        from quant_ecosystem.core.market_mode import REALITY_MODE
+
+        if not REALITY_MODE:
+            logger.info("[boot] synthetic_market …")
+            self.synthetic_market = SyntheticMarketEngine(...)
+            self.synthetic_market.start()
+        else:
+            logger.info("🚫 SyntheticMarketEngine skipped (REALITY MODE)")
+
         try:
             from quant_ecosystem.data.data_router import DataRouter  # noqa: PLC0415
             router.data_router = DataRouter(

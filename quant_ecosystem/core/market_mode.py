@@ -1,19 +1,28 @@
 from enum import Enum
 
+REALITY_MODE = True
+PRIMARY_SYMBOL = "RELIANCE.NS"
 
 class MarketMode(Enum):
     SYNTH = "SYNTH"
     HISTORICAL = "HISTORICAL"
     PAPER = "PAPER"
     LIVE = "LIVE"
-    REALITY_MODE = True
-    PRIMARY_SYMBOL = "RELIANCE.NS"
+    
 
 class MarketModeController:
     _mode = MarketMode.SYNTH
 
     @classmethod
-    def set_mode(cls, mode: MarketMode):
+    def set_mode(cls, mode):
+
+        from quant_ecosystem.core.market_mode import REALITY_MODE
+
+        if REALITY_MODE:
+            print("🛑 REALITY MODE LOCK → forcing HISTORICAL")
+            cls._mode = MarketMode.HISTORICAL
+            return
+
         print(f"🌐 MARKET MODE SWITCH → {mode.value}")
         cls._mode = mode
 
@@ -37,6 +46,5 @@ class MarketModeController:
     def is_live(cls):
         return cls._mode == MarketMode.LIVE
 
-    from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
-
+   
     

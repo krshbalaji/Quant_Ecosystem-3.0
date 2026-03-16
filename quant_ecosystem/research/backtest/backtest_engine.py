@@ -412,15 +412,17 @@ class BacktestEngine:
         symbol: str = "UNKNOWN",
     ) -> BacktestResult:
 
-        # ⭐ NEW REALITY SWITCH
-        if MarketModeController.is_synth():
-            candles = self._coerce_data(data)
+        # ⭐ REALITY MARKET ROUTING (INSTITUTIONAL PATCH)
 
-        elif MarketModeController.is_historical():
-            candles = self._load_historical_data(symbol)
+        mode = MarketModeController.get_mode()
+
+        from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
+
+        if REALITY_MODE:
+            candles = self._load_historical_data(symbol or PRIMARY_SYMBOL)
 
         else:
-            raise Exception("BacktestEngine cannot run in PAPER/LIVE mode")
+            candles = self._coerce_data(data)
 
         strategy_fn = self._coerce_strategy(strategy)
         strategy_name = getattr(strategy, "strategy_id", getattr(strategy, "__name__", str(strategy)))
@@ -440,8 +442,37 @@ class BacktestEngine:
             metrics=metrics,
         )
     def _load_historical_data(self, symbol):
-        raise NotImplementedError("Historical data adapter not yet implemented")
-    
+
+        try:
+            from quant_ecosystem.market_data.market_data_engine import MarketDataEngine
+
+            m = MarketDataEngine()
+
+            if timeframe in ["1m", "5m", "15m"]:
+                candles = m.get_candles(
+                    symbol,
+                    timeframe=timeframe,
+                    lookback=50   # MUST stay inside Yahoo window
+                )
+            else:
+                candles = m.get_candles(
+                    symbol,
+                    timeframe=timeframe,
+                    lookback=600
+                )
+
+            if not candles:
+                raise RuntimeError(
+                    f"No candles returned for {symbol} tf={timeframe}"
+                )
+            logger.info("📊 Historical candles loaded: %s (%d bars)", symbol, len(candles))
+
+            return candles
+
+        except Exception as e:
+            logger.exception("❌ Historical loader failed → using synthetic fallback")
+            return self._generate_candles(300)
+            
     def evaluate(self, results: Any) -> Dict[str, Any]:
         """Compute or re-compute metrics from a :class:`BacktestResult`.
 
@@ -697,11 +728,11 @@ class BacktestEngine:
             # ---- call strategy ------------------------------------------
             try:
                 signal = strategy_fn(window)
+                price  = closes[idx]
+                volume = volumes[idx]
+
             except Exception:
                 signal = "HOLD"
-
-            price  = closes[idx]
-            volume = volumes[idx]
 
             # ---- process signal -----------------------------------------
             if signal == "BUY" and position == 0:
