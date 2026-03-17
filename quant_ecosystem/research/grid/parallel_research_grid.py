@@ -964,6 +964,13 @@ class ResearchGrid:
             self.promote_threshold,
         )
 
+        from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
+
+        if REALITY_MODE:
+            self._default_symbols = [PRIMARY_SYMBOL]
+        else:
+            self._default_symbols = ["SYNTH"]
+            
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -1001,58 +1008,74 @@ class ResearchGrid:
         callback:       Optional[Callable[[GridResult], None]] = None,
     ) -> str:
         """Submit a single genome backtest.  Returns job_id."""
-        PRIMARY_SYMBOL = "NSE:NIFTY50-INDEX"
 
         self._ensure_started()
+        
+        symbol = symbol or self._default_symbols[0]
+
         job = GridJob(
             priority = priority,
             job_type = JobType.GENOME_BACKTEST,
             payload  = {
-                "genome":       genome,
-                "genome_id":    genome.get("genome_id", ""),
+                "genome": genome,
+                "genome_id": genome.get("genome_id", ""),
                 "symbol": symbol,
                 "reality_mode": REALITY_MODE,
-                "periods":      periods,
+                "periods": periods,
                 "slippage_bps": slippage_bps,
-                "commission":   commission,
-                "candles":      candles or [],
+                "commission": commission,
+                "candles": candles or [],
             },
         )
         return self._scheduler.enqueue(job, callback=self._wrap_cb(callback))
 
     def submit_genome_sweep(
         self,
-        genomes:        Iterable[Dict],
-        symbols:        Optional[List[str]] = None,
-        periods:        int   = 260,
-        slippage_bps:   float = 5.0,
-        commission:     float = 20.0,
-        priority:       int   = 50,
-        callback:       Optional[Callable[[GridResult], None]] = None,
+        genomes: Iterable[Dict],
+        symbols: Optional[List[str]] = None,
+        periods: int = 260,
+        slippage_bps: float = 5.0,
+        commission: float = 20.0,
+        priority: int = 50,
+        callback: Optional[Callable[[GridResult], None]] = None,
     ) -> List[str]:
-        """Submit N genomes × M symbols as parallel GENOME_SWEEP jobs.
 
-        Returns list of job_ids (one per genome).
-        """
+        from quant_ecosystem.core.market_mode import REALITY_MODE
+
         self._ensure_started()
-        syms = symbols or ["SYNTH"]
+
+        syms = symbols or self._default_symbols
+
         ids: List[str] = []
+
         for genome in genomes:
             job = GridJob(
-                priority = priority,
-                job_type = JobType.GENOME_SWEEP,
-                payload  = {
-                    "genome":       genome,
-                    "genome_id":    genome.get("genome_id", ""),
+                priority=priority,
+                job_type=JobType.GENOME_SWEEP,
+                payload={
+                    "genome": genome,
+                    "genome_id": genome.get("genome_id", ""),
                     "symbols": syms,
                     "reality_mode": REALITY_MODE,
-                    "periods":      periods,
+                    "periods": periods,
                     "slippage_bps": slippage_bps,
-                    "commission":   commission,
+                    "commission": commission,
                 },
             )
-            ids.append(self._scheduler.enqueue(job, callback=self._wrap_cb(callback)))
-        logger.info("ResearchGrid.submit_genome_sweep: %d genomes × %d symbols", len(ids), len(syms))
+
+            ids.append(
+                self._scheduler.enqueue(
+                    job,
+                    callback=self._wrap_cb(callback),
+                )
+            )
+
+        logger.info(
+            "ResearchGrid.submit_genome_sweep: %d genomes × %d symbols",
+            len(ids),
+            len(syms),
+        )
+
         return ids
 
     def submit_parameter_sweep(

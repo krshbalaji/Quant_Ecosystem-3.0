@@ -39,6 +39,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+print("✅ BACKTEST ENGINE FILE LOADED")
 
 # ---------------------------------------------------------------------------
 # Slippage models
@@ -404,7 +405,7 @@ class BacktestEngine:
     # ------------------------------------------------------------------
     # Primary interface (spec-required)
     # ------------------------------------------------------------------
-    from quant_ecosystem.core.market_mode import MarketModeController
+    from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
 
     def run(
         self,
@@ -412,44 +413,40 @@ class BacktestEngine:
         data: Any,
         symbol: str = "UNKNOWN",
     ) -> BacktestResult:
+
         print("⚡ BACKTEST ENTERED RUN")
-
-        print("🚀🚀🚀 BACKTEST RUN EXECUTED 🚀🚀🚀")
-
-        # ⭐ REALITY MARKET ROUTING (INSTITUTIONAL PATCH)
-
-        mode = MarketModeController.get_mode()
+        # ⭐ REALITY MARKET ROUTING
 
         from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
-            
-        if self.REALITY_MODE:
+        
+        tf = getattr(strategy, "timeframe", "15m")
+
+        if REALITY_MODE:
+            print("🟢 REALITY ROUTING ACTIVE")
             candles = self._load_historical_data(
                 symbol or PRIMARY_SYMBOL,
-                timeframe=getattr(strategy, "timeframe", "15m")
+                timeframe=tf,
             )
         else:
             candles = self._coerce_data(data)
 
-        print("🧪🧪🧪 CANDLE DEBUG START 🧪🧪🧪")
-        print("🧪 TYPE =", type(candles))
-        print("🧪 LEN =", len(candles) if candles else 0)
-
-        if candles:
-            print("🧪 FIRST =", candles[0])
-            print("🧪 LAST =", candles[-1])
-
-        print("🧪🧪🧪 CANDLE DEBUG END 🧪🧪🧪")
+        print("🧪 CANDLES LENGTH =", len(candles))
 
         strategy_fn = self._coerce_strategy(strategy)
-        strategy_name = getattr(strategy, "strategy_id", getattr(strategy, "__name__", str(strategy)))
-        
-        trades, equity_curve = self._vectorized_run(strategy_fn, candles, symbol)
-        metrics = _compute_metrics(equity_curve, trades, self.risk_free_rate, self.periods_per_year)
+        strategy_name = getattr(strategy, "strategy_id",
+                                getattr(strategy, "__name__", str(strategy)))
 
-        logger.info(
-            "BacktestEngine.run: %s | %d trades | sharpe=%.2f | max_dd=%.2f%%",
-            symbol, len(trades), metrics.get("sharpe", 0), metrics.get("max_dd", 0),
+        trades, equity_curve = self._vectorized_run(strategy_fn, candles, symbol)
+
+        print("🧪 TRADES =", len(trades))
+
+        metrics = _compute_metrics(
+            equity_curve,
+            trades,
+            self.risk_free_rate,
+            self.periods_per_year,
         )
+
         return BacktestResult(
             symbol=symbol,
             strategy=strategy_name,
@@ -457,6 +454,7 @@ class BacktestEngine:
             equity_curve=equity_curve,
             metrics=metrics,
         )
+        
     def _load_historical_data(self, symbol, timeframe="5m"):
 
         try:
@@ -467,7 +465,7 @@ class BacktestEngine:
             candles = m.get_candles(
                 symbol,
                 timeframe=timeframe,
-                lookback=800
+                lookback=3000
             )
 
             if not candles:
@@ -511,6 +509,8 @@ class BacktestEngine:
         if isinstance(results, dict) and "returns" in results:
             return self._metrics(results["returns"])
         return _empty_metrics()
+
+        print("🧪 FINAL CANDLE COUNT =", len(candles))
 
     def walk_forward(
         self,
@@ -700,6 +700,9 @@ class BacktestEngine:
         volumes = [c.get("volume", 0) for c in candles]
         opens   = [c.get("open",  c["close"]) for c in candles]
 
+        print("🧪 VECTOR RUN START")
+        print("🧪 candles =", len(candles))
+        
         # Try numpy path
         try:
             import numpy as np  # noqa: lazy
@@ -805,6 +808,8 @@ class BacktestEngine:
             trades.append(trade)
 
         return trades, equity_curve
+
+        print("🧪 trades generated =", len(trades))
 
     # ------------------------------------------------------------------
     # Data / strategy coercions

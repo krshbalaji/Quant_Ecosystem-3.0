@@ -1,7 +1,7 @@
 from enum import Enum
 
 REALITY_MODE = True
-PRIMARY_SYMBOL = "RELIANCE.NS"
+PRIMARY_SYMBOL = "NIFTY.NS"
 
 class MarketMode(Enum):
     SYNTH = "SYNTH"
