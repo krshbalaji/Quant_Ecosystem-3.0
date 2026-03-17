@@ -228,7 +228,12 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
 def _run_genome_sweep(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Worker: backtest a genome across multiple symbols."""
     genome   = payload.get("genome", {})
-    symbols  = payload.get("symbols") or ["SYNTH"]
+    from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
+
+    if REALITY_MODE:
+        symbols = [PRIMARY_SYMBOL]
+    else:
+        symbols = payload.get("symbols") or ["SYNTH"]
     periods  = int(payload.get("periods", 260))
     slip_bps = float(payload.get("slippage_bps", 5.0))
     comm     = float(payload.get("commission", 20.0))
@@ -529,18 +534,29 @@ def _dispatch_job(job_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 # Utility helpers (also module-level so usable inside worker processes)
 # ---------------------------------------------------------------------------
 
-def _fitness(m: Dict) -> float:
-    """Composite fitness from metrics dict."""
-    s  = float(m.get("sharpe",         0.0))
-    dd = float(m.get("max_dd",         0.0))
-    wr = float(m.get("win_rate",       0.0))
-    pf = float(m.get("profit_factor",  0.0))
-    return max(-2.0, min(2.0,
-        s * 0.40 +
-        (wr / 100.0 - 0.5) * 2.0 * 0.20 +
-        (pf - 1.0) * 0.25 -
-        dd * 0.005
-    ))
+def _fitness(m):
+
+    sharpe = m.get("sharpe", 0)
+    dd = m.get("max_dd", 0)
+    pf = m.get("profit_factor", 0)
+    trades = m.get("total_trades", 0)
+
+    if trades < 25:
+        return -1.0
+
+    if pf < 1.1:
+        return -1.0
+
+    if sharpe < 0.4:
+        return -1.0
+
+    robustness = min(1.0, trades / 100)
+
+    return (
+        sharpe * 0.5
+        + (pf - 1.0) * 0.8
+        - dd * 0.02
+    ) * robustness
 
 
 def _genome_to_callable(genome: Dict) -> Callable:

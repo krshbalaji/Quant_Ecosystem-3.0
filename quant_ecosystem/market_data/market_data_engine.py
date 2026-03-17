@@ -15,11 +15,9 @@ class MarketDataEngine:
         print("📡 REQUEST →", symbol, timeframe, lookback)
 
         try:
-            if timeframe in ("1m",):
-                period = "7d"
-            elif timeframe in ("5m", "15m"):
+            if timeframe in ["1m", "5m", "15m"]:
                 period = "60d"
-            elif timeframe in ("30m", "1h"):
+            elif timeframe in ["30m", "60m", "1h"]:
                 period = "730d"
             else:
                 period = "max"
@@ -32,14 +30,15 @@ class MarketDataEngine:
             )
 
             candles = []
-
+            candles = candles[-min(len(candles), lookback):]
+                
             for idx, row in df.iterrows():
                 candles.append({
-                    "open": float(row["Open"]),
-                    "high": float(row["High"]),
-                    "low": float(row["Low"]),
-                    "close": float(row["Close"]),
-                    "volume": float(row["Volume"]),
+                    "open": float(row["Open"].iloc[0] if hasattr(row["Open"], "iloc") else row["Open"]),
+                    "high": float(row["High"].iloc[0] if hasattr(row["High"], "iloc") else row["High"]),
+                    "low": float(row["Low"].iloc[0] if hasattr(row["Low"], "iloc") else row["Low"]),
+                    "close": float(row["Close"].iloc[0] if hasattr(row["Close"], "iloc") else row["Close"]),
+                    "volume": float(row["Volume"].iloc[0] if hasattr(row["Volume"], "iloc") else row["Volume"]),
                     "ts": str(idx)
                 })
 

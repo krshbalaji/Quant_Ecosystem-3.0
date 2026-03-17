@@ -135,7 +135,7 @@ class LoopConfig:
     eval_periods:          int   = 260
 
     # Promotion
-    promote_threshold:     float = 0.45
+    promote_threshold:     float = -0.40
     promote_top_n:         int   = 5
 
     # Advanced evaluation stages
@@ -881,189 +881,315 @@ class AutonomousResearchLoop:
 
     def _phase_promote(
         self,
-        cycle:   CycleState,
-        batch:   List[Dict],
-        results: List[Any],
+        cycle,
+        batch,
+        results,
     ) -> None:
-        print("🔥 LOOP INTERNAL THRESHOLD =", self._cfg.promote_threshold)
-        
-        logger.warning("GRID ATTRS → %s", dir(self._grid))
 
         tag = self._cfg.log_prefix
-        print(f"{tag} promoting top strategies")
+
         logger.info("%s [7/8] ranking and promoting top genomes …", tag)
 
-        if not results:
+        if not self._grid:
+            cycle.phases_skipped.append("promote:no_grid")
+            return
+        
+        print("🚨 PROMOTION FILE MARKER v3")
+
+        # --------------------------------------------------
+        # 1. FETCH GRID RESULTS
+        # --------------------------------------------------
+        try:
+            raw = results or []
+        except Exception as e:
+            logger.warning("%s grid fetch failed: %s", tag, e)
+            cycle.phases_skipped.append("promote:grid_fetch_failed")
+            return
+
+        if not raw:
             cycle.phases_skipped.append("promote:no_results")
             return
 
-        candidates = []
+        # --------------------------------------------------
+        # 2. NORMALIZE RESULTS → PURE DICT PIPELINE
+        # --------------------------------------------------
+        normalized = []
 
-        # --- Institutional Promotion Source ---
-        promoted_from_grid = []
+        for r in raw:
 
-        try:
-            if self._grid:
-                raw = self._grid.top_results(50) or []
+            if hasattr(r, "result"):
 
-                for g in raw:
-                    if hasattr(g, "__dict__"):
-                        promoted_from_grid.append(dict(g.__dict__))
-                    elif isinstance(g, dict):
-                        promoted_from_grid.append(g)
-        except Exception:
-            promoted_from_grid = []
+                g = dict(r.result)
 
-        if promoted_from_grid:
+                # attach top level metrics also
+                g["fitness"] = getattr(r, "fitness", 0)
+                g["sharpe"] = getattr(r, "sharpe", 0)
+                g["max_dd"] = getattr(r, "max_dd", 0)
+                g["profit_factor"] = getattr(r, "profit_factor", 0)
+                g["win_rate"] = getattr(r, "win_rate", 0)
+                g["total_trades"] = getattr(r, "total_trades", 0)
 
-            promoted_from_grid.sort(
-                key=lambda g: getattr(g,"fitness", -999),
-                reverse=True,
-            )
+                g["total_trades"] = (
+                    getattr(r, "total_trades", None)
+                    or g.get("total_trades", 0)
+                )
 
-            
-        logger.warning(
-            "%s PROMOTE DEBUG → grid_promoted=%d taking=%d",
-            tag,
-            len(promoted_from_grid),
-            len(candidates),
+            elif isinstance(r, dict):
+                g = r
+
+            else:
+                continue
+
+            if g.get("fitness") is None:
+                continue
+
+            normalized.append(g)
+
+        if not normalized:
+            cycle.phases_skipped.append("promote:no_valid_results")
+            return
+
+        # --------------------------------------------------
+        # 3. SORT
+        # --------------------------------------------------
+        normalized.sort(
+            key=lambda x: x.get("fitness", -9999),
+            reverse=True,
         )
 
-        if not promoted_from_grid:
-            cycle.phases_skipped.append("promote:no_grid_candidates")
-            return
-
-        top = promoted_from_grid[0]
-
-        if not promoted_from_grid:
-            cycle.phases_skipped.append("promote:no_grid_candidates")
-            return
-
-        ranked = self._rank(promoted_from_grid)
-
-        # -----------------------------
-        # --- institutional adapter ---
-        if hasattr(top, "__dict__"):
-            top = top.__dict__
-        # --------------------------------
+        top = normalized[0]
 
         cycle.best_fitness = top.get("fitness", 0.0)
         cycle.best_sharpe = top.get("sharpe", 0.0)
         cycle.best_genome_id = top.get("genome_id", "")
-       
-        candidates = []
 
-        for r in ranked:
-            if r.get("fitness", -999) >= self._cfg.promote_threshold:
-                candidates.append(r)
-
-        candidates = candidates[: self._cfg.promote_top_n]
-
-        # --- DEDUP GUARD ---
-        seen_ids = set()
-        unique_candidates = []
-
-        for c in candidates:
-            gid = c.get("genome_id")
-            if gid and gid not in seen_ids:
-                unique_candidates.append(c)
-                seen_ids.add(gid)
-
-        candidates = unique_candidates
-        
-        logger.warning(
-            "%s PROMOTE DEBUG → candidates=%d best=%.4f threshold=%.4f",
+        logger.info(
+            "%s PROMOTE → grid_results=%d best=%.4f threshold=%.4f",
             tag,
-            len(candidates),
+            len(normalized),
             cycle.best_fitness,
             self._cfg.promote_threshold,
         )
 
-        if not candidates:
+        
+
+        # --------------------------------------------------
+        # 4. THRESHOLD FILTER
+        # --------------------------------------------------
+        eligible = [
+            g for g in normalized
+            if g.get("fitness") >= self._cfg.promote_threshold
+        ]
+
+        for g in normalized:
+            assert "total_trades" in g, "Promotion pipeline corruption: trades missing"
+
+        eligible = [
+            g for g in eligible
+            if _institutional_filter(g)
+        ]
+
+        if not eligible:
             cycle.phases_skipped.append("promote:below_threshold")
             return
 
+        def _institutional_filter(g):
+
+            sharpe = g.get("sharpe", 0)
+            pf = g.get("profit_factor", 0)
+            dd = g.get("max_dd", 0)
+            trades = g.get("total_trades", 0)
+
+            if trades < 20:
+                return False
+
+            if pf < 1.15:
+                return False
+
+            if sharpe < 0.5:
+                return False
+
+            if dd > 25:
+                return False
+
+            return True
+        
+        eligible = [g for g in normalized if _institutional_filter(g)]
+
+        def _deployment_filter(g):
+
+            if g.get("sharpe",0) < 1.2:
+                return False
+
+            if g.get("profit_factor",0) < 1.4:
+                return False
+
+            if g.get("max_dd",0) > 18:
+                return False
+
+            if g.get("total_trades",0) < 40:
+                return False
+
+            return True
+
+        # --------------------------------------------------
+        # 7. DEDUP
+        # --------------------------------------------------
+        seen = set()
+        unique = []
+
+        for c in candidates:
+
+            print("🔥 CANDIDATE =", c)
+            if isinstance(c, dict):
+                print("🔥 CANDIDATE KEYS =", list(c.keys()))
+            else:
+                print("🔥 CANDIDATE TYPE =", type(c))
+
+            gid = (
+                c.get("genome_id")
+                or (c.get("payload") or {}).get("genome_id")
+                or (c.get("result") or {}).get("genome_id")
+            )
+
+            if not gid:
+                logger.warning("PROMOTE SKIP → no genome_id in candidate")
+                continue
+
+            if gid in seen:
+                continue
+
+            seen.add(gid)
+            unique.append(c)
+
+        candidates = unique
+
+        if not candidates:
+            cycle.phases_skipped.append("promote:dedup_empty")
+            return
+        
+        eligible = [
+            g for g in eligible
+            if _deployment_filter(g)
+        ]
+        # --------------------------------------------------
+        # 5. RANKING
+        # --------------------------------------------------
+        ranked = self._rank(eligible)
+
+        print("⭐ RANKED COUNT =", len(ranked) if ranked else "NONE")
+
+        if not ranked:
+            cycle.phases_skipped.append("promote:rank_empty")
+            return
+
+        # --------------------------------------------------
+        # 6. TAKE TOP N
+        # --------------------------------------------------
+        candidates = ranked[: self._cfg.promote_top_n]
+
+      
+
+        # --------------------------------------------------
+        # 8. BUILD GENOME MAP
+        # --------------------------------------------------
         genome_map = {
-            g["genome_id"]: g for g in batch if g.get("genome_id")
+            g.get("genome_id"): g
+            for g in batch
+            if g.get("genome_id")
         }
 
-        promoted_count = 0
+        promoted = 0
 
+        # --------------------------------------------------
+        # 9. PROMOTION LOOP
+        # --------------------------------------------------
+        
+        logger.warning(
+            "%s FINAL CANDIDATES COUNT → %d",
+            tag,
+            len(candidates),
+        )
+        
         for r in candidates:
 
             gid = r.get("genome_id")
+
             if not gid:
                 continue
 
-            genome = genome_map.get(gid, {})
+            # grid result itself is authoritative genome
+            enriched = {}
 
-            # ALWAYS PREPARE ENRICHED GENOME
-            enriched = dict(genome)
-            enriched["fitness_score"] = r["fitness"]
+            if gid in genome_map:
+                enriched.update(genome_map[gid])
 
-            # ---- store in genome library
+            enriched.update(r)
+                
+            enriched["fitness_score"] = r.get("fitness", 0)
+
+            # --- STORE
             try:
                 if self._lib:
                     self._lib.store_genome(gid, enriched)
-            except Exception as exc:
-                logger.debug("GenomeLibrary store failed: %s", exc)
+            except Exception as e:
+                logger.debug("GenomeLibrary store failed: %s", e)
 
-            # ---- LIVE strategy activation
+            # --- LIVE REGISTRY
             try:
                 if self._registry:
 
                     def alpha(md, genome=enriched):
-                        def _resolve_price(md):
 
-                            if isinstance(md, dict):
-                                for k in ("price","close","c","last"):
-                                    if k in md and md[k] > 0:
-                                        return md[k]
+                        price = 0
 
-                            return 0
+                        if isinstance(md, dict):
+                            price = (
+                                md.get("price")
+                                or md.get("close")
+                                or md.get("last")
+                                or 0
+                            )
 
-                        price = _resolve_price(md)
-                        
                         if price <= 0:
                             return None
 
                         return {
                             "symbol": genome.get("symbol", "NIFTY"),
-                            "side": "BUY" if genome.get("fitness_score", 0) > 0 else "SELL",
+                            "side": "BUY"
+                            if genome.get("fitness_score", 0) > 0
+                            else "SELL",
                             "qty": 1,
                             "strategy_id": gid,
                         }
 
+                    logger.warning(
+                        "%s ACTIVATE → gid=%s fitness=%.4f",
+                        tag,
+                        gid,
+                        enriched.get("fitness_score", 0),
+                    )
+                    
                     self._registry.register(gid, alpha)
 
-                    logger.info(
-                        "%s LIVE activation → strategy registered: %s",
-                        tag,
-                        gid
-                    )
+                    promoted += 1
 
-                    promoted_count += 1
+            except Exception as e:
+                logger.warning("%s LIVE activation failed: %s", tag, e)
 
-            except Exception as exc:
-                logger.warning(
-                    "%s LIVE activation failed: %s",
-                    tag,
-                    exc
-                )
-
-        cycle.promoted_count = promoted_count
+        cycle.promoted_count = promoted
         cycle.phases_completed.append("promote")
 
         logger.info(
-            "%s promoted %d/%d candidates | best=%s fitness=%.4f sharpe=%.3f",
+            "%s PROMOTED %d/%d | best=%s fitness=%.4f sharpe=%.3f",
             tag,
-            promoted_count,
+            promoted,
             len(candidates),
-            cycle.best_genome_id[:20],
+            cycle.best_genome_id[:16],
             cycle.best_fitness,
             cycle.best_sharpe,
         )
-
+        
     # ------------------------------------------------------------------
     # Phase 8: Learn
     # ------------------------------------------------------------------
