@@ -395,6 +395,7 @@ class BacktestEngine:
     ) -> None:
         self.slippage_model   = slippage_model  or FixedBpsSlippage(bps=5.0)
         self.commission_model = commission_model or FlatCommission(flat=20.0)
+        self.REALITY_MODE     = True
         self.initial_capital  = float(initial_capital)
         self.periods_per_year = int(periods_per_year)
         self.risk_free_rate   = float(risk_free_rate)
@@ -411,18 +412,33 @@ class BacktestEngine:
         data: Any,
         symbol: str = "UNKNOWN",
     ) -> BacktestResult:
+        print("⚡ BACKTEST ENTERED RUN")
+
+        print("🚀🚀🚀 BACKTEST RUN EXECUTED 🚀🚀🚀")
 
         # ⭐ REALITY MARKET ROUTING (INSTITUTIONAL PATCH)
 
         mode = MarketModeController.get_mode()
 
         from quant_ecosystem.core.market_mode import REALITY_MODE, PRIMARY_SYMBOL
-
-        if REALITY_MODE:
-            candles = self._load_historical_data(symbol or PRIMARY_SYMBOL)
-
+            
+        if self.REALITY_MODE:
+            candles = self._load_historical_data(
+                symbol or PRIMARY_SYMBOL,
+                timeframe=getattr(strategy, "timeframe", "15m")
+            )
         else:
             candles = self._coerce_data(data)
+
+        print("🧪🧪🧪 CANDLE DEBUG START 🧪🧪🧪")
+        print("🧪 TYPE =", type(candles))
+        print("🧪 LEN =", len(candles) if candles else 0)
+
+        if candles:
+            print("🧪 FIRST =", candles[0])
+            print("🧪 LAST =", candles[-1])
+
+        print("🧪🧪🧪 CANDLE DEBUG END 🧪🧪🧪")
 
         strategy_fn = self._coerce_strategy(strategy)
         strategy_name = getattr(strategy, "strategy_id", getattr(strategy, "__name__", str(strategy)))
@@ -441,38 +457,37 @@ class BacktestEngine:
             equity_curve=equity_curve,
             metrics=metrics,
         )
-    def _load_historical_data(self, symbol):
+    def _load_historical_data(self, symbol, timeframe="5m"):
 
         try:
             from quant_ecosystem.market_data.market_data_engine import MarketDataEngine
 
             m = MarketDataEngine()
 
-            if timeframe in ["1m", "5m", "15m"]:
-                candles = m.get_candles(
-                    symbol,
-                    timeframe=timeframe,
-                    lookback=50   # MUST stay inside Yahoo window
-                )
-            else:
-                candles = m.get_candles(
-                    symbol,
-                    timeframe=timeframe,
-                    lookback=600
-                )
+            candles = m.get_candles(
+                symbol,
+                timeframe=timeframe,
+                lookback=800
+            )
 
             if not candles:
                 raise RuntimeError(
                     f"No candles returned for {symbol} tf={timeframe}"
                 )
-            logger.info("📊 Historical candles loaded: %s (%d bars)", symbol, len(candles))
+
+            logger.info(
+                "📊 HISTORICAL LOADED → %s | tf=%s | bars=%d",
+                symbol,
+                timeframe,
+                len(candles),
+            )
 
             return candles
 
         except Exception as e:
             logger.exception("❌ Historical loader failed → using synthetic fallback")
             return self._generate_candles(300)
-            
+
     def evaluate(self, results: Any) -> Dict[str, Any]:
         """Compute or re-compute metrics from a :class:`BacktestResult`.
 

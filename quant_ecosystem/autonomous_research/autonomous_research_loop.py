@@ -897,12 +897,20 @@ class AutonomousResearchLoop:
             cycle.phases_skipped.append("promote:no_results")
             return
 
+        candidates = []
+
         # --- Institutional Promotion Source ---
         promoted_from_grid = []
 
         try:
             if self._grid:
-                promoted_from_grid = self._grid.top_results(50) or []
+                raw = self._grid.top_results(50) or []
+
+                for g in raw:
+                    if hasattr(g, "__dict__"):
+                        promoted_from_grid.append(dict(g.__dict__))
+                    elif isinstance(g, dict):
+                        promoted_from_grid.append(g)
         except Exception:
             promoted_from_grid = []
 
@@ -913,13 +921,7 @@ class AutonomousResearchLoop:
                 reverse=True,
             )
 
-            selected = promoted_from_grid[: self.promote_top]
-
-        else:
-            selected = []
             
-        candidates = promoted_from_grid[: self._cfg.promote_top_n]
-
         logger.warning(
             "%s PROMOTE DEBUG → grid_promoted=%d taking=%d",
             tag,
@@ -1011,7 +1013,17 @@ class AutonomousResearchLoop:
                 if self._registry:
 
                     def alpha(md, genome=enriched):
-                        price = md.get("price", 0)
+                        def _resolve_price(md):
+
+                            if isinstance(md, dict):
+                                for k in ("price","close","c","last"):
+                                    if k in md and md[k] > 0:
+                                        return md[k]
+
+                            return 0
+
+                        price = _resolve_price(md)
+                        
                         if price <= 0:
                             return None
 
