@@ -440,6 +440,15 @@ class BacktestEngine:
 
         print("🧪 TRADES =", len(trades))
 
+        print(
+            "PNL_DEBUG",
+            "entry=", entry_price,
+            "exit=", exit_price,
+            "size=", position_size,
+            "pnl=", pnl,
+            "equity=", equity
+        )
+
         metrics = _compute_metrics(
             equity_curve,
             trades,
@@ -454,7 +463,8 @@ class BacktestEngine:
             equity_curve=equity_curve,
             metrics=metrics,
         )
-        
+        print("PNL DEBUG →", pnl, "equity=", equity)
+
     def _load_historical_data(self, symbol, timeframe="5m"):
 
         try:
@@ -806,6 +816,14 @@ class BacktestEngine:
                 commission  = comm,
             )
             trades.append(trade)
+            print(
+                "PNL_DEBUG",
+                "entry=", entry_price,
+                "exit=", exit_price,
+                "size=", position_size,
+                "pnl=", pnl,
+                "equity=", equity
+            )
 
         return trades, equity_curve
 

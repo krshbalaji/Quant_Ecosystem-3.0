@@ -209,17 +209,34 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
         strategy = _genome_to_callable(genome)
         result   = engine.run(strategy, data, symbol=str(payload.get("symbol", "GRID")))
         m = result.metrics
+        
+        print("METRICS_TYPE:", type(m))
+        print("METRICS_CONTENT:", m)
+        print("DEBUG_METRICS", m)
+
+        
+
+        def _m(name, default=0):
+            if isinstance(m, dict):
+                return m.get(name, default)
+            return getattr(m, name, default)
+
         return {
-            "genome_id":    genome.get("genome_id", payload.get("genome_id", "")),
-            "symbol":       payload.get("symbol", "GRID"),
-            "sharpe":       m.get("sharpe",         0.0),
-            "max_dd":       m.get("max_dd",          0.0),
-            "win_rate":     m.get("win_rate",        0.0),
-            "profit_factor":m.get("profit_factor",   0.0),
-            "total_return": m.get("total_return_pct",0.0),
-            "total_trades": m.get("total_trades",    0),
-            "fitness_score":_fitness(m),
-            "periods":      periods,
+            "genome_id": genome.get("genome_id", payload.get("genome_id", "")),
+            "symbol": payload.get("symbol", "GRID"),
+            "sharpe": _m("sharpe"),
+            "max_dd": _m("max_dd"),
+            "win_rate": _m("win_rate"),
+            "profit_factor": _m("profit_factor"),
+            "total_return": _m("total_return_pct"),
+            "total_trades": _m("total_trades"),
+            "fitness": _fitness({
+                "sharpe": _m("sharpe"),
+                "max_dd": _m("max_dd"),
+                "win_rate": _m("win_rate"),
+                "profit_factor": _m("profit_factor"),
+                "total_trades": _m("total_trades"),
+            }),
         }
     except Exception as exc:
         return {"error": str(exc), "genome_id": genome.get("genome_id", ""), "sharpe": 0.0, "fitness_score": -1.0}
@@ -541,22 +558,23 @@ def _fitness(m):
     pf = m.get("profit_factor", 0)
     trades = m.get("total_trades", 0)
 
-    if trades < 25:
-        return -1.0
-
-    if pf < 1.1:
-        return -1.0
-
-    if sharpe < 0.4:
-        return -1.0
-
     robustness = min(1.0, trades / 100)
 
-    return (
+    penalty = 0
+    if trades < 20:
+        penalty += 0.3
+    if pf < 1.1:
+        penalty += 0.3
+    if sharpe < 0.4:
+        penalty += 0.3
+
+    fitness = (
         sharpe * 0.5
         + (pf - 1.0) * 0.8
         - dd * 0.02
-    ) * robustness
+    ) * robustness - penalty
+
+    return fitness
 
 
 def _genome_to_callable(genome: Dict) -> Callable:
