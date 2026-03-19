@@ -560,7 +560,13 @@ class BacktestEngine:
             logger.warning("walk_forward: dataset too short (%d bars) for %d splits", n, n_splits)
             return {"windows": [], "oos_metrics": _empty_metrics(), "summary": {}}
 
-        window_size = n // n_splits
+        window_size = max(500, n // n_splits)
+
+        MIN_WF_BARS = 200
+
+        n_splits = max(1, min(n_splits, n // MIN_WF_BARS))
+        window_size = max(500, n // n_splits)
+
         windows_out: List[Dict] = []
         oos_trades:  List[TradeRecord] = []
         oos_equity:  List[float] = [self.initial_capital]
@@ -588,8 +594,40 @@ class BacktestEngine:
                     logger.debug("walk_forward.optimize_fn error: %s", exc)
 
             # OOS backtest
-            trades, eq = self._vectorized_run(active_fn, test_slice, symbol)
-            window_metrics = _compute_metrics(eq, trades, self.risk_free_rate, self.periods_per_year)
+            context_df = candles[wstart:wend]
+
+            eval_start = len(train_slice)
+
+            trades, eq = self._vectorized_run(active_fn, context_df, symbol)
+
+            # -------- STRICT OOS FILTER ----------
+            oos_trades_fold = [
+                t for t in trades
+                if getattr(t, "entry_idx", 0) >= eval_start
+            ]
+
+            oos_eq = eq[eval_start:] if eq and len(eq) > eval_start else []
+
+            window_metrics = _compute_metrics(
+                oos_eq,
+                oos_trades_fold,
+                self.risk_free_rate,
+                self.periods_per_year
+            )
+
+            windows_out.append({
+                "split": split + 1,
+                "train_bars": len(train_slice),
+                "test_bars": len(test_slice),
+                "metrics": window_metrics,
+                "trades": len(oos_trades_fold),
+            })
+
+            oos_trades.extend(oos_trades_fold)
+
+            if oos_eq:
+                scale = oos_equity[-1] / oos_eq[0] if oos_eq[0] else 1.0
+                oos_equity.extend(v * scale for v in oos_eq[1:])
 
             windows_out.append({
                 "split":      split + 1,
@@ -617,7 +655,8 @@ class BacktestEngine:
             "max_sharpe":       round(max(sharpes), 4) if sharpes else 0.0,
             "pct_profitable":   round(sum(1 for s in sharpes if s > 0) / len(sharpes) * 100, 2) if sharpes else 0.0,
         }
-
+        
+        
         logger.info(
             "walk_forward: %d windows | avg_sharpe=%.2f | avg_max_dd=%.2f%% | %d OOS trades",
             len(windows_out), summary["avg_sharpe"], summary["avg_max_dd"], len(oos_trades),
@@ -792,6 +831,8 @@ class BacktestEngine:
                 trades.append(trade)
                 position  = 0
 
+                print("SIGNAL_SUM =", np.sum(np.abs(signals)))
+
             # ---- mark to market -----------------------------------------
             if position == 1:
                 mtm_equity = equity + closes[idx] - entry_price
@@ -828,7 +869,8 @@ class BacktestEngine:
         return trades, equity_curve
 
         print("🧪 trades generated =", len(trades))
-
+        print("VECTOR_TRADES =", len(trades))
+        
     # ------------------------------------------------------------------
     # Data / strategy coercions
     # ------------------------------------------------------------------

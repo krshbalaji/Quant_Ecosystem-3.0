@@ -167,7 +167,7 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     genome      = payload.get("genome", {})
     candles     = payload.get("candles") or []
-    periods     = int(payload.get("periods", 260))
+    periods = max(1000, int(payload.get("periods", 1500)))
     slip_bps    = float(payload.get("slippage_bps", 5.0))
     commission  = float(payload.get("commission", 20.0))
 
@@ -192,19 +192,29 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
 
             else:
                 try:
-                    from quant_ecosystem.core.market_engine import MarketDataEngine
+                    from quant_ecosystem.market_data.market_data_engine import MarketDataEngine
+
                     market_engine = MarketDataEngine()
 
-                    symbol = payload.get("symbol", "RELIANCE.NS")
+                    symbol = payload.get("symbol", "^NSEI")
 
                     data = market_engine.get_candles(
-                        symbol = symbol,
-                        timeframe = "1d",
-                        lookback = periods
+                        symbol=symbol,
+                        timeframe="15m",
+                        lookback=1500
                     )
 
-                except Exception:
-                    data = periods
+                except Exception as exc:
+                    print("🔥 WORKER FAILURE:", exc)
+                    import traceback
+                    traceback.print_exc()
+
+                    return {
+                        "error": str(exc),
+                        "genome_id": genome.get("genome_id", ""),
+                        "sharpe": 0.0,
+                        "fitness_score": -1.0
+                    }
 
         strategy = _genome_to_callable(genome)
         result   = engine.run(strategy, data, symbol=str(payload.get("symbol", "GRID")))
@@ -558,15 +568,18 @@ def _fitness(m):
     pf = m.get("profit_factor", 0)
     trades = m.get("total_trades", 0)
 
-    robustness = min(1.0, trades / 100)
-
     penalty = 0
+
     if trades < 20:
         penalty += 0.3
+
     if pf < 1.1:
         penalty += 0.3
+
     if sharpe < 0.4:
         penalty += 0.3
+
+    robustness = min(1.0, trades / 100)
 
     fitness = (
         sharpe * 0.5
