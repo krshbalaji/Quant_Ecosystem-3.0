@@ -131,12 +131,19 @@ class StrategyDiscoveryEngine:
         prev = self._research_grid
         self._research_grid = grid
         if grid is not None:
+            workers = "?"
+
+            try:
+                if hasattr(grid, "_pool") and grid._pool is not None:
+                    workers = getattr(grid._pool, "num_workers", "?")
+            except Exception:
+                pass
+
             logger.info(
-                "StrategyDiscoveryEngine: ResearchGrid injected "
-                "(workers=%d pool=%s) — parallel evaluation active.",
-                getattr(grid, "_n_workers", "?"),
-                getattr(getattr(grid, "_pool", None), "pool_type", "?"),
+                "... workers=%s ...",
+                workers,
             )
+            
         elif prev is not None:
             logger.info(
                 "StrategyDiscoveryEngine: ResearchGrid removed — "

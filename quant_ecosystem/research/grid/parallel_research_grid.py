@@ -232,6 +232,14 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
                 return m.get(name, default)
             return getattr(m, name, default)
 
+        fit = _fitness({
+                "sharpe": _m("sharpe"),
+                "max_dd": _m("max_dd"),
+                "win_rate": _m("win_rate"),
+                "profit_factor": _m("profit_factor"),
+                "total_trades": _m("total_trades"),
+            })    
+
         return {
             "genome_id": genome.get("genome_id", payload.get("genome_id", "")),
             "symbol": payload.get("symbol", "GRID"),
@@ -241,14 +249,9 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
             "profit_factor": _m("profit_factor"),
             "total_return": _m("total_return_pct"),
             "total_trades": _m("total_trades"),
-            "fitness_score": _fitness({
-                "sharpe": _m("sharpe"),
-                "max_dd": _m("max_dd"),
-                "win_rate": _m("win_rate"),
-                "profit_factor": _m("profit_factor"),
-                "total_trades": _m("total_trades"),
-            }),
-        }
+            "fitness": fit,
+            "fitness_score": fit
+       }
     except Exception as exc:
         return {"error": str(exc), "genome_id": genome.get("genome_id", ""), "sharpe": 0.0, "fitness_score": -1.0}
 
@@ -773,14 +776,15 @@ class ParallelWorkerPool:
 
     _USE_PROCESS_POOL = True  # can be overridden in tests
 
-    def __init__(self, n_workers: int = 0) -> None:
-        cpu_count = os.cpu_count() or 2
-        self.n_workers = n_workers if n_workers > 0 else max(1, cpu_count - 1)
-        self._pool: Optional[Any]  = None
-        self._pool_type: str       = "none"
-        self._lock                 = threading.Lock()
-        self._active_futures: Dict[str, Future] = {}
+    def __init__(
+        self,
+        num_workers: int = 4,
+        backtest_engine=None,
+        metrics_callback=None,
+    ):
+        self.num_workers = num_workers
         self.backtest_engine = backtest_engine
+        self.metrics_callback = metrics_callback
 
     def start(self) -> None:
         if self._pool is not None:
@@ -793,21 +797,21 @@ class ParallelWorkerPool:
                     import multiprocessing as _mp   # noqa: lazy
                     ctx = _mp.get_context("spawn")
                     self._pool      = ProcessPoolExecutor(
-                        max_workers   = self.n_workers,
+                        max_workers   = self.num_workers,
                         mp_context    = ctx,
                     )
                     self._pool_type = "process"
                     logger.info(
-                        "ParallelWorkerPool: ProcessPool started (%d workers)", self.n_workers
+                        "ParallelWorkerPool: ProcessPool started (%d workers)", self.num_workers
                     )
                     return
                 except Exception as exc:
                     logger.warning("ParallelWorkerPool: ProcessPool unavailable (%s) — falling back to ThreadPool", exc)
 
-            self._pool      = ThreadPoolExecutor(max_workers=self.n_workers)
+            self._pool      = ThreadPoolExecutor(max_workers=self.num_workers)
             self._pool_type = "thread"
             logger.info(
-                "ParallelWorkerPool: ThreadPool started (%d workers)", self.n_workers
+                "ParallelWorkerPool: ThreadPool started (%d workers)", self.num_workers
             )
 
     def submit(
@@ -894,7 +898,7 @@ class GridScheduler:
         self._pool            = pool
         self._store           = result_store
         self._queue: PriorityQueue = PriorityQueue(maxsize=100_000)
-        self._max_in_flight   = max_in_flight or max(pool.n_workers * 4, 32)
+        self._max_in_flight   = max_in_flight or max(pool.num_workers * 4, 32)
         self._poll_interval   = poll_interval
         self._running         = False
         self._thread: Optional[threading.Thread] = None
@@ -969,7 +973,7 @@ class GridScheduler:
                 "queued":      self.qsize(),
                 "in_flight":   self._pool.active_count(),
                 "pool_type":   self._pool.pool_type,
-                "n_workers":   self._pool.n_workers,
+                "num_workers":   self._pool.num_workers,
                 "max_in_flight": self._max_in_flight,
             }
 
@@ -993,7 +997,7 @@ class ResearchGrid:
 
     Parameters
     ----------
-    n_workers:
+    num_workers:
         Number of parallel workers.  Defaults to ``CPU_count - 1``.
     promote_threshold:
         Minimum fitness score for auto-promotion to the genome library.
@@ -1004,7 +1008,7 @@ class ResearchGrid:
 
     Example
     -------
-    >>> grid = ResearchGrid(n_workers=4)
+    >>> grid = ResearchGrid(num_workers=4)
     >>> grid.start()
     >>> job_ids = grid.submit_genome_sweep(genomes, symbols=["NSE:INFY","NSE:TCS"])
     >>> time.sleep(30)
@@ -1014,22 +1018,23 @@ class ResearchGrid:
 
     def __init__(
         self,
-        n_workers:          int   = 0,
+        num_workers:          int   = 0,
         promote_threshold:  float = -0.50,
         genome_library      = None,
         backtest_engine     = None,
         result_callback:    Optional[Callable[[GridResult], None]] = None,
     ) -> None:
         cpu = os.cpu_count() or 2
-        self._n_workers         = n_workers if n_workers > 0 else max(1, cpu - 1)
+        self._num_workers         = num_workers if num_workers > 0 else max(1, cpu - 1)
         self.promote_threshold  = float(promote_threshold)
         self._genome_library    = genome_library
         self._backtest_engine   = backtest_engine
         self._result_callback   = result_callback
 
         self._pool = ParallelWorkerPool(
-            n_workers=self._n_workers,
-            backtest_engine=self._backtest_engine,
+            num_workers=num_workers,
+            backtest_engine=backtest_engine,
+            metrics_callback=result_callback
         )
         self._store     = ResultStore()
         self._scheduler = GridScheduler(pool=self._pool, result_store=self._store)
@@ -1037,7 +1042,7 @@ class ResearchGrid:
 
         logger.info(
             "ResearchGrid initialized (workers=%d, promote_thresh=%.2f)",
-            self._n_workers,
+            self._num_workers,
             self.promote_threshold,
         )
 
@@ -1461,13 +1466,13 @@ class ResearchGrid:
             "scheduler":   self._scheduler.stats(),
             "store":       self._store.stats(),
             "pool_type":   self._pool.pool_type,
-            "n_workers":   self._n_workers,
+            "num_workers":   self._num_workers,
         }
 
     def __repr__(self) -> str:
         s = self._scheduler.stats()
         return (
-            f"ResearchGrid(workers={self._n_workers}, "
+            f"ResearchGrid(workers={self._num_workers}, "
             f"queued={s.get('queued',0)}, "
             f"completed={s.get('completed',0)}, "
             f"promoted={self._store.stats().get('promoted',0)})"

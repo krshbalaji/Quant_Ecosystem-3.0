@@ -608,7 +608,7 @@ class SystemFactory:
             )
             
             grid = ResearchGrid(
-                n_workers=n_workers,
+                num_workers=n_workers,
                 promote_threshold=promote_threshold,
                 genome_library=router.genome_library,    # injected — may be None
                 backtest_engine=router.backtest_engine,  # injected — may be None
@@ -620,7 +620,7 @@ class SystemFactory:
                 grid.start()
                 logger.info(
                     "ResearchGrid started | workers=%d pool=%s threshold=%.2f",
-                    grid._n_workers,
+                    grid._pool.num_workers,
                     grid._pool.pool_type,
                     promote_threshold,
                 )

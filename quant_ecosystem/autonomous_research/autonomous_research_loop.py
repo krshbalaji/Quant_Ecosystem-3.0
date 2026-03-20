@@ -1039,8 +1039,30 @@ class AutonomousResearchLoop:
 
             eligible = [
                 g for g in normalized
-                if filter_fn(g)
+                if g.get("fitness", -999) >= self._cfg.promote_threshold
             ]
+
+            eligible = [
+                g for g in eligible
+                if _institutional_filter(g)
+            ]
+
+            eligible = [
+                g for g in eligible
+                if _deployment_filter(g)
+            ]
+
+        
+        # --------------------------------------------------
+        # 5. RANKING
+        # --------------------------------------------------
+        ranked = self._rank(eligible)
+
+        print("⭐ RANKED COUNT =", len(ranked) if ranked else "NONE")
+
+        if not ranked:
+            cycle.phases_skipped.append("promote:rank_empty")
+            return
         # --------------------------------------------------
         # 7. DEDUP
         # --------------------------------------------------
@@ -1081,17 +1103,7 @@ class AutonomousResearchLoop:
             g for g in eligible
             if _deployment_filter(g)
         ]
-        # --------------------------------------------------
-        # 5. RANKING
-        # --------------------------------------------------
-        ranked = self._rank(eligible)
-
-        print("⭐ RANKED COUNT =", len(ranked) if ranked else "NONE")
-
-        if not ranked:
-            cycle.phases_skipped.append("promote:rank_empty")
-            return
-
+        
         # --------------------------------------------------
         # 6. TAKE TOP N
         # --------------------------------------------------

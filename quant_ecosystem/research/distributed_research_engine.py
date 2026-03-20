@@ -109,12 +109,12 @@ class DistributedResearchEngine:
     def __init__(
         self,
         system: Any = None,
-        n_workers: int = 4,
+        num_workers: int = 4,
         batch_size: int = 25,
         use_ray: bool = True, **kwargs
     ) -> None:
         self.system = system
-        self.n_workers = n_workers
+        self.num_workers = num_workers
         self.batch_size = batch_size
         self.use_ray = use_ray and _RAY
         self._workers: List[Any] = []
@@ -134,10 +134,10 @@ class DistributedResearchEngine:
             return
         if self.use_ray:
             try:
-                ray.init(ignore_reinit_error=True, num_cpus=self.n_workers * 2)
+                ray.init(ignore_reinit_error=True, num_cpus=self.num_workers * 2)
                 if _RAY:
                     self._workers = [
-                        ResearchWorker.remote() for _ in range(self.n_workers)
+                        ResearchWorker.remote() for _ in range(self.num_workers)
                     ]
             except Exception:
                 self.use_ray = False
@@ -298,7 +298,7 @@ class DistributedResearchEngine:
         return {
             "started": self._started,
             "ray_enabled": self.use_ray,
-            "n_workers": len(self._workers),
+            "num_workers": len(self._workers),
             "total_runs": self._run_count,
             "total_evals": self._total_evals,
             "last_result": self._last_result,

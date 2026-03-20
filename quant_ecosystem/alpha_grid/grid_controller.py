@@ -85,9 +85,9 @@ class ResearchGrid:
         self.router = router
         self.workers = []
 
-    def start(self, n_workers=4):
+    def start(self, num_workers=4):
 
-        for i in range(n_workers):
+        for i in range(num_workers):
             worker = ResearchWorker(self.router)
             worker.start()
             self.workers.append(worker)
