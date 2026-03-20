@@ -241,7 +241,7 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
             "profit_factor": _m("profit_factor"),
             "total_return": _m("total_return_pct"),
             "total_trades": _m("total_trades"),
-            "fitness": _fitness({
+            "fitness_score": _fitness({
                 "sharpe": _m("sharpe"),
                 "max_dd": _m("max_dd"),
                 "win_rate": _m("win_rate"),
@@ -843,12 +843,7 @@ class ParallelWorkerPool:
                 worker_pid  = os.getpid(),
             )
 
-            metrics = self.backtest_engine._metrics(returns)
-
-            metrics["total_trades"] = len(trades)
-            metrics["equity_curve"] = equity_curve
-            metrics["symbol"] = symbol
-
+           
             with self._lock:
                 self._active_futures.pop(job.job_id, None)
             if callback:
@@ -1032,7 +1027,10 @@ class ResearchGrid:
         self._backtest_engine   = backtest_engine
         self._result_callback   = result_callback
 
-        self._pool      = ParallelWorkerPool(n_workers=self._n_workers)
+        self._pool = ParallelWorkerPool(
+            n_workers=self._n_workers,
+            backtest_engine=self._backtest_engine,
+        )
         self._store     = ResultStore()
         self._scheduler = GridScheduler(pool=self._pool, result_store=self._store)
         self._started   = False
