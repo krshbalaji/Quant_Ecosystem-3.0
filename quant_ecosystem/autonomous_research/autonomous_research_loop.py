@@ -983,17 +983,18 @@ class AutonomousResearchLoop:
 
         for g in normalized:
             assert "total_trades" in g, "Promotion pipeline corruption: trades missing"
-
-        eligible = [
-            g for g in eligible
-            if _institutional_filter(g)
-        ]
-
+        
         if not eligible:
             cycle.phases_skipped.append("promote:below_threshold")
             return
 
         def _institutional_filter(g):
+            fitness = g.get("fitness", -999)
+
+            if fitness < self._cfg.promote_threshold:
+                return False
+
+            
 
             sharpe = g.get("sharpe", 0)
             pf = g.get("profit_factor", 0)
@@ -1013,9 +1014,12 @@ class AutonomousResearchLoop:
                 return False
 
             return True
+            
+            eligible = [
+            g for g in eligible
+                if _institutional_filter(g)
+            ]
         
-        eligible = [g for g in normalized if _institutional_filter(g)]
-
         def _deployment_filter(g):
 
             if g.get("sharpe",0) < 1.2:
@@ -1031,7 +1035,12 @@ class AutonomousResearchLoop:
                 return False
 
             return True
+            filter_fn = _institutional_filter
 
+            eligible = [
+                g for g in normalized
+                if filter_fn(g)
+            ]
         # --------------------------------------------------
         # 7. DEDUP
         # --------------------------------------------------

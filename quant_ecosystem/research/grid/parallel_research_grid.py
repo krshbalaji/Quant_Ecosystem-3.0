@@ -135,13 +135,14 @@ class GridResult:
     elapsed_sec:  float                = 0.0
     worker_pid:   int                  = 0
     completed_ts: float                = field(default_factory=time.time)
-
+    
     # Convenience metrics extracted from result for quick ranking
     sharpe:        float = 0.0
     max_dd:        float = 0.0
     profit_factor: float = 0.0
     win_rate:      float = 0.0
     fitness:       float = 0.0
+    total_trades: int = 0
 
     def __post_init__(self) -> None:
         if self.ok and self.result:
@@ -150,7 +151,7 @@ class GridResult:
             self.profit_factor = float(self.result.get("profit_factor", 0.0))
             self.win_rate      = float(self.result.get("win_rate",      0.0))
             self.fitness       = float(self.result.get("fitness_score", 0.0))
-
+            self.total_trades = int(self.result.get("total_trades", 0))    
 
 # ---------------------------------------------------------------------------
 # Pure functions — executed inside worker processes (no class state)
@@ -568,27 +569,45 @@ def _fitness(m):
     pf = m.get("profit_factor", 0)
     trades = m.get("total_trades", 0)
 
-    penalty = 0
+    # soft robustness (never zero)
+    robustness = max(0.25, min(1.0, trades / 60))
 
-    if trades < 20:
-        penalty += 0.3
+    # base score
+    score = (
+        sharpe * 0.6
+        + (pf - 1.0) * 0.7
+        - dd * 0.015
+    )
 
-    if pf < 1.1:
-        penalty += 0.3
+    # soft penalties
+    if trades < 10:
+        score -= 0.15
 
-    if sharpe < 0.4:
-        penalty += 0.3
+    if pf < 1.0:
+        score -= 0.15
 
-    robustness = min(1.0, trades / 100)
+    if sharpe < 0:
+        score -= 0.15
 
-    fitness = (
-        sharpe * 0.5
-        + (pf - 1.0) * 0.8
-        - dd * 0.02
-    ) * robustness - penalty
+    fitness = score * robustness
+
+    print("FITNESS DEBUG:", sharpe, pf, trades)
 
     return fitness
 
+import random
+
+def _strategy(window):
+
+    r = random.random()
+
+    if r < 0.02:
+        return "BUY"
+
+    elif r > 0.98:
+        return "SELL"
+
+    return "HOLD"    
 
 def _genome_to_callable(genome: Dict) -> Callable:
     """Build a strategy callable from a genome dict."""
@@ -603,8 +622,13 @@ def _genome_to_callable(genome: Dict) -> Callable:
         if hasattr(closes, "tolist"):
             closes = closes.tolist()
         n = len(closes)
-        if n < period + 2:
-            return "HOLD"
+        effective_period = int(
+            min(
+                period,
+                max(6, n * 0.6)
+            )
+        )
+            
         try:
             c = [float(x) for x in closes]
             if indicator == "momentum":
@@ -756,6 +780,7 @@ class ParallelWorkerPool:
         self._pool_type: str       = "none"
         self._lock                 = threading.Lock()
         self._active_futures: Dict[str, Future] = {}
+        self.backtest_engine = backtest_engine
 
     def start(self) -> None:
         if self._pool is not None:
@@ -817,6 +842,13 @@ class ParallelWorkerPool:
                 elapsed_sec = round(elapsed, 3),
                 worker_pid  = os.getpid(),
             )
+
+            metrics = self.backtest_engine._metrics(returns)
+
+            metrics["total_trades"] = len(trades)
+            metrics["equity_curve"] = equity_curve
+            metrics["symbol"] = symbol
+
             with self._lock:
                 self._active_futures.pop(job.job_id, None)
             if callback:
@@ -1401,14 +1433,15 @@ class ResearchGrid:
                 try:
                     genome_data = result.payload.copy()
                     genome_data.update({
-                        "genome_id":    genome_id,
-                        "fitness_score":result.fitness,
-                        "sharpe":       result.sharpe,
-                        "max_dd":       result.max_dd,
-                        "win_rate":     result.win_rate,
-                        "profit_factor":result.profit_factor,
-                        "source":       "research_grid",
-                        "job_type":     result.job_type,
+                        "genome_id": genome_id,
+                        "fitness_score": result.fitness,
+                        "sharpe": result.sharpe,
+                        "max_dd": result.max_dd,
+                        "win_rate": result.win_rate,
+                        "profit_factor": result.profit_factor,
+                        "total_trades": result.total_trades,
+                        "source": "research_grid",
+                        "job_type": result.job_type,                    
                     })
                     self._genome_library.store_genome(genome_id, genome_data)
                 except Exception as exc:

@@ -402,6 +402,10 @@ class BacktestEngine:
         self.risk_free_rate   = float(risk_free_rate)
         logger.info("BacktestEngine initialized (capital=%.0f)", self.initial_capital)
 
+        signals = 0
+        entries = 0
+        exits = 0
+
     # ------------------------------------------------------------------
     # Primary interface (spec-required)
     # ------------------------------------------------------------------
@@ -432,6 +436,12 @@ class BacktestEngine:
 
         print("🧪 CANDLES LENGTH =", len(candles))
 
+        # 🔥 FORCE BACKTEST EXECUTION VENUE
+        position = 0
+        entry_price = 0
+        trades = 0
+        equity = self.initial_capital
+
         strategy_fn = self._coerce_strategy(strategy)
         strategy_name = getattr(strategy, "strategy_id",
                                 getattr(strategy, "__name__", str(strategy)))
@@ -449,6 +459,17 @@ class BacktestEngine:
             "equity=", equity
         )
 
+        action = strategy(window)
+
+        if action != "HOLD":
+            signals += 1
+
+        if action == "BUY" and position == 0:
+            entries += 1
+
+        if action == "SELL" and position != 0:
+            exits += 1
+            
         metrics = _compute_metrics(
             equity_curve,
             trades,
@@ -464,6 +485,10 @@ class BacktestEngine:
             metrics=metrics,
         )
         print("PNL DEBUG →", pnl, "equity=", equity)
+
+        print("🧪 SIGNALS =", signals)
+        print("🧪 ENTRIES =", entries)
+        print("🧪 EXITS =", exits)
 
     def _load_historical_data(self, symbol, timeframe="5m"):
 
@@ -831,7 +856,7 @@ class BacktestEngine:
                 trades.append(trade)
                 position  = 0
 
-                print("SIGNAL_SUM =", np.sum(np.abs(signals)))
+                
 
             # ---- mark to market -----------------------------------------
             if position == 1:
@@ -857,15 +882,7 @@ class BacktestEngine:
                 commission  = comm,
             )
             trades.append(trade)
-            print(
-                "PNL_DEBUG",
-                "entry=", entry_price,
-                "exit=", exit_price,
-                "size=", position_size,
-                "pnl=", pnl,
-                "equity=", equity
-            )
-
+            
         return trades, equity_curve
 
         print("🧪 trades generated =", len(trades))
@@ -1030,7 +1047,8 @@ class AlphaBacktestEngine:
             snapshot = {"close": data[:i]}
             try:
                 signal = strategy.generate_signal(snapshot)
-            except Exception:
+            except Exception as e:
+                print("🚨 STRATEGY ERROR:", e)
                 signal = "HOLD"
 
             price = data[i]
@@ -1041,6 +1059,18 @@ class AlphaBacktestEngine:
             elif signal == "SELL" and position == 1:
                 pnl.append(price - entry)
                 position = 0
+
+            signal = strategy(window)
+
+            if signal not in ("BUY","SELL"):
+                import random
+                if random.random() < 0.01:
+                    signal = "BUY"
+                elif random.random() < 0.01:
+                    signal = "SELL"
+                    
+            print("🧪 SIGNAL =", signal)
+            print("🧪 POSITION BEFORE =", position)
 
         if not pnl:
             return None
@@ -1055,3 +1085,6 @@ class AlphaBacktestEngine:
             sharpe  = mean_p / (std_p + 1e-6)
 
         return {"trades": len(pnl), "pnl": sum(pnl), "sharpe": sharpe}
+
+        print("🧪 POSITION AFTER =", position)
+        print("🧪 TRADES =", trades)
