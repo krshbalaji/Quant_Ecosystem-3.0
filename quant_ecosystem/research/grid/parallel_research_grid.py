@@ -1058,10 +1058,12 @@ class ResearchGrid:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        """Start the scheduler and worker pool."""
         if self._started:
             return
+
+        self._pool.start()
         self._scheduler.start()
+
         self._started = True
         logger.info("ResearchGrid started")
 

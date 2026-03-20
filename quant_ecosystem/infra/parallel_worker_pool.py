@@ -1,57 +1,64 @@
-import threading
-from queue import Queue
+from concurrent.futures import ProcessPoolExecutor
+import os
 
 
 class ParallelWorkerPool:
     """
-    Institutional local parallel execution pool
-    Compatible with ResearchGrid expectations
+    Institutional CPU parallel execution pool
+    Clean contract for ResearchGrid / GridScheduler
     """
 
-    def __init__(self, num_workers: int = 2):
-        self.num_workers = max(1, int(num_workers))
+    pool_type = "process"
 
-        self._queue = Queue()
-        self._workers = []
-        self._running = False
+    def __init__(self, num_workers=1, **kwargs):
 
-        # IMPORTANT → expected by ResearchGrid
-        self._pool = []
+        cpu = os.cpu_count() or 2
+        self.n_workers = num_workers if num_workers > 0 else max(1, cpu - 1)
+
+        self._pool = None
+        self._started = False
+
+    # -------------------------------------------------
 
     def start(self):
-        if self._running:
+
+        if self._started:
             return
 
-        self._running = True
+        self._pool = ProcessPoolExecutor(
+            max_workers=self.n_workers
+        )
 
-        for i in range(self.num_workers):
-            t = threading.Thread(
-                target=self._worker_loop,
-                daemon=True,
-                name=f"research-worker-{i}"
-            )
-            t.start()
+        self._started = True
 
-            self._workers.append(t)
-            self._pool.append(t)
+    # -------------------------------------------------
 
     def submit(self, fn, *args, **kwargs):
-        self._queue.put((fn, args, kwargs))
 
-    def submit_batch(self, tasks):
-        """
-        tasks = [(fn, args, kwargs), ...]
-        """
-        for fn, args, kwargs in tasks:
-            self.submit(fn, *args, **kwargs)
+        if not self._started:
+            self.start()
 
-    def _worker_loop(self):
-        while self._running:
-            fn, args, kwargs = self._queue.get()
-            try:
-                fn(*args, **kwargs)
-            except Exception as e:
-                print(f"[ParallelWorkerPool] worker error: {e}")
+        return self._pool.submit(fn, *args, **kwargs)
 
-    def shutdown(self):
-        self._running = False
+    # -------------------------------------------------
+
+    def map(self, fn, items):
+
+        if not self._started:
+            self.start()
+
+        futures = [
+            self._pool.submit(fn, x)
+            for x in items
+        ]
+
+        return [f.result() for f in futures]
+
+    # -------------------------------------------------
+
+    def shutdown(self, wait=True):
+
+        if self._pool:
+            self._pool.shutdown(wait=wait)
+
+        self._started = False
