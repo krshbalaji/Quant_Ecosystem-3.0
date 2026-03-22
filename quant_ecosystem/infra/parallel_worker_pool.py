@@ -17,7 +17,7 @@ class ParallelWorkerPool:
         # keep alias used by our wrapper
         self._executor = None
         self._lock = threading.Lock()
-        self._started = True
+        self._started = False
 
     def start(self):
         with self._lock:
@@ -30,7 +30,8 @@ class ParallelWorkerPool:
             )
 
             self._executor = self._pool
-
+            self._started = True
+        
     def submit(self, fn, *args, **kwargs):
         return self._pool.submit(fn, *args, **kwargs)
 
