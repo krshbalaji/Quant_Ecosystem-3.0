@@ -60,6 +60,7 @@ Design constraints
 """
 
 from __future__ import annotations
+from quant_ecosystem.infra.parallel_worker_pool import ParallelWorkerPool
 
 import logging
 import math
@@ -767,118 +768,7 @@ class ResultStore:
 # ParallelWorkerPool
 # ---------------------------------------------------------------------------
 
-class ParallelWorkerPool:
-    """Manages a ``ProcessPoolExecutor`` for CPU-bound research jobs.
 
-    Falls back to ``ThreadPoolExecutor`` when process spawning is unsafe
-    (e.g. in pytest, Jupyter, or environments that disallow forking).
-    """
-
-    _USE_PROCESS_POOL = True  # can be overridden in tests
-
-    def __init__(
-        self,
-        num_workers: int = 4,
-        backtest_engine=None,
-        metrics_callback=None,
-    ):
-        self.num_workers = num_workers
-        self.backtest_engine = backtest_engine
-        self.metrics_callback = metrics_callback
-
-    def start(self) -> None:
-        if self._pool is not None:
-            return
-        with self._lock:
-            if self._pool is not None:
-                return
-            if self._USE_PROCESS_POOL:
-                try:
-                    import multiprocessing as _mp   # noqa: lazy
-                    ctx = _mp.get_context("spawn")
-                    self._pool      = ProcessPoolExecutor(
-                        max_workers   = self.num_workers,
-                        mp_context    = ctx,
-                    )
-                    self._pool_type = "process"
-                    logger.info(
-                        "ParallelWorkerPool: ProcessPool started (%d workers)", self.num_workers
-                    )
-                    return
-                except Exception as exc:
-                    logger.warning("ParallelWorkerPool: ProcessPool unavailable (%s) — falling back to ThreadPool", exc)
-
-            self._pool      = ThreadPoolExecutor(max_workers=self.num_workers)
-            self._pool_type = "thread"
-            logger.info(
-                "ParallelWorkerPool: ThreadPool started (%d workers)", self.num_workers
-            )
-
-    def submit(
-        self,
-        job: GridJob,
-        callback: Optional[Callable[[GridResult], None]] = None,
-    ) -> Optional[Future]:
-        """Submit a job to the pool; returns its Future."""
-        if self._pool is None:
-            self.start()
-        if self._pool is None:
-            return None
-
-        t0 = time.time()
-
-        def _done(fut: Future) -> None:
-            elapsed = time.time() - t0
-            try:
-                raw = fut.result(timeout=job.timeout_sec)
-            except Exception as exc:
-                raw = {"error": str(exc), "fitness_score": -1.0}
-
-            err = raw.get("error") if isinstance(raw, dict) else str(raw)
-            ok  = err is None
-            result = GridResult(
-                job_id      = job.job_id,
-                job_type    = job.job_type,
-                ok          = ok,
-                payload     = {"genome_id": job.payload.get("genome_id", job.payload.get("genome", {}).get("genome_id", ""))},
-                result      = raw if isinstance(raw, dict) else {},
-                error       = err if not ok else None,
-                elapsed_sec = round(elapsed, 3),
-                worker_pid  = os.getpid(),
-            )
-
-           
-            with self._lock:
-                self._active_futures.pop(job.job_id, None)
-            if callback:
-                try:
-                    callback(result)
-                except Exception as cb_exc:
-                    logger.debug("ParallelWorkerPool: callback error: %s", cb_exc)
-
-        try:
-            fut = self._pool.submit(_dispatch_job, job.job_type, job.payload)
-            fut.add_done_callback(_done)
-            with self._lock:
-                self._active_futures[job.job_id] = fut
-            return fut
-        except Exception as exc:
-            logger.warning("ParallelWorkerPool.submit(%s): %s", job.job_id, exc)
-            return None
-
-    def active_count(self) -> int:
-        with self._lock:
-            return len(self._active_futures)
-
-    def shutdown(self, wait: bool = True) -> None:
-        if self._pool:
-            self._pool.shutdown(wait=wait)
-            self._pool = None
-        logger.info("ParallelWorkerPool: shutdown complete")
-
-    @property
-    def pool_type(self) -> str:
-        return self._pool_type
 
 
 # ---------------------------------------------------------------------------
