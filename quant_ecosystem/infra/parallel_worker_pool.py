@@ -9,19 +9,27 @@ class ParallelWorkerPool:
     def __init__(self, num_workers=1, **_):
 
         cpu = os.cpu_count() or 2
-        self.n_workers = num_workers if num_workers > 0 else max(1, cpu - 1)
-
+        self.num_workers = num_workers if num_workers > 0 else max(1, cpu - 1)
+        self.backtest_engine = backtest_engine
+        self.metrics_callback = metrics_callback
         # create executor immediately
-        self._pool = ProcessPoolExecutor(max_workers=self.n_workers)
-
+        self._pool = None
         # keep alias used by our wrapper
-        self._executor = self._pool
-
+        self._executor = None
+        self._lock = threading.Lock()
         self._started = True
 
     def start(self):
-        # compatibility with grid lifecycle
-        return
+        with self._lock:
+
+            if self._pool is not None:
+                return
+
+            self._pool = ProcessPoolExecutor(
+                max_workers=self.num_workers
+            )
+
+            self._executor = self._pool
 
     def submit(self, fn, *args, **kwargs):
         return self._pool.submit(fn, *args, **kwargs)
