@@ -12,6 +12,7 @@ class ParallelWorkerPool:
         self.n_workers = num_workers if num_workers > 0 else max(1, cpu - 1)
 
         self._executor = None
+        self._pool = None      # ⭐ legacy contract
         self._started = False
 
     # -----------------------------------------------------
@@ -24,6 +25,9 @@ class ParallelWorkerPool:
         self._executor = ProcessPoolExecutor(
             max_workers=self.n_workers
         )
+
+        # ⭐ expose legacy handle expected by GridScheduler
+        self._pool = self._executor
 
         self._started = True
 
