@@ -11,47 +11,23 @@ class ParallelWorkerPool:
         cpu = os.cpu_count() or 2
         self.n_workers = num_workers if num_workers > 0 else max(1, cpu - 1)
 
-        self._executor = None
-        self._pool = None      # ⭐ legacy contract
-        self._started = False
+        # create executor immediately
+        self._pool = ProcessPoolExecutor(max_workers=self.n_workers)
 
-    # -----------------------------------------------------
-
-    def start(self):
-
-        if self._started:
-            return
-
-        self._executor = ProcessPoolExecutor(
-            max_workers=self.n_workers
-        )
-
-        # ⭐ expose legacy handle expected by GridScheduler
-        self._pool = self._executor
+        # keep alias used by our wrapper
+        self._executor = self._pool
 
         self._started = True
 
-    # -----------------------------------------------------
+    def start(self):
+        # compatibility with grid lifecycle
+        return
 
     def submit(self, fn, *args, **kwargs):
-
-        if not self._started:
-            self.start()
-
-        return self._executor.submit(fn, *args, **kwargs)
-
-    # -----------------------------------------------------
+        return self._pool.submit(fn, *args, **kwargs)
 
     def map(self, fn, items):
-
-        if not self._started:
-            self.start()
-
-        return list(self._executor.map(fn, items))
-
-    # -----------------------------------------------------
+        return list(self._pool.map(fn, items))
 
     def shutdown(self, wait=True):
-
-        if self._executor:
-            self._executor.shutdown(wait=wait)
+        self._pool.shutdown(wait=wait)
