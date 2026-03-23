@@ -14,14 +14,17 @@ class MultiResolutionResearchOrchestrator:
         self,
         router=None,
         registry=None,
+        resolution_registry=None,
         research_grid=None,
         discovery_engine=None,
         mutation_engine=None,
         evolution_engine=None,
         meta_research_ai=None,
+        **_
     ):
+        # ⭐ factory compatibility layer
         self.router = router
-        self.registry = registry
+        self.registry = registry or resolution_registry
         self.research_grid = research_grid
 
         self.discovery_engine = discovery_engine
