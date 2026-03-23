@@ -429,7 +429,7 @@ class SystemFactory:
 
         # Strategy discovery engine (Alpha Strategy Generator)
         try:
-            from quant_ecosystem.research.strategy_discovery_engine import (  # noqa: PLC0415
+            from quant_ecosystem.research.alpha_intelligence.strategy_discovery_engine import (  # noqa: PLC0415
                 StrategyDiscoveryEngine,
             )
             router.strategy_discovery = StrategyDiscoveryEngine(
@@ -444,7 +444,7 @@ class SystemFactory:
 
         # Strategy mutation engine (Strategy Mutation Engine)
         try:
-            from quant_ecosystem.research.strategy_mutation_engine import (  # noqa: PLC0415
+            from quant_ecosystem.research.alpha_intelligence.strategy_mutation_engine import (  # noqa: PLC0415
                 StrategyMutationEngine,
             )
             router.mutation_engine = StrategyMutationEngine()
