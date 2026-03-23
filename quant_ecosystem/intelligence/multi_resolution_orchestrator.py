@@ -9,24 +9,18 @@ logger = logging.getLogger(__name__)
 
 
 class MultiResolutionResearchOrchestrator:
-    """
-    Institutional Alpha Fabric Orchestrator.
-
-    Responsibilities:
-    - Spawn autonomous alpha organisms per resolution
-    - Wire discovery / mutation / evolution / grid / meta engines
-    - Control lifecycle of research loops
-    """
 
     def __init__(
         self,
-        registry,
-        research_grid,
+        router=None,
+        registry=None,
+        research_grid=None,
         discovery_engine=None,
         mutation_engine=None,
         evolution_engine=None,
         meta_research_ai=None,
     ):
+        self.router = router
         self.registry = registry
         self.research_grid = research_grid
 
@@ -51,6 +45,7 @@ class MultiResolutionResearchOrchestrator:
 
             loop = AutonomousResearchLoop(
                 resolution=resolution,
+                router=self.router,
                 research_grid=self.research_grid,
                 discovery_engine=self.discovery_engine,
                 mutation_engine=self.mutation_engine,
@@ -76,7 +71,7 @@ class MultiResolutionResearchOrchestrator:
                 loop.start()
             else:
                 logger.warning(
-                    f"[orchestrator] loop {resolution} has no start() — skipped lifecycle start"
+                    f"[orchestrator] loop {resolution} has no start()"
                 )
 
     # -----------------------------------------------------
