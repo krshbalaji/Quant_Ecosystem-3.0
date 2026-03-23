@@ -923,6 +923,7 @@ class AutonomousResearchLoop:
 
                 # attach top level metrics also
                 g["fitness"] = getattr(r, "fitness", 0)
+                g["fitness_score"] = g["fitness"]
                 g["sharpe"] = getattr(r, "sharpe", 0)
                 g["max_dd"] = getattr(r, "max_dd", 0)
                 g["profit_factor"] = getattr(r, "profit_factor", 0)
@@ -1297,7 +1298,8 @@ class AutonomousResearchLoop:
                 pass
             ranked.append({
                 "genome_id":     gid,
-                "fitness":       getattr(r, "fitness",       0.0),
+                "fitness": getattr(r, "fitness", 0.0),
+                "fitness_score": getattr(r, "fitness", 0.0),
                 "sharpe":        getattr(r, "sharpe",        0.0),
                 "max_dd":        getattr(r, "max_dd",        0.0),
                 "win_rate":      getattr(r, "win_rate",      0.0),

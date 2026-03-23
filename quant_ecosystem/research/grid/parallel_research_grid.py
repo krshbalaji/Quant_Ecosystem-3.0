@@ -207,8 +207,8 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
                     )
 
                 except Exception as exc:
-                    print("🔥 WORKER FAILURE:", exc)
                     import traceback
+                    print("🚨 GENOME WORKER CRASH")
                     traceback.print_exc()
 
                     return {
@@ -228,10 +228,20 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         
 
-        def _m(name, default=0):
-            if isinstance(m, dict):
-                return m.get(name, default)
-            return getattr(m, name, default)
+        def _mx(*names, default=0):
+            for n in names:
+                if isinstance(m, dict) and n in m:
+                    return m[n]
+                if hasattr(m, n):
+                    return getattr(m, n)
+            return default
+
+        sharpe = _mx("sharpe", "sharpe_ratio")
+        max_dd = _mx("max_dd", "max_drawdown")
+        win_rate = _mx("win_rate", "hit_rate")
+        profit_factor = _mx("profit_factor", "pf")
+        trades = _mx("total_trades", "trades", "n_trades")
+        ret = _mx("total_return_pct", "return_pct", "total_return")
 
         fit = _fitness({
                 "sharpe": _m("sharpe"),
@@ -244,15 +254,19 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "genome_id": genome.get("genome_id", payload.get("genome_id", "")),
             "symbol": payload.get("symbol", "GRID"),
+
+            # ⭐ MUST MATCH GRID CONTRACT
+            "avg_sharpe": _m("sharpe"),
             "sharpe": _m("sharpe"),
+
             "max_dd": _m("max_dd"),
             "win_rate": _m("win_rate"),
             "profit_factor": _m("profit_factor"),
             "total_return": _m("total_return_pct"),
             "total_trades": _m("total_trades"),
-            "fitness": fit,
-            "fitness_score": fit
-       }
+
+            "fitness_score": fit,
+        }
     except Exception as exc:
         return {"error": str(exc), "genome_id": genome.get("genome_id", ""), "sharpe": 0.0, "fitness_score": -1.0}
 
@@ -284,21 +298,32 @@ def _run_genome_sweep(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not results:
         return {"genome_id": genome.get("genome_id",""), "results": [], "avg_sharpe": 0.0, "fitness_score": -1.0}
 
-    ok   = [r for r in results if "error" not in r]
-    avg_sharpe = sum(r["sharpe"] for r in ok) / len(ok) if ok else 0.0
-    avg_fitness= sum(r["fitness_score"] for r in ok) / len(ok) if ok else -1.0
+    ok = [r for r in results if "error" not in r]
+
+    avg_sharpe   = sum(r.get("sharpe", 0) for r in ok) / len(ok) if ok else 0.0
+    avg_fitness  = sum(r.get("fitness_score", -1) for r in ok) / len(ok) if ok else -1.0
+
+    avg_winrate  = sum(r.get("win_rate", 0) for r in ok) / len(ok) if ok else 0.0
+    avg_pf       = sum(r.get("profit_factor", 0) for r in ok) / len(ok) if ok else 0.0
+    max_dd       = max((r.get("max_dd", 0) for r in ok), default=0.0)
+
+    total_trades = sum(r.get("total_trades", 0) for r in ok)
 
     return {
         "genome_id":  genome.get("genome_id", ""),
         "symbols":    symbols,
         "n_symbols":  len(symbols),
         "results":    results,
-        "avg_sharpe": round(avg_sharpe,  4),
-        "max_dd":     round(max((r.get("max_dd",0) for r in ok), default=0.0), 4),
-        "win_rate":   round(sum(r.get("win_rate",0) for r in ok) / len(ok) if ok else 0.0, 4),
-        "profit_factor": round(sum(r.get("profit_factor",0) for r in ok) / len(ok) if ok else 0.0, 4),
-        "fitness_score": round(avg_fitness, 4),
+
         "sharpe":        round(avg_sharpe, 4),
+        "fitness_score": round(avg_fitness, 4),
+
+        "avg_sharpe": round(avg_sharpe, 4),
+        "max_dd":     round(max_dd, 4),
+        "win_rate":   round(avg_winrate, 4),
+        "profit_factor": round(avg_pf, 4),
+
+        "total_trades": int(total_trades),
     }
 
 
@@ -839,6 +864,8 @@ class GridScheduler:
 
             def _cb(result: GridResult, _cb=cb) -> None:
                 self._store.accept(result)
+                print("🔥 RAW WORKER RESULT:", raw_result)
+
                 with self._lock:
                     self._completed += 1
                     self._callbacks.pop(result.job_id, None)
@@ -848,7 +875,7 @@ class GridScheduler:
                     except Exception:
                         pass
 
-            self._pool.submit(job, callback=_cb)
+            self._pool.submit(self, job, callback=None)
             with self._lock:
                 self._submitted += 1
 
@@ -867,7 +894,7 @@ class GridScheduler:
                 "max_in_flight": self._max_in_flight,
             }
 
-
+            
 # ---------------------------------------------------------------------------
 # ResearchGrid — main public class
 # ---------------------------------------------------------------------------
@@ -942,6 +969,7 @@ class ResearchGrid:
             self._default_symbols = [PRIMARY_SYMBOL]
         else:
             self._default_symbols = ["SYNTH"]
+        
             
     # ------------------------------------------------------------------
     # Lifecycle

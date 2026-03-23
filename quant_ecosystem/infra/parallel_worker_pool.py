@@ -30,17 +30,37 @@ class ParallelWorkerPool:
     def start(self):
         return
 
-    def submit(self, fn, *args, **kwargs):
-        fut = self._pool.submit(fn, *args, **kwargs)
+    def submit(self, job, callback=None):
+        """
+        Institutional Grid contract:
+        - job is GridJob
+        - dispatch via _dispatch_job
+        """
 
-        with self._lock:
-            self._futures[id(fut)] = fut
+        from quant_ecosystem.research.grid.parallel_research_grid import _dispatch_job
 
-        def _done(_):
-            with self._lock:
-                self._futures.pop(id(fut), None)
+        fut = self._pool.submit(_dispatch_job, job.job_type, job.payload)
 
-        fut.add_done_callback(_done)
+        if callback:
+            from quant_ecosystem.research.grid.parallel_research_grid import GridResult
+
+            def _wrap_done(f):
+                raw = f.result()
+
+                result = GridResult(
+                    job_id = job.job_id,
+                    job_type = job.job_type,
+                    ok = raw.get("error") is None,
+                    payload = job.payload,
+                    result = raw,
+                    error = raw.get("error"),
+                    elapsed_sec = 0.0,
+                    worker_pid = os.getpid()
+                )
+
+                callback(result)
+
+            fut.add_done_callback(_wrap_done)
 
         return fut
 
