@@ -1,75 +1,39 @@
 import random
-import copy
 
 
 class StrategyMutationEngine:
 
     def __init__(self):
+        self.base_mutation = 0.18
 
-        self.mutation_rate = 0.25
+    def mutate(self, genome, regime="neutral"):
 
-    # -----------------------------------------------------
+        g = genome.copy()
 
-    def mutate_batch(self, genomes):
+        signal = g.get("signal_gene", {})
 
-        mutated = []
+        strength = self.base_mutation
 
-        for g in genomes:
+        if regime == "volatile":
+            strength *= 1.6
 
-            if random.random() < self.mutation_rate:
+        elif regime == "trending":
+            strength *= 0.7
 
-                mutated.append(self._mutate(copy.deepcopy(g)))
-
-        return mutated
-
-    # -----------------------------------------------------
-
-    def _mutate(self, genome):
-
-        mode = random.choice([
-
-            "threshold",
-            "lookback",
-            "indicator_flip",
-            "risk",
-            "regime_shift"
-        ])
-
-        if mode == "threshold":
-
-            genome["signal_gene"]["threshold"] *= random.uniform(0.7, 1.3)
-
-        elif mode == "lookback":
-
-            genome["signal_gene"]["lookback"] = max(
-                5,
-                int(genome["signal_gene"]["lookback"] * random.uniform(0.6, 1.4))
+        if random.random() < strength:
+            signal["threshold"] = max(
+                0.001,
+                signal.get("threshold", 0.02)
+                + random.uniform(-0.01, 0.01),
             )
 
-        elif mode == "indicator_flip":
-
-            pool = [
-                "momentum",
-                "mean_reversion",
-                "breakout",
-                "ma_cross",
-                "rsi",
-                "volatility_breakout"
-            ]
-
-            genome["signal_gene"]["indicator"] = random.choice(pool)
-
-        elif mode == "risk":
-
-            genome["risk_gene"]["stop_loss"] *= random.uniform(0.8, 1.4)
-            genome["risk_gene"]["take_profit"] *= random.uniform(0.8, 1.6)
-
-        elif mode == "regime_shift":
-
-            genome["meta"]["regime_target"] = random.choice(
-                ["trend", "mean", "volatile"]
+        if random.random() < strength:
+            signal["lookback"] = max(
+                6,
+                int(signal.get("lookback", 20)
+                    + random.randint(-5, 5))
             )
 
-        genome["meta"]["mutated"] = True
+        g["signal_gene"] = signal
 
-        return genome
+        return g

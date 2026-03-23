@@ -14,4 +14,8 @@ class AlphaEvolutionEngine:
 
         fresh = self.discovery.discover(batch_size=20)
 
+        confidence = self.confidence_engine.score(result)
+
+        fitness = fitness * (1 + confidence)
+
         return mutated + fresh

@@ -32,30 +32,34 @@ class MultiResolutionResearchOrchestrator:
 
         logger.info("[orchestrator] booting multi-resolution research fabric")
 
-        if not self.registry:
-            logger.warning(
-                "[orchestrator] ResolutionRegistry missing — research fabric not started"
-            )
-            return
+        if hasattr(self.registry, "horizons"):
+            resolutions = self.registry.horizons()
 
-        for resolution in self.registry.list_active_resolutions():
+        elif hasattr(self.registry, "get_horizons"):
+            resolutions = self.registry.get_horizons()
+
+        elif hasattr(self.registry, "resolutions"):
+            resolutions = self.registry.resolutions
+
+        elif hasattr(self.registry, "_horizons"):
+            resolutions = self.registry._horizons
+
+        else:
+            logger.warning(
+                "[orchestrator] registry horizons not found → fallback default"
+            )
+            resolutions = ["M5", "M15", "H1", "D1"]
+
+        for resolution in resolutions:
 
             logger.info(
                 f"[orchestrator] spawning research organism for resolution={resolution}"
             )
 
             loop = AutonomousResearchLoop(
-                discovery_engine = getattr(self.router, "strategy_discovery_engine", None),
-                mutation_engine  = getattr(self.router, "strategy_mutation_engine", None),
-                evolution_engine = getattr(self.router, "alpha_evolution_engine", None),
-                research_grid    = getattr(self.router, "research_grid", None),
-                genome_library   = getattr(self.router, "genome_library", None),
-                meta_research_ai = getattr(self.router, "meta_research_ai", None),
-                strategy_bank_engine = getattr(self.router, "strategy_bank_engine", None),
-                strategy_registry    = getattr(self.router, "strategy_registry", None),
-                resolution = resolution,
-                registry   = self.registry,
-                fabric_state = self.fabric_state,
+                research_grid=self.research_grid,
+                genome_library=self.genome_library,
+                regime_engine=self.regime_engine,
             )
 
             self.engines[resolution] = loop
