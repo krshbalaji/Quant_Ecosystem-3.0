@@ -1,39 +1,88 @@
 import random
+import copy
+import time
 
 
 class StrategyMutationEngine:
+    """
+    Institutional Regime Aware Mutation Engine
+    """
 
-    def __init__(self):
-        self.base_mutation = 0.18
+    def __init__(self, regime_memory=None):
+        self.regime_memory = regime_memory
 
-    def mutate(self, genome, regime="neutral"):
+        print("🧬 StrategyMutationEngine initialized (Regime Aware)")
 
-        g = genome.copy()
+    # -----------------------------------------------------
 
-        signal = g.get("signal_gene", {})
+    def mutate(self, genomes, n_offspring=15):
 
-        strength = self.base_mutation
+        offspring = []
 
-        if regime == "volatile":
-            strength *= 1.6
+        for _ in range(n_offspring):
 
-        elif regime == "trending":
-            strength *= 0.7
+            parent = random.choice(genomes)
 
-        if random.random() < strength:
-            signal["threshold"] = max(
+            child = copy.deepcopy(parent)
+
+            self._mutate_gene(child)
+
+            child["genome_id"] = f"mut_{int(time.time()*1000)}"
+
+            offspring.append(child)
+
+        return offspring
+
+    # -----------------------------------------------------
+
+    def _mutate_gene(self, genome):
+
+        gene = genome.get("signal_gene", {})
+
+        if not gene:
+            return
+
+        mutation_type = random.choice([
+            "lookback",
+            "threshold",
+            "indicator_shift"
+        ])
+
+        if mutation_type == "lookback":
+
+            gene["lookback"] = max(
+                5,
+                gene.get("lookback", 20) + random.randint(-10, 10)
+            )
+
+        elif mutation_type == "threshold":
+
+            gene["threshold"] = max(
                 0.001,
-                signal.get("threshold", 0.02)
-                + random.uniform(-0.01, 0.01),
+                gene.get("threshold", 0.5) + random.uniform(-0.3, 0.3)
             )
 
-        if random.random() < strength:
-            signal["lookback"] = max(
-                6,
-                int(signal.get("lookback", 20)
-                    + random.randint(-5, 5))
-            )
+        elif mutation_type == "indicator_shift":
 
-        g["signal_gene"] = signal
+            regime_hint = self._regime_hint()
 
-        return g
+            if regime_hint == "TRENDING":
+                gene["indicator"] = random.choice(["momentum", "breakout"])
+
+            elif regime_hint == "MEAN_REVERT":
+                gene["indicator"] = "mean_reversion"
+
+            elif regime_hint == "VOLATILE":
+                gene["indicator"] = "volatility_breakout"
+
+    # -----------------------------------------------------
+
+    def _regime_hint(self):
+
+        if self.regime_memory is None:
+            return "UNKNOWN"
+
+        try:
+            return self.regime_memory.last_successful_regime()
+        except Exception:
+            return "UNKNOWN"

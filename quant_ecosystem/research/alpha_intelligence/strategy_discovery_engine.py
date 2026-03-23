@@ -1,73 +1,61 @@
-import logging
 import random
-import uuid
-from quant_ecosystem.research.alpha_templates.structural_library import AlphaStructuralLibrary
-
-timeframe = "id"
+import time
+import logging
 
 logger = logging.getLogger(__name__)
 
-def _new_id(self):
-    return "arl_" + uuid.uuid4().hex[:8]
 
 class StrategyDiscoveryEngine:
     """
-    Generates new candidate strategy genomes.
-    Used by AutonomousResearchLoop.
+    Institutional Alpha Discovery Engine.
+
+    Generates candidate genomes.
+    Compatible with SystemFactory wiring.
     """
 
-    INDICATORS = [
-        "momentum",
-        "rsi",
-        "ma_cross",
-        "breakout",
-        "mean_reversion",
-        "volatility_breakout",
-    ]
+    def __init__(
+        self,
+        research_grid=None,
+        regime_memory=None,
+        dataset_builder=None,
+        meta_research_ai=None,
+        **_,
+    ):
+        self.research_grid = research_grid
+        self.regime_memory = regime_memory
+        self.dataset_builder = dataset_builder
+        self.meta_research_ai = meta_research_ai
 
-    def __init__(self, market_data=None, factor_library=None, config=None, **kwargs):
-        self.market_data = market_data
-        self.factor_library = factor_library
-        self.structural_library = AlphaStructuralLibrary()
-        self.config = config
+        logger.info("🧠 StrategyDiscoveryEngine initialized (Institutional Mode)")
 
-        logger.info("StrategyDiscoveryEngine initialized")
+    # -------------------------------------------------
 
-    def _new_id(self, family: str) -> str:
-        import time
-        import uuid
-
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        uid = uuid.uuid4().hex[:6]
-
-        return f"arl_{family}_{ts}_{uid}"
-
-    def _generate_random_genome(self):
-
-        indicator = random.choice(self.INDICATORS)
-
-        template = self.structural_library.sample_template()
-
-        genome = {
-            "id": self._new_id(template["family"]),
-            "structure": template,
-            "mutation_intensity": random.uniform(0.05, 0.25),
-        }
-        
-
-        return genome
-
-    def discover(self, count=20, symbols=None, **kwargs):
-        """
-        Generate new random strategy genomes.
-        """
+    def discover(self, n=5):
 
         genomes = []
 
-        for _ in range(count):
-            genome = self._generate_random_genome()
+        for _ in range(n):
+
+            gid = f"disc_{int(time.time()*1000)}_{random.randint(100,999)}"
+
+            genome = {
+                "genome_id": gid,
+                "type": random.choice(
+                    [
+                        "mean_reversion",
+                        "momentum",
+                        "volatility_breakout",
+                        "trend_following",
+                    ]
+                ),
+                "params": {
+                    "lookback": random.randint(5, 60),
+                    "threshold": random.uniform(0.5, 3.0),
+                },
+            }
+
             genomes.append(genome)
 
-        logger.info("StrategyDiscoveryEngine generated %d genomes", len(genomes))
+        logger.info("🔬 discovery produced %d genomes", len(genomes))
 
         return genomes

@@ -2,13 +2,16 @@ class MultiSymbolIntelligence:
 
     def __init__(self):
 
-        self.symbol_clusters = {
+        self.symbols = [
+            "^NSEI",
+            "^NSEBANK",
+            "RELIANCE.NS",
+            "TCS.NS",
+            "INFY.NS"
+        ]
 
-            "trend": ["NIFTY", "BANKNIFTY"],
-            "mean": ["RELIANCE", "INFY"],
-            "volatile": ["CRYPTO", "MIDCAP"]
-        }
+        print("🌍 MultiSymbolIntelligence ready")
 
-    def suggest_symbols(self, regime):
+    def get_symbols(self):
 
-        return self.symbol_clusters.get(regime, ["NIFTY"])
+        return self.symbols

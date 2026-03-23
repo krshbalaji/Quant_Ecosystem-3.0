@@ -1,9 +1,8 @@
 import logging
 from typing import Dict
 
-from quant_ecosystem.intelligence.fabric_state import FabricState
 from quant_ecosystem.autonomous_research.autonomous_research_loop import (
-    AutonomousResearchLoop,
+    AutonomousResearchLoop
 )
 
 logger = logging.getLogger(__name__)
@@ -11,107 +10,84 @@ logger = logging.getLogger(__name__)
 
 class MultiResolutionResearchOrchestrator:
     """
-    Institutional command center controlling all research organisms.
+    Institutional Alpha Fabric Orchestrator.
+
+    Responsibilities:
+    - Spawn autonomous alpha organisms per resolution
+    - Wire discovery / mutation / evolution / grid / meta engines
+    - Control lifecycle of research loops
     """
 
-    def __init__(self, router, resolution_registry):
+    def __init__(
+        self,
+        registry,
+        research_grid,
+        discovery_engine=None,
+        mutation_engine=None,
+        evolution_engine=None,
+        meta_research_ai=None,
+    ):
+        self.registry = registry
+        self.research_grid = research_grid
 
-        self.router = router
-        self.registry = resolution_registry
-        self.fabric_state = FabricState()
+        self.discovery_engine = discovery_engine
+        self.mutation_engine = mutation_engine
+        self.evolution_engine = evolution_engine
+        self.meta_research_ai = meta_research_ai
 
-        self.engines: Dict[str, AutonomousResearchLoop] = {}
+        self._loops: Dict[str, AutonomousResearchLoop] = {}
 
-        self._running = False
-
-    # -----------------------------------------
-    # FABRIC BOOT
-    # -----------------------------------------
+    # -----------------------------------------------------
 
     def boot_research_fabric(self):
 
         logger.info("[orchestrator] booting multi-resolution research fabric")
 
-        if hasattr(self.registry, "horizons"):
-            resolutions = self.registry.horizons()
-
-        elif hasattr(self.registry, "get_horizons"):
-            resolutions = self.registry.get_horizons()
-
-        elif hasattr(self.registry, "resolutions"):
-            resolutions = self.registry.resolutions
-
-        elif hasattr(self.registry, "_horizons"):
-            resolutions = self.registry._horizons
-
-        else:
-            logger.warning(
-                "[orchestrator] registry horizons not found → fallback default"
-            )
-            resolutions = ["M5", "M15", "H1", "D1"]
-
-        for resolution in resolutions:
+        for resolution in self.registry.list_active_resolutions():
 
             logger.info(
                 f"[orchestrator] spawning research organism for resolution={resolution}"
             )
 
             loop = AutonomousResearchLoop(
+                resolution=resolution,
                 research_grid=self.research_grid,
-                genome_library=self.genome_library,
-                regime_engine=self.regime_engine,
+                discovery_engine=self.discovery_engine,
+                mutation_engine=self.mutation_engine,
+                evolution_engine=self.evolution_engine,
+                meta_research_ai=self.meta_research_ai,
             )
 
-            self.engines[resolution] = loop
+            self._loops[resolution] = loop
 
-    # -----------------------------------------
-    # LIFECYCLE CONTROL
-    # -----------------------------------------
+    # -----------------------------------------------------
 
     def start(self):
 
-        if self._running:
-            return
-
         self.boot_research_fabric()
 
-        for resolution, engine in self.engines.items():
+        for resolution, loop in self._loops.items():
+
             logger.info(
                 f"[orchestrator] starting research organism resolution={resolution}"
             )
-            engine.start()
 
-        self._running = True
+            if hasattr(loop, "start"):
+                loop.start()
+            else:
+                logger.warning(
+                    f"[orchestrator] loop {resolution} has no start() — skipped lifecycle start"
+                )
+
+    # -----------------------------------------------------
 
     def stop(self):
 
-        if not self._running:
-            return
+        for resolution, loop in self._loops.items():
 
-        for resolution, engine in self.engines.items():
             logger.info(
                 f"[orchestrator] stopping research organism resolution={resolution}"
             )
-            engine.stop()
 
-        self._running = False
-
-    # -----------------------------------------
-    # INSTITUTIONAL CONTROL SURFACE (future expansion)
-    # -----------------------------------------
-
-    def throttle_resolution(self, resolution: str):
-
-        if resolution in self.engines:
-            logger.info(
-                f"[orchestrator] throttling research organism resolution={resolution}"
-            )
-            self.engines[resolution].stop()
-
-    def resume_resolution(self, resolution: str):
-
-        if resolution in self.engines:
-            logger.info(
-                f"[orchestrator] resuming research organism resolution={resolution}"
-            )
-            self.engines[resolution].start()
+            if hasattr(loop, "stop"):
+                loop.stop()
