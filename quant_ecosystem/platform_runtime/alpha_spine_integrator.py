@@ -28,10 +28,7 @@ class AlphaSpineIntegrator:
         self.resolution = resolution
 
         self.cycle_id = 0
-        
-        logger.info(f"portfolio_size={len(self.alpha_book.live_alphas)}")
-        logger.info(f"cycle_promoted={len(promoted)}")
-        
+                
     # ==========================================================
     # MAIN HEARTBEAT
     # ==========================================================
@@ -39,6 +36,32 @@ class AlphaSpineIntegrator:
     def on_bar(self, market_snapshot):
 
         logger.info(f"[alpha_spine] heartbeat cycle={self.cycle_id}")
+
+        promoted = self.research_loop.run_cycle(self.cycle_id)
+
+        logger.info(f"[BOOT] promoted={len(promoted)}")
+
+        for g in promoted:
+            logger.info(f"[ALPHA_BIRTH] {g.family} {g.symbol}")
+
+        self.portfolio_engine.consider(promoted)
+
+        logger.info(
+            f"[BOOT] portfolio_size={len(self.alpha_book.live_alphas)}"
+        )
+
+        self.lifecycle.update()
+
+        self.rotation.evaluate_rotation(
+            self.symbol_universe,
+            self.resolution,
+            self.regime_memory,
+            self.alpha_book,
+    )
+
+        self.paper_bridge.route_signals(market_snapshot)
+
+        self.cycle_id += 1
 
         # ------------------------------------------
         # 1️⃣ RESEARCH CYCLE

@@ -12,6 +12,8 @@ class PortfolioEngine:
         current_avg = float(current["avg_price"])
         signed_fill = int(qty) if side == "BUY" else -int(qty)
 
+        portfolio_engine.live_alphas = alpha_book.live_alphas
+        
         new_qty = current_qty + signed_fill
 
         if current_qty == 0:
@@ -109,3 +111,18 @@ class PortfolioEngine:
                 "avg_price": quantize(float(item["avg_price"]), 4),
             }
         self.positions = updated
+
+    def consider(self, promoted):
+
+        if not hasattr(self, "live_alphas"):
+            self.live_alphas = []
+
+        MAX_ALPHA = 3
+
+        for g in promoted:
+
+            if len(self.live_alphas) >= MAX_ALPHA:
+                break
+
+            if g not in self.live_alphas:
+                self.live_alphas.append(g)

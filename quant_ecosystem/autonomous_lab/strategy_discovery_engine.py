@@ -40,7 +40,8 @@ class StrategyDiscoveryEngine:
 
             genomes.append(genome)
 
-        return genomes
+        return genomes[:1]
+        
 
     # -----------------------------------------------------
 

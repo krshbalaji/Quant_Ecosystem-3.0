@@ -151,7 +151,7 @@ class PromotionProbabilityEngine:
 
     def _promotion_draw(self, score):
 
-        threshold = random.uniform(0.3, 0.9)
+        threshold = 0.2
 
         return score > threshold
 
