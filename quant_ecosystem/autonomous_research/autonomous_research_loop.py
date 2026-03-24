@@ -1,6 +1,6 @@
-import threading
-import time
 import logging
+import random
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -9,122 +9,142 @@ class AutonomousResearchLoop:
 
     def __init__(
         self,
-        resolution: str,
         research_grid,
-        discovery_engine=None,
-        mutation_engine=None,
-        evolution_engine=None,
-        meta_research_ai=None,
-        router=None,
-        interval=120,
-        startup_delay=5,
+        discovery_engine,
+        regime_memory,
+        promotion_engine,
+        alpha_evolution_engine,
+        cycle_memory,
+        resolution,
+        symbol_universe,
     ):
-
-        self.resolution = resolution
         self.grid = research_grid
         self.discovery_engine = discovery_engine
-        self.mutation_engine = mutation_engine
-        self.evolution_engine = evolution_engine
-        self.meta_ai = meta_research_ai
-        self.router = router
+        self.regime_memory = regime_memory
+        self.promotion_engine = promotion_engine
+        self.alpha_evolution_engine = alpha_evolution_engine
+        self.cycle_memory = cycle_memory
+        self.resolution = resolution
+        self.symbol_universe = symbol_universe
 
-        self.interval = interval
-        self.startup_delay = startup_delay
+        self.symbol_alpha_density = defaultdict(float)
 
-        self._running = False
-        self._thread = None
-        self._cycle = 0
+    # ==========================================================
+    # MAIN LOOP
+    # ==========================================================
 
-        logger.info(
-            f"[research_loop] init | resolution={resolution} interval={interval}"
-        )
+    def run_cycle(self, cycle_id):
 
-    # --------------------------------------------------------
+        logger.info(f"[research_loop] starting cycle {cycle_id} | {self.resolution}")
 
-    def start(self):
+        weighted_symbols = self._compute_symbol_weights()
 
-        if self._running:
-            return
+        genome_stream = []
 
-        self._running = True
+        for symbol in weighted_symbols:
 
-        self._thread = threading.Thread(
-            target=self._run_loop,
-            daemon=True
-        )
+            regime = self.regime_memory.get_current_regime(symbol, self.resolution)
 
-        self._thread.start()
-
-        logger.info(
-            f"[research_loop] daemon thread started (interval={self.interval}s startup_delay={self.startup_delay}s)"
-        )
-
-    # --------------------------------------------------------
-
-    def _run_loop(self):
-
-        logger.info(
-            f"[research_loop] startup delay {self.startup_delay}s …"
-        )
-
-        time.sleep(self.startup_delay)
-
-        logger.info(
-            "[research_loop] research loop is live — first cycle starting now"
-        )
-
-        while self._running:
-
-            self._cycle += 1
-
-            logger.info(
-                f"[research_loop] ---- cycle #{self._cycle} started ----"
-            )
-
-            try:
-                self._run_cycle()
-
-            except Exception as e:
-                logger.exception(
-                    f"[research_loop] cycle failure: {e}"
-                )
-
-            time.sleep(self.interval)
-
-    # --------------------------------------------------------
-
-    def _run_cycle(self):
-
-        # 1 DISCOVERY
-        genomes = []
-
-        if self.discovery_engine:
-            genomes = self.discovery_engine.discover(
-                resolution=self.resolution
-            )
-
-        # fallback safety
-        if not genomes:
-            logger.info("[research_loop] discovery fallback — empty batch")
-            return
-
-        # 2 MUTATION
-        if self.mutation_engine:
-            genomes += self.mutation_engine.mutate(genomes)
-
-        # 3 EVOLUTION
-        if self.evolution_engine:
-            genomes = self.evolution_engine.evolve(genomes)
-
-        # 4 SUBMIT GRID
-        self.grid.submit_genome_sweep(
-            genomes=genomes,
-            resolution=self.resolution
-        )
-
-        # 5 META FEEDBACK
-        if self.meta_ai:
-            self.meta_ai.observe_cycle(
+            discovered = self.discovery_engine.discover(
+                symbol=symbol,
                 resolution=self.resolution,
-                batch_size=len(genomes)
+                regime=regime,
+                alpha_density=self.symbol_alpha_density[symbol],
+                cycle_memory=self.cycle_memory,
             )
+
+            if not discovered:
+                logger.warning(
+                    "[research_loop] discovery_engine returned empty → fallback generator"
+                )
+                discovered = self._fallback_generator(symbol)
+
+            scored = self._assign_confidence(discovered, regime)
+
+            genome_stream.extend(scored)
+
+        evaluated = self.grid.evaluate_batch(genome_stream)
+
+        promoted = self.promotion_engine.select(evaluated)
+
+        self._update_symbol_density(promoted)
+
+        self.alpha_evolution_engine.ingest_promotions(promoted)
+
+        self.cycle_memory.record_cycle(
+            cycle_id=cycle_id,
+            promoted=promoted,
+            evaluated=len(evaluated),
+            resolution=self.resolution,
+        )
+
+        logger.info(
+            f"[research_loop] cycle {cycle_id} complete | promoted={len(promoted)}"
+        )
+
+        return promoted
+
+    # ==========================================================
+    # SYMBOL WEIGHTING
+    # ==========================================================
+
+    def _compute_symbol_weights(self):
+
+        ranked = sorted(
+            self.symbol_universe,
+            key=lambda s: self.symbol_alpha_density[s]
+        )
+
+        exploration_zone = ranked[: int(len(ranked) * 0.4)]
+        exploitation_zone = ranked[int(len(ranked) * 0.4):]
+
+        ordered = exploration_zone + random.sample(exploitation_zone, len(exploitation_zone))
+
+        return ordered
+
+    # ==========================================================
+    # CONFIDENCE SCORING
+    # ==========================================================
+
+    def _assign_confidence(self, genomes, regime):
+
+        scored = []
+
+        for g in genomes:
+
+            lineage = self.alpha_evolution_engine.lineage_score(g)
+
+            regime_alignment = self.discovery_engine.regime_alignment_score(
+                g, regime
+            )
+
+            novelty = self.discovery_engine.structural_novelty_score(g)
+
+            confidence = (
+                0.4 * lineage
+                + 0.4 * regime_alignment
+                + 0.2 * novelty
+            )
+
+            g.alpha_confidence = confidence
+
+            scored.append(g)
+
+        return scored
+
+    # ==========================================================
+    # SYMBOL DENSITY UPDATE
+    # ==========================================================
+
+    def _update_symbol_density(self, promoted):
+
+        for g in promoted:
+            self.symbol_alpha_density[g.symbol] += 1.0
+
+    # ==========================================================
+    # FALLBACK GENERATOR
+    # ==========================================================
+
+    def _fallback_generator(self, symbol):
+
+        return self.discovery_engine.random_genomes(symbol, self.resolution)

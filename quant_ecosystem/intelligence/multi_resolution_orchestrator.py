@@ -47,13 +47,10 @@ class MultiResolutionResearchOrchestrator:
             )
 
             loop = AutonomousResearchLoop(
-                resolution=resolution,
-                router=self.router,
-                research_grid=self.research_grid,
                 discovery_engine=self.discovery_engine,
                 mutation_engine=self.mutation_engine,
-                evolution_engine=self.evolution_engine,
-                meta_research_ai=self.meta_research_ai,
+                research_grid=self.research_grid,
+                resolution=resolution,
             )
 
             self._loops[resolution] = loop
