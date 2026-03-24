@@ -77,15 +77,28 @@ alpha_book = type("AB", (), {"live_alphas": []})()
 portfolio_engine = PortfolioEngine()
 portfolio_engine.live_alphas = alpha_book.live_alphas
 
+# -------- EXECUTION ----------
+from quant_ecosystem.execution.paper_execution_bridge import PaperExecutionBridge
+
+paper_bridge = PaperExecutionBridge(
+    portfolio_engine=portfolio_engine,
+    alpha_book=alpha_book
+)
+
+from quant_ecosystem.intelligence.simple_lifecycle_adapter import SimpleLifecycleAdapter
+lifecycle_manager = SimpleLifecycleAdapter(
+    alpha_book=alpha_book,
+    execution_bridge=paper_bridge
+)
 
 # ---------------- SPINE ----------------
 
 alpha_spine = AlphaSpineIntegrator(
     research_loop=research_loop,
     portfolio_engine=portfolio_engine,
-    lifecycle_manager=DummyLifecycle(),
+    lifecycle_manager=lifecycle_manager,
     regime_rotation_engine=DummyRotation(),
-    paper_bridge=DummyPaperBridge(),
+    paper_bridge=paper_bridge,
     regime_memory=DummyRegimeMemory(),
     alpha_book=alpha_book,
     symbol_universe=["NIFTY","BANKNIFTY"],

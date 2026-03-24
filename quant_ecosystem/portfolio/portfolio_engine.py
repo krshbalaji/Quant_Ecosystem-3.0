@@ -12,7 +12,6 @@ class PortfolioEngine:
         current_avg = float(current["avg_price"])
         signed_fill = int(qty) if side == "BUY" else -int(qty)
 
-        portfolio_engine.live_alphas = alpha_book.live_alphas
         
         new_qty = current_qty + signed_fill
 

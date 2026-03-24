@@ -59,6 +59,7 @@ class AlphaSpineIntegrator:
             self.alpha_book,
     )
 
+        market_snapshot["cycle_id"] = self.cycle_id
         self.paper_bridge.route_signals(market_snapshot)
 
         self.cycle_id += 1
