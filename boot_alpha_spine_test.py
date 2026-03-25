@@ -48,6 +48,13 @@ class DummyGrid:
             g.max_dd = 0.1
         return genomes
 
+class DummyRegimeSurvival:
+
+    def adjust(self, regime, *args, **kwargs):
+        print(f"[MOCK] survival adjust for regime {regime}")
+
+    def evaluate(self, *args, **kwargs):
+        print("[MOCK] survival evaluate")
 
 # ---------------- INTELLIGENCE OBJECTS ----------------
 
@@ -91,6 +98,17 @@ lifecycle_manager = SimpleLifecycleAdapter(
     execution_bridge=paper_bridge
 )
 
+from quant_ecosystem.intelligence.regime_survival_real import RegimeSurvivalReal
+
+regime_survival = RegimeSurvivalReal(
+    execution_bridge=paper_bridge,
+    alpha_book=alpha_book
+)
+
+from quant_ecosystem.intelligence.capital_intelligence_engine import CapitalIntelligenceEngine
+
+capital_engine = CapitalIntelligenceEngine(alpha_book)
+
 # ---------------- SPINE ----------------
 
 alpha_spine = AlphaSpineIntegrator(
@@ -98,8 +116,10 @@ alpha_spine = AlphaSpineIntegrator(
     portfolio_engine=portfolio_engine,
     lifecycle_manager=lifecycle_manager,
     regime_rotation_engine=DummyRotation(),
+    regime_survival_controller=regime_survival,
     paper_bridge=paper_bridge,
     regime_memory=DummyRegimeMemory(),
+    capital_engine=capital_engine,
     alpha_book=alpha_book,
     symbol_universe=["NIFTY","BANKNIFTY"],
     resolution="M15",

@@ -11,10 +11,12 @@ class AlphaSpineIntegrator:
         portfolio_engine,
         lifecycle_manager,
         regime_rotation_engine,
+        regime_survival_controller,
         paper_bridge,
         regime_memory,
         alpha_book,
         symbol_universe,
+        capital_engine,
         resolution,
     ):
         self.research_loop = research_loop
@@ -26,7 +28,8 @@ class AlphaSpineIntegrator:
         self.alpha_book = alpha_book
         self.symbol_universe = symbol_universe
         self.resolution = resolution
-
+        self.regime_survival = regime_survival_controller
+        self.capital_engine = capital_engine
         self.cycle_id = 0
                 
     # ==========================================================
@@ -64,6 +67,8 @@ class AlphaSpineIntegrator:
 
         self.cycle_id += 1
 
+        self.capital_engine.rebalance()
+        
         # ------------------------------------------
         # 1️⃣ RESEARCH CYCLE
         # ------------------------------------------
@@ -88,6 +93,14 @@ class AlphaSpineIntegrator:
             self.regime_memory,
             self.alpha_book,
         )
+
+        regime = self.regime_memory.get_current_regime(
+            self.symbol_universe[0],
+            self.resolution
+        )
+
+
+        self.regime_survival.adjust(regime)
 
         # ------------------------------------------
         # 5️⃣ EXECUTION ROUTING

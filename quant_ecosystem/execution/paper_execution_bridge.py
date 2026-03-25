@@ -64,6 +64,15 @@ class PaperExecutionBridge:
             price = random.uniform(100, 200)
             qty = 1
 
+            weight = getattr(g, "capital_weight", 0.1)
+
+            # map weight → position size
+            qty = max(1, int(weight * 10))
+
+            # suppress ultra weak alpha
+            if weight < 0.05:
+                return
+
             result = self.portfolio.apply_fill(
                 symbol=g.symbol,
                 side=side,
@@ -84,3 +93,10 @@ class PaperExecutionBridge:
             )
 
             active_positions += 1
+
+            pnl = getattr(g, "realized_pnl", 0.0)
+            
+            print(
+                f"[EXECUTE] {side} {g.family} {g.symbol} "
+                f"qty={qty} weight={weight:.2f} pnl={pnl:.2f}"
+            )

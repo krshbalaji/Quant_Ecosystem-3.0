@@ -45,13 +45,36 @@ class AutonomousResearchLoop:
 
             regime = self.regime_memory.get_current_regime(symbol, self.resolution)
 
-            discovered = self.discovery_engine.discover(
-                symbol=symbol,
-                resolution=self.resolution,
-                regime=regime,
-                alpha_density=self.symbol_alpha_density[symbol],
-                cycle_memory=self.cycle_memory,
-            )
+            exploration_boost = 1.0
+
+            if self.symbol_alpha_density[symbol] > 3:
+                exploration_boost = 1.5
+
+            if cycle_id % 5 == 0:
+                exploration_boost = 2.0
+                
+            discovered = []
+
+            exploration_attempts = 1
+
+            if self.symbol_alpha_density[symbol] > 3:
+                exploration_attempts = 2
+
+            if cycle_id % 5 == 0:
+                exploration_attempts = 3
+
+            for _ in range(exploration_attempts):
+
+                batch = self.discovery_engine.discover(
+                    symbol=symbol,
+                    resolution=self.resolution,
+                    regime=regime,
+                    alpha_density=self.symbol_alpha_density[symbol],
+                    cycle_memory=self.cycle_memory,
+                )
+
+                if batch:
+                    discovered.extend(batch)
 
             if not discovered:
                 logger.warning(
@@ -147,4 +170,14 @@ class AutonomousResearchLoop:
 
     def _fallback_generator(self, symbol):
 
-        return self.discovery_engine.random_genomes(symbol, self.resolution)
+        genomes = []
+
+        for _ in range(3):
+            batch = self.discovery_engine.random_genomes(
+                symbol,
+                self.resolution
+            )
+            if batch:
+                genomes.extend(batch)
+
+        return genomes
