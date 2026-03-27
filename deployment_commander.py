@@ -2,6 +2,8 @@ import yfinance as yf
 import pandas as pd
 import datetime
 
+from pre_market_predictor import predict_day_type
+
 UNIVERSE = [
     "^NSEBANK",
     "^NSEI",
@@ -49,6 +51,59 @@ def mtf_bias(symbol):
     except:
         return "UNKNOWN"
 
+def select_strategy(regime_type, participation, gap_strength, trend_strength):
+
+    # -------- TREND LOGIC -------- #
+
+    if regime_type == "TREND":
+
+        if gap_strength > 0.004 and participation > 1.5:
+            return {
+                "trade_type": "FUTURES_BREAKOUT",
+                "strategy_file": "strategy_bank/breakout_momentum.py",
+                "mode": "AGGRESSIVE"
+            }
+
+        elif trend_strength > 0.002:
+            return {
+                "trade_type": "FUTURES_INTRADAY",
+                "strategy_file": "strategy_bank/ema_pullback.py",
+                "mode": "NORMAL"
+            }
+
+        else:
+            return {
+                "trade_type": "MOMENTUM_CHASE",
+                "strategy_file": "strategy_bank/confidence_momentum.py",
+                "mode": "LATE_TREND"
+            }
+
+    # -------- RANGE LOGIC -------- #
+
+    elif regime_type == "RANGE":
+
+        if participation > 1.3:
+            return {
+                "trade_type": "OPTIONS_SCALP",
+                "strategy_file": "strategy_bank/orb_scalp.py",
+                "mode": "ACTIVE_RANGE"
+            }
+
+        else:
+            return {
+                "trade_type": "MEAN_REVERSION",
+                "strategy_file": "strategy_bank/mean_revert.py",
+                "mode": "TIGHT_RANGE"
+            }
+
+    # -------- DEAD -------- #
+
+    else:
+        return {
+            "trade_type": "NO_TRADE",
+            "strategy_file": None,
+            "mode": "STAY_OUT"
+        }
 # ---------------- REGIME ---------------- #
 
 def regime(df):
@@ -91,22 +146,27 @@ def score(df):
     trend_component = abs(ema20 - ema50) / price
     volatility_component = atr / price
 
-    return trend_component * volatility_component
+    return trend_component * volatility_component * 100
 
 # ---------------- CAPITAL PLAN ---------------- #
 
 def capital_plan(conviction):
 
-    if conviction > 0.02:
+    if conviction > 0.005:
         return 100, "FULL"
 
-    if conviction > 0.01:
+    if conviction > 0.002:
         return 70, "THREE-FOURTH"
 
-    if conviction > 0.005:
+    if conviction > 0.0007:
         return 40, "HALF"
 
+    if conviction > 0.0003:
+        return 20, "LIGHT"
+
     return 0, "NONE"
+
+    
 
 # ---------------- RANK ---------------- #
 
@@ -145,7 +205,9 @@ def rank_market():
 
 def commander():
 
-    print("\n===== INSTITUTIONAL DEPLOYMENT COMMANDER V5 =====\n")
+    print("\n===== INSTITUTIONAL DEPLOYMENT COMMANDER V6 =====\n")
+
+    # -------- STEP 1: RANK MARKET -------- #
 
     leader, ranking = rank_market()
 
@@ -153,46 +215,167 @@ def commander():
         print("❌ No Data")
         return
 
+    print("\n🔥 Leader:", leader)
+
+    # -------- STEP 2: FETCH DATA -------- #
+
     df = yf.download(leader, period="5d", interval="5m", progress=False)
+
+    if df is None or len(df) < 60:
+        print("❌ Leader data insufficient")
+        return
+
+    # -------- STEP 3: CORE METRICS -------- #
 
     reg = regime(df)
     bias = mtf_bias(leader)
     conviction = ranking[leader]
 
+    price = last(df["Close"])
+    
+    # -------- STEP 4: ROTATION METRICS -------- #
+
+    prev_close = float(df["Close"].iloc[-2])
+    open_price = float(df["Open"].iloc[-1])
+
+    gap_strength = abs(open_price - prev_close) / prev_close
+
+    trend_strength = abs(
+        float(df["Close"].ewm(span=20).mean().iloc[-1]) -
+        float(df["Close"].ewm(span=50).mean().iloc[-1])
+    ) / float(df["Close"].iloc[-1])
+
+    vol_now = float(df["Volume"].iloc[-1])
+    vol_avg = float(df["Volume"].rolling(20).mean().iloc[-1])
+
+    participation = vol_now / vol_avg if vol_avg != 0 else 0
+
+    # -------- STEP 5: STRATEGY ROTATION -------- #
+
+    decision = select_strategy(reg, participation, gap_strength, trend_strength)
+
+    # -------- STEP 6: CAPITAL -------- #
+
     capital_pct, lot_mode = capital_plan(conviction)
 
-    price = last(df["Close"])
+    # 🔧 GAP ADJUSTMENT (place here ONLY)
 
-    print("\n🔥 Leader:", leader)
-    print("📊 Regime:", reg)
-    print("🧠 MultiTF Bias:", bias)
-    print("💎 Conviction:", round(conviction,5))
-    print("💰 Price:", round(price,2))
+    if gap_strength < 0.001 and reg == "TREND":
+        capital_pct = int(capital_pct * 0.6)
+    
+    # 🔥 Participation override
 
-    print("\n💰 CAPITAL PLAN")
-    print("Use Capital →", capital_pct, "%")
-    print("Lot Mode →", lot_mode)
+    if participation > 1.4 and capital_pct == 0:
+        capital_pct = 20
+        lot_mode = "LIGHT"
+    
+    def load_strategy_code(path):
 
-    # FINAL STRATEGY DECISION
+        try:
+            with open(path, "r") as f:
+                return f.read()
+        except:
+            return None
 
-    if capital_pct == 0:
+    # -------- OUTPUT -------- #
+
+    prediction = predict_day_type()
+
+    final_strategy, final_capital, note = fuse_decision(
+        prediction,
+        reg,
+        capital_pct,
+        decision["strategy_file"]
+    )
+
+    print("\n🔮 PRE-MARKET BIAS:", prediction)
+
+    print("\n🧠 FINAL FUSED DECISION")
+    print("Final Strategy →", final_strategy)
+    print("Final Capital →", final_capital, "%")
+    print("Note →", note)
+
+    # -------- FINAL FILTER -------- #
+
+    trade_type = decision["trade_type"]
+
+    if capital_pct == 0 or trade_type == "NO_TRADE":
         print("\n❌ NO TRADE TODAY")
         return
 
-    if reg == "TREND":
+    print("\n✅ ACTION:")
+    print("Deploy strategy in Bulls AI before 9:25 AM")
 
-        if "^" in leader:
-            print("\n🎯 Strategy → EMA_PULLBACK FUTURES INDEX")
+    # -------- BULLS AI READY OUTPUT -------- #
 
-        else:
-            print("\n🎯 Strategy → MOMENTUM STOCK FUTURES")
+    if final_strategy and final_strategy != "NO_TRADE":
 
-    elif reg == "RANGE":
+        code = load_strategy_code(final_strategy)
 
-        print("\n🎯 Strategy → ORB_SCALP OPTIONS")
+    print("\n==============================")
+    print("📦 BULLS AI READY DEPLOYMENT")
+    print("==============================\n")
 
+    print(f"Instrument → {leader}")
+    print(f"Trade Type → {decision['trade_type']}")
+    print(f"Capital → {final_capital} %\n")
+
+    if code:
+        print("------ COPY BELOW ------\n")
+        print(code)
+        print("\n------ END COPY ------")
     else:
-        print("\n❌ EDGE NOT CLEAR → STAY OUT")
+        print("❌ Strategy file not found")
 
+def fuse_decision(prediction, reg, capital_pct, strategy):
+
+    final_strategy = strategy
+    final_capital = capital_pct
+    note = ""
+
+    # -------- RANGE DOMINANT -------- #
+    if prediction == "RANGE":
+
+        if reg == "TREND":
+            final_capital = int(capital_pct * 0.6)
+            final_strategy = "strategy_bank/orb_scalp.py"
+            note = "Range Expected → Reduce size + scalp"
+
+        elif reg == "RANGE":
+            final_strategy = "strategy_bank/orb_scalp.py"
+            note = "Range Confirmed → Options Scalp"
+
+    # -------- TREND DOMINANT -------- #
+    elif prediction == "TREND":
+
+        if reg == "TREND":
+            final_capital = int(capital_pct * 1.2)
+            note = "Trend Alignment → Aggressive Allowed"
+
+        elif reg == "RANGE":
+            final_capital = int(capital_pct * 0.5)
+            note = "Mismatch → Wait / Small size"
+
+    # -------- TRAP -------- #
+    elif prediction == "TRAP":
+
+        final_capital = int(capital_pct * 0.3)
+        final_strategy = "NO_TRADE"
+        note = "Trap Risk → Avoid"
+
+    return final_strategy, final_capital, note
+
+    # -------- GET PREDICTION -------- #
+
+    prediction = predict_day_type()   # return "TREND" / "RANGE" / "TRAP"
+
+    # -------- FUSION -------- #
+
+    final_strategy, final_capital, note = fuse_decision(
+        prediction,
+        reg,
+        capital_pct,
+        decision["strategy_file"]
+    )    
 if __name__ == "__main__":
     commander()
