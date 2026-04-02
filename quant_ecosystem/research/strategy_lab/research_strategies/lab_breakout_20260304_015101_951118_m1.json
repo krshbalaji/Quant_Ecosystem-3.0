@@ -1,0 +1,41 @@
+{
+  "id": "lab_breakout_20260304_015101_951118_m1",
+  "name": "lab_breakout_20260304_015101_951118_m1",
+  "strategy_type": "breakout",
+  "category": "breakout",
+  "family": "breakout",
+  "asset_class": "stocks",
+  "timeframe": "1h",
+  "indicators": [
+    "vwap",
+    "keltner",
+    "atr"
+  ],
+  "entry_logic": "vwap_breakout AND volume_spike",
+  "exit_logic": "breakout_failure OR atr_stop",
+  "risk_model": "atr_risk",
+  "parameters": {
+    "ema_fast": 4.7052,
+    "ema_slow": 44.4669,
+    "rsi_length": 19.8033,
+    "atr_length": 18,
+    "atr_stop_mult": 2.9358,
+    "risk_multiple": 2.3623,
+    "volume_filter_mult": 1.7423
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T01:51:01Z",
+    "mutation_origin": "lab_breakout_20260304_015101_951118"
+  },
+  "strategy_name": "lab_breakout_20260304_015101_951118_m1",
+  "creation_date": "2026-03-04T01:51:01Z",
+  "indicators_used": [
+    "vwap",
+    "keltner",
+    "atr"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_breakout_20260304_015101_951118"
+}

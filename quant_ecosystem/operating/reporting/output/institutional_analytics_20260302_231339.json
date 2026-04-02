@@ -1,0 +1,15 @@
+{
+  "equity_curve": [],
+  "rolling_sharpe": [],
+  "rolling_drawdown": [],
+  "trade_distribution_histogram": {
+    "<-50": 0,
+    "-50:-10": 0,
+    "-10:0": 0,
+    "0:10": 0,
+    "10:50": 0,
+    ">50": 0
+  },
+  "regime_performance_split": {},
+  "exposure_heatmap": {}
+}

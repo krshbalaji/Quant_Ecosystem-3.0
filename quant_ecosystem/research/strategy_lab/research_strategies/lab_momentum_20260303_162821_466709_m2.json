@@ -1,0 +1,41 @@
+{
+  "id": "lab_momentum_20260303_162821_466709_m2",
+  "name": "lab_momentum_20260303_162821_466709_m2",
+  "strategy_type": "momentum",
+  "category": "momentum",
+  "family": "momentum",
+  "asset_class": "crypto",
+  "timeframe": "1d",
+  "indicators": [
+    "stochastic",
+    "macd",
+    "ema"
+  ],
+  "entry_logic": "ema_fast_cross_ema_slow AND volume_filter",
+  "exit_logic": "trailing_atr_stop OR ema_reversal",
+  "risk_model": "atr_risk",
+  "parameters": {
+    "ema_fast": 7.3522,
+    "ema_slow": 26.1422,
+    "rsi_length": 9,
+    "atr_length": 14.8625,
+    "atr_stop_mult": 3.6571,
+    "risk_multiple": 1.2589,
+    "volume_filter_mult": 1.0185
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-03T16:28:21Z",
+    "mutation_origin": "lab_momentum_20260303_162821_466709"
+  },
+  "strategy_name": "lab_momentum_20260303_162821_466709_m2",
+  "creation_date": "2026-03-03T16:28:21Z",
+  "indicators_used": [
+    "stochastic",
+    "macd",
+    "ema"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_momentum_20260303_162821_466709"
+}

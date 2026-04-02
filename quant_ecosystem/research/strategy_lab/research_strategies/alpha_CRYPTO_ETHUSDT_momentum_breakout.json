@@ -1,0 +1,27 @@
+{
+  "id": "alpha_CRYPTO_ETHUSDT_momentum_breakout",
+  "name": "alpha_CRYPTO_ETHUSDT_momentum_breakout",
+  "strategy_type": "momentum_breakout",
+  "category": "scanner_signal",
+  "family": "scanner_signal",
+  "asset_class": "crypto",
+  "timeframe": "5m",
+  "entry_logic": "momentum_breakout",
+  "exit_logic": "signal_decay_exit",
+  "indicators": [],
+  "parameters": {
+    "signal_strength": 1.0
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "mutation_origin": "global_alpha_scanner",
+    "scanner_score": 0.66792,
+    "symbol": "CRYPTO:ETHUSDT"
+  },
+  "strategy_name": "alpha_CRYPTO_ETHUSDT_momentum_breakout",
+  "creation_date": "2026-03-04T01:03:29Z",
+  "indicators_used": [],
+  "performance_metrics": {},
+  "mutation_origin": "global_alpha_scanner"
+}

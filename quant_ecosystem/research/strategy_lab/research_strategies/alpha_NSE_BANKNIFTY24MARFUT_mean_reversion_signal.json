@@ -1,0 +1,27 @@
+{
+  "id": "alpha_NSE_BANKNIFTY24MARFUT_mean_reversion_signal",
+  "name": "alpha_NSE_BANKNIFTY24MARFUT_mean_reversion_signal",
+  "strategy_type": "mean_reversion_signal",
+  "category": "scanner_signal",
+  "family": "scanner_signal",
+  "asset_class": "futures",
+  "timeframe": "5m",
+  "entry_logic": "mean_reversion_signal",
+  "exit_logic": "signal_decay_exit",
+  "indicators": [],
+  "parameters": {
+    "signal_strength": 0.6715
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "mutation_origin": "global_alpha_scanner",
+    "scanner_score": 0.416674,
+    "symbol": "NSE:BANKNIFTY24MARFUT"
+  },
+  "strategy_name": "alpha_NSE_BANKNIFTY24MARFUT_mean_reversion_signal",
+  "creation_date": "2026-03-03T16:28:24Z",
+  "indicators_used": [],
+  "performance_metrics": {},
+  "mutation_origin": "global_alpha_scanner"
+}

@@ -1,0 +1,41 @@
+{
+  "id": "lab_volatility_20260304_010115_482734",
+  "name": "lab_volatility_20260304_010115_482734",
+  "strategy_type": "volatility",
+  "category": "volatility",
+  "family": "volatility",
+  "asset_class": "commodities",
+  "timeframe": "5m",
+  "indicators": [
+    "bollinger",
+    "atr",
+    "keltner"
+  ],
+  "entry_logic": "atr_expansion AND keltner_break",
+  "exit_logic": "atr_stop OR time_exit",
+  "risk_model": "fixed_risk",
+  "parameters": {
+    "ema_fast": 9,
+    "ema_slow": 35,
+    "rsi_length": 7,
+    "atr_length": 8,
+    "atr_stop_mult": 1.6504,
+    "risk_multiple": 1.6642,
+    "volume_filter_mult": 1.1921
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T01:01:15Z",
+    "mutation_origin": "base_generator"
+  },
+  "strategy_name": "lab_volatility_20260304_010115_482734",
+  "creation_date": "2026-03-04T01:01:15Z",
+  "indicators_used": [
+    "bollinger",
+    "atr",
+    "keltner"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "base_generator"
+}

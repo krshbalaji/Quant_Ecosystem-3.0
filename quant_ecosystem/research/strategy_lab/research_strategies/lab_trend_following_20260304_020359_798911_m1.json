@@ -1,0 +1,41 @@
+{
+  "id": "lab_trend_following_20260304_020359_798911_m1",
+  "name": "lab_trend_following_20260304_020359_798911_m1",
+  "strategy_type": "trend_following",
+  "category": "trend_following",
+  "family": "trend_following",
+  "asset_class": "forex",
+  "timeframe": "1d",
+  "indicators": [
+    "ema",
+    "atr",
+    "vwap"
+  ],
+  "entry_logic": "ema_fast_cross_ema_slow AND volume_filter",
+  "exit_logic": "trailing_atr_stop OR ema_reversal",
+  "risk_model": "fixed_risk",
+  "parameters": {
+    "ema_fast": 9,
+    "ema_slow": 32,
+    "rsi_length": 17.78,
+    "atr_length": 12.3491,
+    "atr_stop_mult": 1.3823,
+    "risk_multiple": 1.6687,
+    "volume_filter_mult": 1.2256
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T02:03:59Z",
+    "mutation_origin": "lab_trend_following_20260304_020359_798911"
+  },
+  "strategy_name": "lab_trend_following_20260304_020359_798911_m1",
+  "creation_date": "2026-03-04T02:03:59Z",
+  "indicators_used": [
+    "ema",
+    "atr",
+    "vwap"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_trend_following_20260304_020359_798911"
+}

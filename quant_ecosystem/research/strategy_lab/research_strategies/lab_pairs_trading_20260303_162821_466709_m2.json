@@ -1,0 +1,43 @@
+{
+  "id": "lab_pairs_trading_20260303_162821_466709_m2",
+  "name": "lab_pairs_trading_20260303_162821_466709_m2",
+  "strategy_type": "pairs_trading",
+  "category": "pairs_trading",
+  "family": "pairs_trading",
+  "asset_class": "stocks",
+  "timeframe": "5m",
+  "indicators": [
+    "atr",
+    "zscore",
+    "ema"
+  ],
+  "entry_logic": "zscore_extreme AND spread_reversion_signal",
+  "exit_logic": "mean_reversion_completed OR stop_loss",
+  "risk_model": "kelly_fractional",
+  "parameters": {
+    "ema_fast": 8.4716,
+    "ema_slow": 47.851,
+    "rsi_length": 15.366,
+    "atr_length": 17,
+    "atr_stop_mult": 2.146,
+    "risk_multiple": 1.5281,
+    "volume_filter_mult": 1.3108,
+    "zscore_entry": 2.1015,
+    "zscore_exit": 0.5638
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-03T16:28:21Z",
+    "mutation_origin": "lab_pairs_trading_20260303_162821_466709"
+  },
+  "strategy_name": "lab_pairs_trading_20260303_162821_466709_m2",
+  "creation_date": "2026-03-03T16:28:21Z",
+  "indicators_used": [
+    "atr",
+    "zscore",
+    "ema"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_pairs_trading_20260303_162821_466709"
+}

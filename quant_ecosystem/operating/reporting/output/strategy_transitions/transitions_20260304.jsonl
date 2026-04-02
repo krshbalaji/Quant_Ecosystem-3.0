@@ -1,0 +1,4 @@
+{"timestamp": "2026-03-04T01:24:39Z", "strategy_id": "core_momentum_v1", "from": "PAPER", "to": "SHADOW", "reason": "Paper stability achieved.", "regime": "RANGING"}
+{"timestamp": "2026-03-04T01:24:39Z", "strategy_id": "core_momentum_v1", "from": "SHADOW", "to": "LIVE", "reason": "Shadow strategy promoted to live.", "regime": "LOW_VOL"}
+{"timestamp": "2026-03-04T02:03:56Z", "strategy_id": "core_momentum_v1", "from": "PAPER", "to": "SHADOW", "reason": "Paper stability achieved.", "regime": "RANGING"}
+{"timestamp": "2026-03-04T02:03:56Z", "strategy_id": "core_momentum_v1", "from": "SHADOW", "to": "LIVE", "reason": "Shadow strategy promoted to live.", "regime": "LOW_VOL"}

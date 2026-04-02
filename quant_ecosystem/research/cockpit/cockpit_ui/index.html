@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quant Cockpit</title>
+  <link rel="stylesheet" href="/ui/cockpit_styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Quant Trading Cockpit</h1>
+    <span id="conn">offline</span>
+  </header>
+  <main>
+    <section class="card">
+      <h2>System Commands</h2>
+      <div class="btn-row">
+        <button data-cmd="START_TRADING">Start</button>
+        <button data-cmd="PAUSE_TRADING">Pause</button>
+        <button data-cmd="EMERGENCY_STOP">Emergency Stop</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Risk Commands</h2>
+      <div class="row">
+        <input id="risk_pct" type="number" step="0.1" value="2.0" />
+        <button data-cmd="SET_RISK_LEVEL" data-payload="risk_pct">Set Risk %</button>
+      </div>
+      <div class="row">
+        <input id="max_dd" type="number" step="0.1" value="20.0" />
+        <button data-cmd="SET_MAX_DRAWDOWN" data-payload="max_drawdown_pct">Set Max DD %</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Strategy Commands</h2>
+      <div class="row">
+        <input id="strategy_id" placeholder="strategy id" />
+        <button data-cmd="ACTIVATE_STRATEGY" data-payload="strategy_id">Activate</button>
+        <button data-cmd="PAUSE_STRATEGY" data-payload="strategy_id">Pause</button>
+        <button data-cmd="RETIRE_STRATEGY" data-payload="strategy_id">Retire</button>
+      </div>
+      <div class="row">
+        <input id="alloc_pct" type="number" step="0.1" value="10.0" />
+        <button data-cmd="ADJUST_ALLOCATION" data-payload="strategy_id,allocation_pct">Set Allocation</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Execution/Portfolio</h2>
+      <div class="btn-row">
+        <button data-cmd="FORCE_REBALANCE">Force Rebalance</button>
+        <button data-cmd="REDUCE_EXPOSURE">Reduce Exposure</button>
+        <button data-cmd="CLOSE_ALL_POSITIONS">Close All</button>
+      </div>
+      <div class="row">
+        <input id="exec_mode" value="LOW_SLIPPAGE_MODE" />
+        <button data-cmd="SET_EXECUTION_MODE" data-payload="mode">Set Exec Mode</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Live Status</h2>
+      <pre id="status">loading...</pre>
+    </section>
+    <section class="card">
+      <h2>Command Log</h2>
+      <pre id="log"></pre>
+    </section>
+  </main>
+  <script src="/ui/cockpit_controls.js"></script>
+</body>
+</html>
+

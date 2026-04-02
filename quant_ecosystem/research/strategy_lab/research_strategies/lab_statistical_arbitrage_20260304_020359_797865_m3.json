@@ -1,0 +1,43 @@
+{
+  "id": "lab_statistical_arbitrage_20260304_020359_797865_m3",
+  "name": "lab_statistical_arbitrage_20260304_020359_797865_m3",
+  "strategy_type": "statistical_arbitrage",
+  "category": "statistical_arbitrage",
+  "family": "statistical_arbitrage",
+  "asset_class": "options",
+  "timeframe": "1d",
+  "indicators": [
+    "ema",
+    "zscore",
+    "bollinger"
+  ],
+  "entry_logic": "zscore_extreme AND spread_reversion_signal",
+  "exit_logic": "mean_reversion_completed OR stop_loss",
+  "risk_model": "fixed_risk",
+  "parameters": {
+    "ema_fast": 5.1353,
+    "ema_slow": 33.7685,
+    "rsi_length": 16.4368,
+    "atr_length": 8,
+    "atr_stop_mult": 3.3615,
+    "risk_multiple": 1.2827,
+    "volume_filter_mult": 1.5583,
+    "zscore_entry": 1.8226,
+    "zscore_exit": 1.0057
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T02:03:59Z",
+    "mutation_origin": "lab_statistical_arbitrage_20260304_020359_797865"
+  },
+  "strategy_name": "lab_statistical_arbitrage_20260304_020359_797865_m3",
+  "creation_date": "2026-03-04T02:03:59Z",
+  "indicators_used": [
+    "ema",
+    "zscore",
+    "bollinger"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_statistical_arbitrage_20260304_020359_797865"
+}

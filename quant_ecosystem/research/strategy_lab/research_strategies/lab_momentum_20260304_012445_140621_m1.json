@@ -1,0 +1,41 @@
+{
+  "id": "lab_momentum_20260304_012445_140621_m1",
+  "name": "lab_momentum_20260304_012445_140621_m1",
+  "strategy_type": "momentum",
+  "category": "momentum",
+  "family": "momentum",
+  "asset_class": "forex",
+  "timeframe": "5m",
+  "indicators": [
+    "aroon",
+    "ema",
+    "rsi"
+  ],
+  "entry_logic": "ema_fast_cross_ema_slow AND atr_filter",
+  "exit_logic": "trailing_atr_stop OR ema_reversal",
+  "risk_model": "kelly_fractional",
+  "parameters": {
+    "ema_fast": 10.8836,
+    "ema_slow": 22.0584,
+    "rsi_length": 17.203,
+    "atr_length": 16.7762,
+    "atr_stop_mult": 3.175,
+    "risk_multiple": 1.2241,
+    "volume_filter_mult": 1.662
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-04T01:24:45Z",
+    "mutation_origin": "lab_momentum_20260304_012445_140621"
+  },
+  "strategy_name": "lab_momentum_20260304_012445_140621_m1",
+  "creation_date": "2026-03-04T01:24:45Z",
+  "indicators_used": [
+    "aroon",
+    "ema",
+    "rsi"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_momentum_20260304_012445_140621"
+}

@@ -1,0 +1,41 @@
+{
+  "id": "lab_mean_reversion_20260303_162821_466709_m1",
+  "name": "lab_mean_reversion_20260303_162821_466709_m1",
+  "strategy_type": "mean_reversion",
+  "category": "mean_reversion",
+  "family": "mean_reversion",
+  "asset_class": "commodities",
+  "timeframe": "5m",
+  "indicators": [
+    "stochastic",
+    "rsi",
+    "keltner"
+  ],
+  "entry_logic": "rsi_oversold AND bollinger_lower_touch",
+  "exit_logic": "mean_reversion_completed OR stop_loss",
+  "risk_model": "vol_target",
+  "parameters": {
+    "ema_fast": 8.5559,
+    "ema_slow": 45.0315,
+    "rsi_length": 9,
+    "atr_length": 11,
+    "atr_stop_mult": 3.7811,
+    "risk_multiple": 0.6308,
+    "volume_filter_mult": 1.9566
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-03T16:28:21Z",
+    "mutation_origin": "lab_mean_reversion_20260303_162821_466709"
+  },
+  "strategy_name": "lab_mean_reversion_20260303_162821_466709_m1",
+  "creation_date": "2026-03-03T16:28:21Z",
+  "indicators_used": [
+    "stochastic",
+    "rsi",
+    "keltner"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_mean_reversion_20260303_162821_466709"
+}

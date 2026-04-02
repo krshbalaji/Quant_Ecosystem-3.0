@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-03-04T07:34:16.712958",
+  "cycle": 5,
+  "result": {
+    "status": "SKIP",
+    "reason": "NO_SIGNAL"
+  },
+  "state": {
+    "equity": 100000.0,
+    "cash_balance": 100000.0,
+    "realized_pnl": 0.0,
+    "unrealized_pnl": 0.0,
+    "fees_paid": 0.0,
+    "drawdown_pct": 0.0,
+    "consecutive_losses": 0,
+    "cooldown": 0,
+    "open_positions": 0,
+    "account_source": "FYERS_LIVE",
+    "last_reconciled_at": "2026-03-04T07:34:16",
+    "broker_positions_count": 0,
+    "broker_orders_count": 0,
+    "broker_trades_count": 0
+  }
+}

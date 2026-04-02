@@ -1,0 +1,41 @@
+{
+  "id": "lab_mean_reversion_20260303_165020_830939_m2",
+  "name": "lab_mean_reversion_20260303_165020_830939_m2",
+  "strategy_type": "mean_reversion",
+  "category": "mean_reversion",
+  "family": "mean_reversion",
+  "asset_class": "options",
+  "timeframe": "1h",
+  "indicators": [
+    "stochastic",
+    "bollinger",
+    "stochastic"
+  ],
+  "entry_logic": "rsi_oversold AND bollinger_lower_touch",
+  "exit_logic": "mean_reversion_completed OR stop_loss",
+  "risk_model": "fixed_risk",
+  "parameters": {
+    "ema_fast": 5,
+    "ema_slow": 19,
+    "rsi_length": 10.7249,
+    "atr_length": 15.3769,
+    "atr_stop_mult": 1.1723,
+    "risk_multiple": 2.4421,
+    "volume_filter_mult": 1.0915
+  },
+  "stage": "RESEARCH",
+  "active": false,
+  "metadata": {
+    "created_at": "2026-03-03T16:50:20Z",
+    "mutation_origin": "lab_mean_reversion_20260303_165020_830939"
+  },
+  "strategy_name": "lab_mean_reversion_20260303_165020_830939_m2",
+  "creation_date": "2026-03-03T16:50:20Z",
+  "indicators_used": [
+    "stochastic",
+    "bollinger",
+    "stochastic"
+  ],
+  "performance_metrics": {},
+  "mutation_origin": "lab_mean_reversion_20260303_165020_830939"
+}
