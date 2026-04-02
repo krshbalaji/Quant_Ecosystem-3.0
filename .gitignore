@@ -169,4 +169,17 @@ candles/
 *.orig
 
 research_memory/
-New folder/
+New folder/__pycache__/
+*.pyc
+*.log
+*.json
+storage/
+.streamlit/
+.chrome-streamlit-profile/
+__pycache__/
+*.pyc
+*.log
+*.json
+storage/
+.streamlit/
+.chrome-streamlit-profile/
