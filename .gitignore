@@ -179,7 +179,9 @@ storage/
 __pycache__/
 *.pyc
 *.log
-*.json
+
 storage/
 .streamlit/
 .chrome-streamlit-profile/
+trade_journal*.json
+daily_pnl.json
