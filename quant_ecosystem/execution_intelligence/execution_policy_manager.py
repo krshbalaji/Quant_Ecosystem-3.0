@@ -11,6 +11,7 @@ class ExecutionPolicyManager:
     def select_policy(
         self,
         market_regime: str,
+        execution_mode: str = "A",
         liquidity_score: float,
         urgency: float = 0.5,
         expected_slippage: float = 0.0,
@@ -20,6 +21,8 @@ class ExecutionPolicyManager:
         urg = max(0.0, min(1.0, float(urgency)))
         slip = max(0.0, float(expected_slippage))
 
+        
+            
         policy = "LOW_SLIPPAGE_MODE"
         if urg > 0.75 and liq > 0.35:
             policy = "FAST_EXECUTION_MODE"
@@ -27,6 +30,14 @@ class ExecutionPolicyManager:
             policy = "STEALTH_EXECUTION_MODE"
         if regime in {"CRASH_EVENT", "HIGH_VOLATILITY"} and slip > 5.0:
             policy = "STEALTH_EXECUTION_MODE"
+
+        mode = str(execution_mode or "A").upper()
+
+        if mode == "D":
+            policy = "PRE_EXECUTION_MANUAL_STRIKE"  
+
+        "execution_mode": mode,
+        "manual_final_strike_required": (mode == "D"),      
 
         return {
             "execution_policy": policy,
