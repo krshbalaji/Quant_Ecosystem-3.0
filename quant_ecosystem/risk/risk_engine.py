@@ -447,10 +447,33 @@ class RiskEngine:
         )
 
     def broker_locked(self, broker):
-        ...
+        import time
+        if broker not in self._broker_locked_until:
+            return False
+
+        if time.time() > self._broker_locked_until[broker]:
+            self._broker_loss_streak[broker] = 0
+            self._post_unlock_half_risk[broker] = True
+            return False
+
+        return True
+
 
     def record_broker_loss(self, broker):
-        ...
+        import time
+
+        self._broker_loss_streak[broker] = \
+            self._broker_loss_streak.get(broker,0)+1
+
+        if self._broker_loss_streak[broker] >= 3:
+            self._broker_locked_until[broker] = \
+                time.time() + (30*60)
+
 
     def risk_multiplier(self, broker):
-        ...
+
+        if self._post_unlock_half_risk.get(broker,False):
+            self._post_unlock_half_risk[broker]=False
+            return 0.5
+
+        return 1.0
