@@ -11,11 +11,11 @@ class ExecutionPolicyManager:
     def select_policy(
         self,
         market_regime: str,
-        execution_mode: str = "A",
         liquidity_score: float,
         urgency: float = 0.5,
         expected_slippage: float = 0.0,
-    ) -> Dict:
+        execution_mode: str = "A",
+    ):
         regime = str(market_regime or "RANGE_BOUND").upper()
         liq = max(0.0, min(1.0, float(liquidity_score)))
         urg = max(0.0, min(1.0, float(urgency)))
