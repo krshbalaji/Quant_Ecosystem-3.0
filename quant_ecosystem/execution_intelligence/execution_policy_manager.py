@@ -36,8 +36,7 @@ class ExecutionPolicyManager:
         if mode == "D":
             policy = "PRE_EXECUTION_MANUAL_STRIKE"  
 
-        "execution_mode": mode,
-        "manual_final_strike_required": (mode == "D"),      
+                  
 
         return {
             "execution_policy": policy,
@@ -45,5 +44,8 @@ class ExecutionPolicyManager:
             "liquidity_score": round(liq, 6),
             "urgency": round(urg, 6),
             "expected_slippage": round(slip, 6),
+
+            "execution_mode": mode,
+            "manual_final_strike_required": (mode == "D"),
         }
 
