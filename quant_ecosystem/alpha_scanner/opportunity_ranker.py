@@ -45,7 +45,62 @@ class OpportunityRanker:
             out.append(item)
 
         out.sort(key=lambda x: float(x.get("score", 0.0)), reverse=True)
-        return out[: max(1, int(top_n))]
+
+        # -------------------------------
+        # Correlation cap (max 2)
+        # -------------------------------
+        filtered = []
+        cluster_counts = {}
+
+        for row in out:
+            cluster = str(
+                row.get(
+                    "correlation_cluster",
+                    row.get("asset_class", "uncategorized")
+                )
+            ).strip()
+
+            if cluster_counts.get(cluster, 0) >= 2:
+                continue
+
+            cluster_counts[cluster] = cluster_counts.get(cluster, 0) + 1
+            filtered.append(row)
+
+
+        # -------------------------------
+        # Broker opportunity slots (max 5)
+        # Serve best first
+        # -------------------------------
+        broker_counts = {}
+        allocated = []
+
+        for row in filtered:
+
+            broker = str(
+                row.get(
+                    "preferred_broker",
+                    row.get(
+                        "broker",
+                        "UNASSIGNED"
+                    )
+                )
+            ).strip()
+
+            if broker_counts.get(broker, 0) >= 5:
+                continue
+
+            broker_counts[broker] = broker_counts.get(broker,0) + 1
+
+            row["dispatch_priority"] = len(allocated)+1
+            row["broker_slot"] = broker_counts[broker]
+
+            allocated.append(row)
+
+            if len(allocated) >= max(1, int(top_n)):
+                break
+
+
+        return allocated
 
     def _volatility_score(self, vol: float) -> float:
         # Sweet spot around medium volatility; penalize very low/high.
