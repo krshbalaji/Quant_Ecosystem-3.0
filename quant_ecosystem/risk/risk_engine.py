@@ -131,6 +131,10 @@ class RiskEngine:
         self._portfolio_engine = portfolio_engine
         self._equity_provider  = equity_provider
 
+        self._broker_loss_streak={}
+        self._broker_locked_until={}
+        self._post_unlock_half_risk = {}
+
         logger.info(
             "RiskEngine initialized (max_dd=%.1f%% hard=%.1f%% port=%.1f%% sym=%.1f%%)",
             self.max_daily_dd, self.hard_drawdown_limit,
@@ -441,3 +445,12 @@ class RiskEngine:
             f"dd={getattr(state,'total_drawdown_pct',0.0):.2f}%, "
             f"trade_risk={self.max_trade_risk:.2f}%)"
         )
+
+    def broker_locked(self, broker):
+        ...
+
+    def record_broker_loss(self, broker):
+        ...
+
+    def risk_multiplier(self, broker):
+        ...
