@@ -12,4 +12,4 @@ ENV LIVE_BROKER_DISABLED=true
 ENV DISPATCH_ENABLED=true
 ENV GLOBAL_KILL_SWITCH=true
 
-CMD ["python", "main.py"]
+CMD ["python", "cloudrun_app.py"]

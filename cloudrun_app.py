@@ -1,0 +1,17 @@
+from flask import Flask
+import os
+
+app = Flask(__name__)
+
+@app.get("/")
+def health():
+    return {
+        "status": "ok",
+        "mode": "D",
+        "paper_mode": True,
+        "live_broker_disabled": True
+    }
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
