@@ -170,3 +170,29 @@ candles/
 
 research_memory/
 New folder/
+
+# ----- Cloud / Credentials -----
+.gcloud/
+application_default_credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+
+# ----- Cloud Run exports -----
+cloudrun_service_backup.yaml
+
+# ----- Local runtime folders -----
+.chrome-streamlit-profile/
+.claude/
+.streamlit/
+Chrome_Clone/
+edge-clean-profile/
+edge-temp-profile/
+stealth_profile/
+storage/
+strategy_bank/
+
+# ----- Journals -----
+daily_pnl.json
+trade_journal*.json
