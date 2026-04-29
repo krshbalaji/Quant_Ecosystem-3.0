@@ -7,8 +7,26 @@ load_dotenv()
 app = Flask(__name__)
 
 # -----------------------------
+# Shared API key for control endpoints
+# -----------------------------
+API_KEY = os.getenv("CLOUD_API_KEY")
+
+
+def authorize():
+    incoming = request.headers.get("X-API-KEY")
+
+    if incoming != API_KEY:
+        return jsonify({
+            "authorized": False,
+            "error": "unauthorized"
+        }), 401
+
+    return None
+
+
+# -----------------------------
 # Shadow runtime state
-# True = BLOCK all signals
+# True = BLOCK signals
 # False = allow paper dispatch
 # -----------------------------
 STATE = {
@@ -35,12 +53,18 @@ def status():
 
 @app.post("/kill-switch")
 def kill_switch():
+
+    # --- AUTH CHECK ---
+    auth = authorize()
+    if auth:
+        return auth
+
     payload = request.get_json(silent=True) or {}
 
     enabled = bool(payload.get("enabled", True))
 
-    # True means emergency stop ON
-    # False means allow signals
+    # True = emergency stop ON
+    # False = signals allowed
     STATE["kill_switch"] = enabled
 
     return {
@@ -52,17 +76,18 @@ def kill_switch():
 @app.post("/signal")
 def signal():
 
-    # ---------------------------------
-    # HARD SAFETY GATE
-    # If kill switch ON, reject signal
-    # ---------------------------------
+    # --- AUTH CHECK ---
+    auth = authorize()
+    if auth:
+        return auth
+
+    # --- HARD SAFETY GATE ---
     if STATE["kill_switch"] is True:
         return jsonify({
             "accepted": False,
             "reason": "kill_switch_active",
             "dispatch_mode": None
         }), 403
-
 
     payload = request.get_json(silent=True) or {}
 
@@ -76,7 +101,9 @@ def signal():
 
     STATE["last_signal"] = signal_data
 
-    # Placeholder for future paper dispatcher hook
+    # Future hook:
+    # OpportunityRanker -> RiskEngine -> ExecutionPolicyManager
+
     return {
         "accepted": True,
         "dispatch_mode": "paper_shadow",
