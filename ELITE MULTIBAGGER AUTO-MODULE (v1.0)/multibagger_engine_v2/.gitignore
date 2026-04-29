@@ -1,0 +1,14 @@
+# Generated caches
+cache/
+**/cache/
+
+# Runtime-generated data
+learning_data.json
+trades.json
+
+# Python noise
+__pycache__/
+*.pyc
+
+# Local tool metadata
+.sixth/
