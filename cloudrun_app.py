@@ -1,15 +1,21 @@
 from flask import Flask, request, jsonify
 import os
+import json
+import time
 
 app = Flask(__name__)
 
-# Runtime state
+# -------- CONFIG --------
+API_KEY = os.getenv("CLOUD_API_KEY", "")
+
 STATE = {
-    "kill_switch": True,   # default SAFE = ON
+    "kill_switch": True,
     "last_signal": None
 }
 
-API_KEY = os.getenv("CLOUD_API_KEY", "")
+LAST_TS = {}
+COOLDOWN_SEC = 5
+
 
 # -------- AUTH --------
 def authorized(req):
@@ -55,7 +61,6 @@ def signal():
     if not authorized(request):
         return {"error": "unauthorized"}, 401
 
-    # HARD SAFETY
     if STATE["kill_switch"]:
         return jsonify({
             "accepted": False,
@@ -64,21 +69,55 @@ def signal():
 
     payload = request.get_json(silent=True) or {}
 
+    symbol = payload.get("symbol")
+    side = payload.get("side")
+    qty = payload.get("qty")
+
+    if not symbol or not side or not qty:
+        return {"error": "invalid signal"}, 400
+
+    if side not in ["BUY", "SELL"]:
+        return {"error": "invalid side"}, 400
+
+    if int(qty) <= 0:
+        return {"error": "invalid qty"}, 400
+
+    now = time.time()
+
+    # cooldown protection
+    if symbol in LAST_TS and (now - LAST_TS[symbol]) < COOLDOWN_SEC:
+        return {"accepted": False, "reason": "cooldown"}, 429
+
+    LAST_TS[symbol] = now
+
     signal_data = {
-        "symbol": payload.get("symbol"),
-        "side": payload.get("side"),
-        "qty": payload.get("qty"),
+        "symbol": symbol,
+        "side": side,
+        "qty": qty,
         "execution_mode": os.getenv("EXECUTION_MODE", "D"),
         "paper_only": True
     }
 
     STATE["last_signal"] = signal_data
 
+    # persist (important for reliability)
+    with open("/tmp/last_signal.json", "w") as f:
+        json.dump(signal_data, f)
+
     return {
         "accepted": True,
         "dispatch_mode": "paper_shadow",
         "signal": signal_data
     }
+
+
+# -------- LATEST SIGNAL (for worker reliability) --------
+@app.get("/latest-signal")
+def latest_signal():
+    try:
+        return json.load(open("/tmp/last_signal.json"))
+    except:
+        return {}
 
 
 # -------- RUN --------

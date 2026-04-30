@@ -170,3 +170,24 @@ candles/
 
 research_memory/
 New folder/
+
+# ===============================
+# RUNTIME (YOUR CURRENT ENGINE)
+# ===============================
+
+paper_trades.jsonl
+seen_ids.json
+
+# Worker / Strategy temp
+*.state
+*.cache
+
+# Local DB (if added later)
+*.db
+*.sqlite3
+
+# Cloud / API keys
+*.key
+*.pem
+
+positions.json
