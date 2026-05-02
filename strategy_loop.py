@@ -10,7 +10,25 @@ logger = get_logger(__name__)
 indicators = IndicatorAdapter()
 brain = StrategyBrain(indicators)
 
-SYMBOLS = ["TCS.NS", "RELIANCE.NS"]
+from portfolio_allocator_v2 import PortfolioAllocatorV2
+
+allocator = PortfolioAllocatorV2(capital=100000)
+
+signals = [
+    {"symbol": "TCS.NS", "strength": 0.7},
+    {"symbol": "RELIANCE.NS", "strength": 0.7}
+]
+
+market_data = {
+    "TCS.NS": {"price": 3800, "atr": 40},
+    "RELIANCE.NS": {"price": 2900, "atr": 35}
+}
+
+allocations = allocator.allocate(signals, market_data)
+
+for trade in allocations:
+    route_execution(trade)
+
 SCAN_INTERVAL = 30
 
 last_signal_time = {}
@@ -38,7 +56,9 @@ def send_signal(signal):
 logger.info("🧠 Multi-Strategy Brain Started...")
 
 while True:
-    for symbol in SYMBOLS:
+    from config import Config
+
+    for symbol in Config.TRADE_SYMBOLS:
 
         sig = brain.decide(symbol)
 

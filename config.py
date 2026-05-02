@@ -3,7 +3,8 @@ import os
 
 load_dotenv()
 
-
+TRADE_SYMBOLS = os.getenv("TRADE_SYMBOLS", "").split(",")
+TRADE_SYMBOLS = [s.strip() for s in os.getenv("TRADE_SYMBOLS", "").split(",") if s.strip()]
 def _int_env(key: str, default: int) -> int:
     try:
         return int(os.getenv(key, str(default)).strip())
@@ -12,17 +13,11 @@ def _int_env(key: str, default: int) -> int:
 
 
 class Config:
-    API_BASE_URL = os.getenv("API_BASE_URL", "").rstrip("/")
-    API_KEY = os.getenv("API_KEY", os.getenv("CLOUD_API_KEY", ""))
-    REQUEST_TIMEOUT = _int_env("REQUEST_TIMEOUT", 10)
-    MAX_RETRIES = _int_env("MAX_RETRIES", 3)
-    LOCAL_FALLBACK_ENABLED = str(os.getenv("LOCAL_FALLBACK_ENABLED", "true")).strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "y",
-    )
-    EXECUTION_MODE = os.getenv("EXECUTION_MODE", "auto").strip().lower()
+    API_BASE_URL = os.getenv("API_BASE_URL", "")
+    API_KEY = os.getenv("API_KEY", "")
+    REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10))
+    MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
+    LOCAL_FALLBACK_ENABLED = os.getenv("LOCAL_FALLBACK_ENABLED", "true").lower() == "true"
+    EXECUTION_MODE = os.getenv("EXECUTION_MODE", "auto")
 
-    if EXECUTION_MODE not in {"auto", "cloud", "local"}:
-        EXECUTION_MODE = "auto"
+    TRADE_SYMBOLS = [s.strip() for s in os.getenv("TRADE_SYMBOLS", "").split(",") if s.strip()]
