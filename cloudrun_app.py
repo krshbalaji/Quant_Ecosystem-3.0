@@ -3,10 +3,12 @@ import os
 import json
 import time
 
+from config import Config
+
 app = Flask(__name__)
 
 # -------- CONFIG --------
-API_KEY = os.getenv("CLOUD_API_KEY", "")
+API_KEY = Config.API_KEY
 
 STATE = {
     "kill_switch": True,
@@ -24,6 +26,16 @@ def authorized(req):
 
 # -------- HEALTH --------
 @app.get("/")
+def root_health():
+    return {
+        "status": "ok",
+        "mode": os.getenv("EXECUTION_MODE", "D"),
+        "paper_mode": os.getenv("PAPER_MODE", "true"),
+        "live_broker_disabled": os.getenv("LIVE_BROKER_DISABLED", "true")
+    }
+
+
+@app.get("/health")
 def health():
     return {
         "status": "ok",
@@ -109,6 +121,11 @@ def signal():
         "dispatch_mode": "paper_shadow",
         "signal": signal_data
     }
+
+
+@app.post("/trade")
+def trade():
+    return signal()
 
 
 # -------- LATEST SIGNAL (for worker reliability) --------

@@ -1,17 +1,11 @@
 import time
-import requests
-import os
 
+from infra.execution_router import route_execution
+from infra.logger import get_logger
 from indicator_adapter import IndicatorAdapter
 from strategy_brain import StrategyBrain
 
-URL = "https://quant-ecosystem-shadow-16683273546.asia-south1.run.app"
-API_KEY = os.getenv("CLOUD_API_KEY")
-
-HEADERS = {
-    "Content-Type": "application/json",
-    "X-API-KEY": API_KEY
-}
+logger = get_logger(__name__)
 
 indicators = IndicatorAdapter()
 brain = StrategyBrain(indicators)
@@ -28,24 +22,20 @@ def send_signal(signal):
         "symbol": signal["symbol"],
         "side": signal["side"],
         "qty": 1,
-        "strength": signal["strength"]
+        "strength": signal["strength"],
     }
 
-    try:
-        r = requests.post(f"{URL}/signal", headers=HEADERS, json=payload)
-
-        if r.status_code == 200:
-            print("📡 SIGNAL SENT:", payload)
+    response = route_execution(payload)
+    if response.get("success"):
+        if response.get("mode") == "local":
+            logger.info("📡 Signal routed to local mode: %s", payload)
         else:
-            print("❌ Rejected:", r.text)
+            logger.info("📡 SIGNAL SENT: %s", payload)
+    else:
+        logger.error("❌ Signal rejected: %s", response.get("error"))
 
-    except Exception as e:
-        print("Cloud error:", e)
 
-
-print("🧠 Multi-Strategy Brain Started...")
-
-print("API KEY:", API_KEY)
+logger.info("🧠 Multi-Strategy Brain Started...")
 
 while True:
     for symbol in SYMBOLS:

@@ -1,10 +1,12 @@
 import time
-import requests
-import os
 import json
 import hashlib
 from datetime import datetime, UTC
 
+from config import Config
+from infra.http_client import HttpClient
+from infra.execution_router import route_execution
+from infra.logger import get_logger
 from quant_ecosystem.broker.paper_broker import PaperBroker
 from quant_ecosystem.broker.broker_router import BrokerRouter
 from indicator_adapter import IndicatorAdapter
@@ -13,15 +15,9 @@ from risk_engine import check_risk
 from position_sizer import calculate_qty
 from portfolio_brain import PortfolioBrain
 
+logger = get_logger(__name__)
+client = HttpClient()
 portfolio = PortfolioBrain(capital=100000)
-
-URL = "https://quant-ecosystem-shadow-16683273546.asia-south1.run.app"
-API_KEY = os.getenv("CLOUD_API_KEY")
-
-if not API_KEY:
-    raise ValueError("CLOUD_API_KEY not set")
-
-HEADERS = {"X-API-KEY": API_KEY}
 SEEN_FILE = "seen_ids.json"
 
 broker = BrokerRouter(PaperBroker())
@@ -33,7 +29,6 @@ MAX_LOSS = -2000
 def sig_id(sig):
     raw = f"{sig.get('symbol')}|{sig.get('side')}"
     return hashlib.sha1(raw.encode()).hexdigest()
-    raw = f"{symbol}|{side}|{sig.get('ts')}"
 
 def load_json(path, default):
     try:
@@ -71,7 +66,7 @@ def check_exit():
            
 seen = set(load_json(SEEN_FILE, []))
 
-print("🚀 Worker connected to Quant Ecosystem...")
+logger.info("🚀 Worker connected to Quant Ecosystem...")
 
 while True:
     try:
@@ -84,8 +79,10 @@ while True:
             pnl += (live - pos["entry_price"]) * pos["qty"]
 
         if pnl < MAX_LOSS:
-            print("🚨 Global loss hit")
-            requests.post(f"{URL}/kill-switch", headers=HEADERS, json={"enabled": True})
+            logger.warning("🚨 Global loss hit")
+            kill_result = client.send_post("/kill-switch", {"enabled": True})
+            if not kill_result.get("success"):
+                logger.warning("Kill switch request failed: %s", kill_result.get("error"))
             time.sleep(5)
             continue
 
@@ -93,13 +90,14 @@ while True:
         check_exit()
 
         # 🔽 Get signal
-        r = requests.get(f"{URL}/status", headers=HEADERS, timeout=10)
+        status_result = client.send_get("/status", timeout=10)
 
-        if r.status_code != 200:
+        if not status_result.get("success"):
+            logger.warning("Failed to fetch status: %s", status_result.get("error"))
             time.sleep(2)
             continue
 
-        data = r.json()
+        data = status_result.get("data") or {}
         sig = data.get("last_signal")
 
         if not sig or not sig.get("symbol"):
@@ -167,7 +165,7 @@ while True:
             continue
 
         # === EXECUTION ===
-        print(f"🧪 PAPER ORDER: {side} {sym} x{qty}")
+        logger.info("🧪 PAPER ORDER: %s %s x%s", side, sym, qty)
 
         order = {
             "symbol": sym,
@@ -176,20 +174,38 @@ while True:
             "price": price,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
-            "ts": datetime.now(UTC).isoformat()
+            "ts": datetime.now(UTC).isoformat(),
         }
 
-        print("ENTRY:", order)
+        logger.info("ENTRY: %s", order)
 
-        broker.place_order(sym, side, qty)
-        add_position(order)
+        execution_result = route_execution(order)
+        logger.info("Execution router response: %s", execution_result)
+
+        if execution_result.get("mode") == "local":
+            broker.place_order(sym, side, qty)
+            add_position(order)
+        elif execution_result.get("success"):
+            add_position(order)
+        else:
+            raise RuntimeError(execution_result.get("error") or "Cloud execution failed")
 
         seen.add(sid)
         save_json(SEEN_FILE, list(seen))
-
-        print("ENTRY:", order)
         
     except Exception as e:
-        print("ERROR:", str(e))
+        logger.error("ERROR: %s", str(e))
+        if Config.LOCAL_FALLBACK_ENABLED and all(name in locals() for name in ("sym", "side", "qty", "order", "sid")):
+            try:
+                logger.info("Falling back to local broker execution")
+                broker.place_order(sym, side, qty)
+                add_position(order)
+                seen.add(sid)
+                save_json(SEEN_FILE, list(seen))
+            except Exception as local_exc:
+                logger.error("Local fallback failed: %s", str(local_exc))
+                raise
+        elif not Config.LOCAL_FALLBACK_ENABLED:
+            raise
 
     time.sleep(2)

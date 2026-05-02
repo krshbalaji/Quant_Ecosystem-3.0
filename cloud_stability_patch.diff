@@ -1,0 +1,185 @@
+diff --git a/config.py b/config.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/config.py
+@@ -0,0 +1,30 @@
++import os
++from dotenv import load_dotenv
++
++load_dotenv()
++
++class Config:
++    API_BASE_URL = os.getenv("API_BASE_URL", "")
++    API_KEY = os.getenv("API_KEY", "")
++    REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10))
++    MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
++    LOCAL_FALLBACK_ENABLED = os.getenv("LOCAL_FALLBACK_ENABLED", "true").lower() == "true"
++    EXECUTION_MODE = os.getenv("EXECUTION_MODE", "auto")  # auto | cloud | local
++
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,7 @@
++API_BASE_URL=https://your-cloud-run-url
++API_KEY=replace_with_key
++REQUEST_TIMEOUT=10
++MAX_RETRIES=3
++LOCAL_FALLBACK_ENABLED=true
++EXECUTION_MODE=auto
++
+diff --git a/infra/http_client.py b/infra/http_client.py
+new file mode 100644
+index 0000000..3333333
+--- /dev/null
++++ b/infra/http_client.py
+@@ -0,0 +1,50 @@
++import requests
++from requests.adapters import HTTPAdapter
++from urllib3.util.retry import Retry
++from config import Config
++
++session = requests.Session()
++
++retry = Retry(
++    total=Config.MAX_RETRIES,
++    backoff_factor=1,
++    status_forcelist=[429, 500, 502, 503, 504],
++)
++
++adapter = HTTPAdapter(max_retries=retry)
++session.mount("https://", adapter)
++session.mount("http://", adapter)
++
++def send_post(endpoint, payload):
++    url = f"{Config.API_BASE_URL}{endpoint}"
++    return session.post(
++        url,
++        json=payload,
++        headers={"X-API-KEY": Config.API_KEY},
++        timeout=Config.REQUEST_TIMEOUT
++    )
++
++def send_get(endpoint):
++    url = f"{Config.API_BASE_URL}{endpoint}"
++    return session.get(
++        url,
++        headers={"X-API-KEY": Config.API_KEY},
++        timeout=Config.REQUEST_TIMEOUT
++    )
++
+diff --git a/infra/cloud_executor.py b/infra/cloud_executor.py
+new file mode 100644
+index 0000000..4444444
+--- /dev/null
++++ b/infra/cloud_executor.py
+@@ -0,0 +1,20 @@
++from infra.http_client import send_post
++
++def execute_cloud_trade(data):
++    try:
++        res = send_post("/trade", data)
++        res.raise_for_status()
++        return res.json()
++    except Exception:
++        res = send_post("/signal", data)
++        res.raise_for_status()
++        return res.json()
++
+diff --git a/infra/health.py b/infra/health.py
+new file mode 100644
+index 0000000..5555555
+--- /dev/null
++++ b/infra/health.py
+@@ -0,0 +1,15 @@
++from infra.http_client import send_get
++
++def is_cloud_alive():
++    try:
++        res = send_get("/health")
++        return res.status_code == 200
++    except:
++        return False
++
+diff --git a/infra/execution_router.py b/infra/execution_router.py
+new file mode 100644
+index 0000000..6666666
+--- /dev/null
++++ b/infra/execution_router.py
+@@ -0,0 +1,25 @@
++from config import Config
++from infra.cloud_executor import execute_cloud_trade
++from infra.health import is_cloud_alive
++
++def route_execution(data, local_execute_fn=None):
++    if Config.EXECUTION_MODE == "cloud":
++        return execute_cloud_trade(data)
++
++    if Config.EXECUTION_MODE == "local":
++        return local_execute_fn(data)
++
++    if is_cloud_alive():
++        return execute_cloud_trade(data)
++
++    if Config.LOCAL_FALLBACK_ENABLED and local_execute_fn:
++        return local_execute_fn(data)
++
++    raise Exception("No execution path available")
++
+diff --git a/infra/logger.py b/infra/logger.py
+new file mode 100644
+index 0000000..7777777
+--- /dev/null
++++ b/infra/logger.py
+@@ -0,0 +1,10 @@
++import logging
++
++logging.basicConfig(
++    level=logging.INFO,
++    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
++)
++
++def get_logger(name):
++    return logging.getLogger(name)
++
+diff --git a/strategy_loop.py b/strategy_loop.py
+index abcdef0..abcdef1 100644
+--- a/strategy_loop.py
++++ b/strategy_loop.py
+@@ -1,6 +1,7 @@
++from infra.execution_router import route_execution
++
+ def process_signal(signal):
+-    # old direct execution
+-    execute_trade(signal)
++    route_execution(signal)
+ 
+diff --git a/worker.py b/worker.py
+index abcdef0..abcdef1 100644
+--- a/worker.py
++++ b/worker.py
+@@ -1,6 +1,10 @@
++from infra.execution_router import route_execution
++from infra.logger import get_logger
++
++logger = get_logger("worker")
+ 
+ def worker_execute(signal):
+     try:
+-        # old logic
+-        execute_trade(signal)
++        route_execution(signal, local_execute_fn=execute_trade)
+     except Exception as e:
+-        print(e)
++        logger.error(f"Execution failed: {e}")
+ 
+diff --git a/requirements.txt b/requirements.txt
+index abcdef0..abcdef1 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,3 +1,5 @@
+ requests
++python-dotenv
++urllib3
