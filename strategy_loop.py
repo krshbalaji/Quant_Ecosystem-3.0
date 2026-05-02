@@ -1,19 +1,12 @@
 import time
 import requests
 import os
-from datetime import datetime
 
-# 🔴 Use your existing ecosystem
 from indicator_adapter import IndicatorAdapter
-from position_sizer import PositionSizer
-
-sizer = PositionSizer(capital=100000, risk_per_trade=0.01)
+from strategy_brain import StrategyBrain
 
 URL = "https://quant-ecosystem-shadow-16683273546.asia-south1.run.app"
 API_KEY = os.getenv("CLOUD_API_KEY")
-
-if not API_KEY:
-    raise ValueError("CLOUD_API_KEY not set")
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -21,81 +14,56 @@ HEADERS = {
 }
 
 indicators = IndicatorAdapter()
+brain = StrategyBrain(indicators)
 
-# ===== CONFIG =====
-SYMBOLS = ["NIFTY", "RELIANCE.NS"]
-SCAN_INTERVAL = 10  # seconds
+SYMBOLS = ["TCS.NS", "RELIANCE.NS"]
+SCAN_INTERVAL = 30
 
-
-# ===== STRATEGY LOGIC =====
-def generate_signal(symbol):
-    try:
-        price = indicators.get_price(symbol)
-        rsi = indicators.get_rsi(symbol)
-        sma = indicators.get_sma(symbol, period=20)
-
-        price = indicators.get_price(symbol)
-        atr = indicators.get_atr(symbol)
-
-        stop_loss = price - atr
-
-        qty = sizer.size(price, stop_loss)
-
-        # 🧠 Simple intelligent logic
-        if price > sma and rsi > 55:
-            return {
-                "symbol": symbol,
-                "side": "BUY",
-                "qty": qty
-            }
-
-        if price < sma and rsi < 45:
-            return {
-                "symbol": symbol,
-                "side": "SELL",
-                "qty": qty
-            }
-
-        return None
-
-    except Exception as e:
-        print(f"Indicator error for {symbol}:", e)
-        return None
+last_signal_time = {}
+COOLDOWN = 30
 
 
-# ===== SEND TO CLOUD =====
 def send_signal(signal):
+    payload = {
+        "symbol": signal["symbol"],
+        "side": signal["side"],
+        "qty": 1,
+        "strength": signal["strength"]
+    }
+
     try:
-        r = requests.post(
-            f"{URL}/signal",
-            headers=HEADERS,
-            json=signal,
-            timeout=10
-        )
+        r = requests.post(f"{URL}/signal", headers=HEADERS, json=payload)
 
         if r.status_code == 200:
-            print("📡 SIGNAL SENT:", signal)
+            print("📡 SIGNAL SENT:", payload)
         else:
-            print("❌ Signal rejected:", r.text)
+            print("❌ Rejected:", r.text)
 
     except Exception as e:
         print("Cloud error:", e)
 
 
-# ===== MAIN LOOP =====
-print("🧠 Strategy loop started...")
+print("🧠 Multi-Strategy Brain Started...")
+
+print("API KEY:", API_KEY)
 
 while True:
-    try:
-        for symbol in SYMBOLS:
-            sig = generate_signal(symbol)
+    for symbol in SYMBOLS:
 
-            if sig:
-                print("📊 Generated:", sig)
-                send_signal(sig)
+        sig = brain.decide(symbol)
 
-        time.sleep(SCAN_INTERVAL)
+        if not sig:
+            continue
 
-    except Exception as e:
-        print("ERROR:", e)
-        time.sleep(5)
+        now = time.time()
+
+        if symbol in last_signal_time:
+            if now - last_signal_time[symbol] < COOLDOWN:
+                continue
+
+        last_signal_time[symbol] = now
+
+        print("📊 Decision:", sig)
+        send_signal(sig)
+
+    time.sleep(SCAN_INTERVAL)
