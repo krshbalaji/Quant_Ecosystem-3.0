@@ -11,22 +11,30 @@ logger = get_logger(__name__)
 class HttpClient:
     def __init__(self):
         self.session = requests.Session()
-        retry_strategy = Retry(
+
+        retries = Retry(
             total=Config.MAX_RETRIES,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS", "POST"],
-            backoff_factor=0.5,
-            raise_on_status=False,
-            respect_retry_after_header=True,
+            backoff_factor=Config.BACKOFF_FACTOR,
+            status_forcelist=[500, 502, 503, 504],
         )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        self.session.mount("https://", adapter)
+
+        adapter = HTTPAdapter(max_retries=retries)
         self.session.mount("http://", adapter)
-        self.headers = {"X-API-KEY": Config.API_KEY}
+        self.session.mount("https://", adapter)
 
-        if not Config.API_KEY:
-            logger.warning("X-API-KEY is not configured; requests may be rejected.")
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-API-KEY": Config.API_KEY
+        }
 
+    def post(self, url, json):
+        return self.session.post(
+            url,
+            json=json,
+            headers=self.headers,
+            timeout=Config.TIMEOUT
+        )
+        
     def _build_url(self, endpoint: str) -> str:
         if endpoint.startswith("http://") or endpoint.startswith("https://"):
             return endpoint
@@ -40,6 +48,13 @@ class HttpClient:
         except ValueError:
             return None
 
+    def is_cloud_alive():
+        try:
+            r = requests.get(Config.CLOUD_BASE_URL, timeout=2)
+            return r.status_code == 200
+        except:
+            return False
+            
     def send_get(self, endpoint: str, timeout: int | None = None):
         url = self._build_url(endpoint)
         try:

@@ -1,79 +1,132 @@
 import time
-
-from infra.execution_router import route_execution
 from infra.logger import get_logger
-from indicator_adapter import IndicatorAdapter
+from config import Config
+
 from strategy_brain import StrategyBrain
+from portfolio_allocator_v3 import PortfolioAllocatorV3
+from trade_state import TradeState
+from ai_engine import score_signal
+from market_data_provider import provider
+from indicator_adapter import IndicatorAdapter
+
+from entry_timing import confirm_entry
+from risk_manager import compute_levels
+from capital_allocator import can_take_trade, compute_qty, register_trade
+from portfolio_intelligence import rank_candidates, diversify
+from precision_executor import execute_signal
+from market_regime_intelligence import get_market_regime
+from universe import get_dynamic_universe
+from exit_engine import check_exits
 
 logger = get_logger(__name__)
 
-indicators = IndicatorAdapter()
-brain = StrategyBrain(indicators)
+brain = StrategyBrain(IndicatorAdapter())
+allocator = PortfolioAllocatorV3()
+state = TradeState(cooldown=120)
 
-from portfolio_allocator_v2 import PortfolioAllocatorV2
+SCAN_INTERVAL = 15
+MIN_AI_SCORE = 80
+MIN_STRENGTH = 1.0
 
-allocator = PortfolioAllocatorV2(capital=100000)
+if __name__ == "__main__":
 
-signals = [
-    {"symbol": "TCS.NS", "strength": 0.7},
-    {"symbol": "RELIANCE.NS", "strength": 0.7}
-]
+    logger.info("🧠 Intelligent Trading System Started...")
 
-market_data = {
-    "TCS.NS": {"price": 3800, "atr": 40},
-    "RELIANCE.NS": {"price": 2900, "atr": 35}
-}
+    while True:
 
-allocations = allocator.allocate(signals, market_data)
+        try:
+            market_data = {}
 
-for trade in allocations:
-    route_execution(trade)
+            regime = get_market_regime()
+            print(f"[MARKET REGIME] {regime}")
 
-SCAN_INTERVAL = 30
+            symbols = get_dynamic_universe(volatility_mode=(regime == "VOLATILE"))
 
-last_signal_time = {}
-COOLDOWN = 30
+            # ---- fetch data ----
+            for symbol in symbols:
+                market_data[symbol] = provider.get_data(symbol)
 
+            check_exits(market_data)
 
-def send_signal(signal):
-    payload = {
-        "symbol": signal["symbol"],
-        "side": signal["side"],
-        "qty": 1,
-        "strength": signal["strength"],
-    }
+            candidates = []
 
-    response = route_execution(payload)
-    if response.get("success"):
-        if response.get("mode") == "local":
-            logger.info("📡 Signal routed to local mode: %s", payload)
-        else:
-            logger.info("📡 SIGNAL SENT: %s", payload)
-    else:
-        logger.error("❌ Signal rejected: %s", response.get("error"))
+            for symbol in symbols:
 
+                md = market_data.get(symbol)
+                if not md:
+                    continue
 
-logger.info("🧠 Multi-Strategy Brain Started...")
+                if not state.can_trade(symbol):
+                    continue
 
-while True:
-    from config import Config
+                decision = brain.decide(symbol)
+                if not decision:
+                    continue
 
-    for symbol in Config.TRADE_SYMBOLS:
+                # ---- regime filter ----
+                if regime == "BULL" and decision["side"] == "SELL":
+                    continue
+                if regime == "BEAR" and decision["side"] == "BUY":
+                    continue
 
-        sig = brain.decide(symbol)
+                # ---- entry timing ----
+                valid, reason = confirm_entry(md, decision)
+                if not valid:
+                    continue
 
-        if not sig:
-            continue
+                score = score_signal(decision, md)
 
-        now = time.time()
+                if score < MIN_AI_SCORE:
+                    continue
 
-        if symbol in last_signal_time:
-            if now - last_signal_time[symbol] < COOLDOWN:
+                if decision["strength"] < MIN_STRENGTH:
+                    continue
+
+                candidates.append({
+                    "symbol": symbol,
+                    "decision": decision,
+                    "score": score
+                })
+
+            if not candidates:
+                print("[NO TRADE]")
+                time.sleep(SCAN_INTERVAL)
                 continue
 
-        last_signal_time[symbol] = now
+            ranked = rank_candidates(candidates)
+            selected = diversify(ranked)
 
-        print("📊 Decision:", sig)
-        send_signal(sig)
+            print(f"[SELECTED] {[x['symbol'] for x in selected]}")
 
-    time.sleep(SCAN_INTERVAL)
+            for item in selected:
+
+                symbol = item["symbol"]
+                decision = item["decision"]
+                md = market_data[symbol]
+
+                entry, sl, tp = compute_levels(md, decision["side"])
+
+                ok, reason = can_take_trade()
+                if not ok:
+                    print(f"[CAPITAL BLOCK] {reason}")
+                    continue
+
+                qty, msg = compute_qty(entry, sl, lot_size=1, max_lot_cap=4)
+                if qty == 0:
+                    continue
+
+                alloc = {
+                    "symbol": symbol,
+                    "side": decision["side"],
+                    "qty": qty,
+                    "strength": decision["strength"]
+                }
+
+                execute_signal(alloc, entry)
+
+                register_trade(sl, entry, qty)
+
+        except Exception as e:
+            logger.error(f"[ERROR] {e}")
+
+        time.sleep(SCAN_INTERVAL)

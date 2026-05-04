@@ -191,3 +191,16 @@ seen_ids.json
 *.pem
 
 positions.json
+key.json
+
+# runtime files
+*.json
+*.log
+
+# local folders
+Quant_Ecosystem-3.0/
+dy/
+
+# env
+.env
+venv/

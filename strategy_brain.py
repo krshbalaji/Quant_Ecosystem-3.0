@@ -1,4 +1,6 @@
 import random
+from indicators import fetch_multi_tf, sma, rsi, atr
+
 
 class StrategyBrain:
 
@@ -45,34 +47,95 @@ class StrategyBrain:
 
         return None
 
+    
+    
     def decide(self, symbol):
-        signals = []
 
-        for strat in [
-            self.trend_strategy,
-            self.mean_reversion,
-            self.breakout
-        ]:
-            sig = strat(symbol)
-            if sig:
-                signals.append(sig)
+        data = fetch_multi_tf(symbol)
 
-        if not signals:
+        if not data:
             return None
 
-        # 🧠 voting
-        buy_score = sum(s["confidence"] for s in signals if s["side"] == "BUY")
-        sell_score = sum(s["confidence"] for s in signals if s["side"] == "SELL")
+        close, high, low = data["daily"]
+        intraday = data["intraday"]
 
-        if buy_score > sell_score:
-            side = "BUY"
-            strength = buy_score
-        else:
-            side = "SELL"
-            strength = sell_score
+        if close is None or intraday is None:
+            return None
 
-        return {
-            "symbol": symbol,
-            "side": side,
-            "strength": strength
-        }
+        # --- DAILY TREND
+        sma20 = sma(close, 20)
+        sma50 = sma(close, 50)
+
+        if sma20 is None or sma50 is None:
+            return None
+
+        trend_up = sma20[-1] > sma50[-1]
+        trend_down = sma20[-1] < sma50[-1]
+
+        # --- INTRADAY MOMENTUM
+        r_intraday = rsi(intraday)
+
+        if r_intraday is None:
+            return None
+
+        momentum_buy = r_intraday > 55
+        momentum_sell = r_intraday < 45
+
+        # --- BREAKOUT LOGIC
+        recent_high = max(close[-10:])
+        recent_low = min(close[-10:])
+
+        price = close[-1]
+
+        breakout_up = price >= recent_high
+        breakout_down = price <= recent_low
+
+        # --- VOLATILITY FILTER
+        a = atr(high, low, close)
+        volatility_ok = a and a > (0.004 * price)
+
+        # --- SIDEWAYS FILTER
+        if price <= 0:
+            return None
+
+
+        range_pct = (recent_high - recent_low) / price
+
+        sideways = range_pct < 0.02  # tight range
+
+        # --- SCORING
+        score = 0
+
+        if trend_up and momentum_buy:
+            score += 1
+
+        if trend_down and momentum_sell:
+            score += 1
+
+        if breakout_up or breakout_down:
+            score += 0.7
+
+        if volatility_ok:
+            score += 0.5
+
+        if sideways:
+            score -= 1  # avoid chop
+
+        # --- FINAL DECISION
+        if score >= 1:
+            side = "BUY" if trend_up else "SELL"
+
+            return {
+                "symbol": symbol,
+                "side": side,
+                "strength": round(score, 2)
+            }
+
+        # fallback
+        if trend_up:
+            return {"symbol": symbol, "side": "BUY", "strength": 0.3}
+
+        if trend_down:
+            return {"symbol": symbol, "side": "SELL", "strength": 0.3}
+
+        return None

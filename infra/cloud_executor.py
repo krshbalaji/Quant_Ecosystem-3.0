@@ -1,19 +1,23 @@
-from infra.http_client import HttpClient
-from infra.logger import get_logger
+from broker_adapter import BrokerAdapter
 
-logger = get_logger(__name__)
-client = HttpClient()
+broker = BrokerAdapter(mode="paper")
 
 
 def execute_cloud_trade(data):
-    endpoint = "/trade" if any(key in data for key in ("price", "stop_loss", "take_profit")) else "/signal"
-    logger.info("Sending cloud request to %s", endpoint)
-    result = client.send_post(endpoint, data)
+    try:
+        # ✅ extract correctly
+        symbol = data.get("symbol")
+        side = data.get("side")
+        qty = data.get("qty")
 
-    if endpoint == "/trade" and result.get("status_code") == 404:
-        logger.warning("/trade endpoint not found, falling back to /signal")
-        result = client.send_post("/signal", data)
+        # --- validation
+        if not symbol or not side or not qty:
+            return {"success": False, "error": "invalid payload"}
 
-    if not result.get("success"):
-        logger.error("Cloud executor failed (%s): %s", endpoint, result.get("error"))
-    return result
+        # --- execute via broker
+        broker.place_order(symbol, side, qty)
+
+        return {"success": True}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
