@@ -1,0 +1,1 @@
+health_check.pyfrom telegram_notifier import send_telegramprint("Imports OK")try:send_telegram("Health check: system up ✅")print("Telegram OK")except Exception as e:print("Telegram ERROR:", e)
