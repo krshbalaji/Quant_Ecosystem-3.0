@@ -1,0 +1,78 @@
+import requests
+from firestore_client import get_positions, close_position, update_position, log_trade
+from infra.broker import Broker
+broker = Broker(mode="paper")
+
+BASE_SL = 0.02
+TRAIL_TRIGGER = 0.02
+TRAIL_GAP = 0.01
+
+
+def fetch_price(symbol):
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d"
+        data = requests.get(url).json()
+        return data["chart"]["result"][0]["meta"]["regularMarketPrice"]
+    except:
+        return None
+
+
+def calculate_pnl(entry, current, side):
+    if side == "BUY":
+        return (current - entry) / entry
+    else:
+        return (entry - current) / entry
+
+
+def process_positions():
+    positions = get_positions()
+
+    for symbol, pos in positions.items():
+        entry = pos.get("entry_price")
+        side = pos.get("side")
+        qty = pos.get("qty")
+        peak = pos.get("peak_price", entry)
+
+        if not entry:
+            continue
+
+        current = fetch_price(symbol)
+        if not current:
+            continue
+
+        pnl = calculate_pnl(entry, current, side)
+
+        # 🔥 update peak
+        if side == "BUY":
+            peak = max(peak, current)
+        else:
+            peak = min(peak, current)
+
+        # 🔥 store peak
+        update_position(symbol, side, qty, entry)
+
+        # ---- TRAILING ----
+        trail_price = peak * (1 - TRAIL_GAP if side == "BUY" else 1 + TRAIL_GAP)
+
+        print(f"[TRAIL] {symbol} peak={peak} trail={trail_price}")
+
+        if (side == "BUY" and current < trail_price) or \
+           (side == "SELL" and current > trail_price):
+
+            print(f"[EXIT] TRAILING HIT → {symbol}")
+            close_position(symbol)
+            log_trade(symbol, side, qty, entry, current, pnl)
+
+            from ai_memory import record_trade
+
+            pnl = calculate_pnl(entry_price, current_price, side)
+
+            record_trade(symbol, side, pnl)
+
+        # ---- HARD SL ----
+        elif pnl < -BASE_SL:
+            print(f"[EXIT] STOP LOSS → {symbol}")
+            close_position(symbol)
+            log_trade(symbol, side, qty, entry, current, pnl)
+
+        broker.place_order(symbol, "BUY" if side == "SELL" else "SELL", qty)    

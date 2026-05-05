@@ -38,4 +38,15 @@ class Config:
     # 🔥 Alias for http_client expectation
     REQUEST_TIMEOUT = TIMEOUT
 
+    # ===== CAPITAL =====
+    ACCOUNT_CAPITAL = 100000   # default (you can change anytime)
+
+    # ===== RISK =====
+    RISK_PER_TRADE_PCT = 0.01   # 1%
+    MAX_DAILY_RISK_PCT = 0.03   # 3%
+
+    # ===== TRADE CONTROL =====
+    MAX_TRADES_PER_DAY = 5
+    MAX_CONCURRENT = 1
+    
     TRADE_SYMBOLS = ["TCS.NS", "RELIANCE.NS"]

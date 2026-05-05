@@ -1,4 +1,12 @@
 # universe.py
+# --- Compatibility for portfolio intelligence ---
+SYMBOL_UNIVERSE = {
+    "IT": ["TCS.NS", "INFY.NS"],
+    "BANK": ["HDFCBANK.NS", "ICICIBANK.NS"],
+    "ENERGY": ["RELIANCE.NS"],
+    "AUTO": ["MARUTI.NS"],
+    "METAL": ["TATASTEEL.NS"]
+}
 
 LARGE_CAP = [
     "TCS.NS", "INFY.NS", "RELIANCE.NS",

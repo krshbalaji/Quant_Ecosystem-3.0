@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from market_data_provider import provider
 from broker.paper_broker import broker
 from ai_memory import record_trade
+# --- local position store ---
+active_positions = {}
 
 TRAIL_PCT = 0.01
 STOP_LOSS_PCT = 0.02
@@ -13,64 +15,53 @@ def calculate_pnl(entry, current, side, qty):
     return (current - entry) * qty if side == "BUY" else (entry - current) * qty
 
 
-def register_position(symbol, side, qty, price):
-    positions[symbol] = {
-        "side": side,
+def register_position(symbol, entry_price, qty):
+
+    if isinstance(symbol, dict):
+        symbol = symbol.get("symbol")
+
+    active_positions[symbol] = {
+        "entry_price": entry_price,
         "qty": qty,
-        "entry_price": price,
-        "highest": price,
-        "lowest": price,
-        "entry_time": datetime.now()
+        "max_price": entry_price
     }
+
     print(f"[EXIT ENGINE] Registered position: {symbol}")
 
 
-def check_exits(market_data=None):
+def check_exits(symbol, current_price=None):
 
-    to_remove = []
+    if symbol not in active_positions:
+        return None
 
-    for symbol, pos in list(positions.items()):
+    pos = active_positions[symbol]
 
-        try:
-            md = market_data.get(symbol) if market_data else provider.get_data(symbol)
-            if not md:
-                continue
+    entry = pos["entry_price"]
+    qty = pos["qty"]
 
-            price = md["price"]
-            side = pos["side"]
+    if current_price is None:
+        return None
 
-            # update extremes
-            if side == "BUY":
-                pos["highest"] = max(pos["highest"], price)
-                if price < pos["highest"] * (1 - TRAIL_PCT):
-                    exit_trade(symbol, pos, price, "TRAIL")
-                    to_remove.append(symbol)
-                    continue
-                if price < pos["entry_price"] * (1 - STOP_LOSS_PCT):
-                    exit_trade(symbol, pos, price, "SL")
-                    to_remove.append(symbol)
-                    continue
-            else:
-                pos["lowest"] = min(pos["lowest"], price)
-                if price > pos["lowest"] * (1 + TRAIL_PCT):
-                    exit_trade(symbol, pos, price, "TRAIL")
-                    to_remove.append(symbol)
-                    continue
-                if price > pos["entry_price"] * (1 + STOP_LOSS_PCT):
-                    exit_trade(symbol, pos, price, "SL")
-                    to_remove.append(symbol)
-                    continue
+    pos["max_price"] = max(pos["max_price"], current_price)
 
-            if datetime.now() - pos["entry_time"] > timedelta(minutes=MAX_HOLD_MIN):
-                exit_trade(symbol, pos, price, "TIME")
-                to_remove.append(symbol)
+    pnl_pct = (current_price - entry) / entry * 100
 
-        except Exception as e:
-            print(f"[EXIT ERROR] {symbol}: {e}")
+    # dynamic SL
+    if pnl_pct < -1.2:
+        return {"symbol": symbol, "side": "EXIT", "qty": qty, "reason": "SL"}
 
-    for s in to_remove:
-        positions.pop(s, None)
+    # smart TP
+    if pnl_pct > 1.5:
+        return {"symbol": symbol, "side": "EXIT", "qty": qty, "reason": "TP"}
 
+    # trailing
+    drop = (pos["max_price"] - current_price) / pos["max_price"] * 100
+    if drop > 0.6:
+        return {"symbol": symbol, "side": "EXIT", "qty": qty, "reason": "TRAIL"}
+
+    return None
+
+    
 def should_exit(pos, price):
 
     # ---- SL ----
@@ -95,7 +86,7 @@ def should_exit(pos, price):
         return True, "TRAIL"
 
     return False, None
-    
+
 def exit_trade(symbol, pos, price, reason):
 
     exit_side = "SELL" if pos["side"] == "BUY" else "BUY"
@@ -118,3 +109,11 @@ def update_trailing(pos, price):
     else:
         new_trail = price + pos["atr"] * TRAIL_FACTOR
         pos["trail"] = min(pos.get("trail", pos["entry_price"]), new_trail)
+
+def trail_stop(current_price, entry, sl, side):
+    profit = current_price - entry if side == "BUY" else entry - current_price
+
+    if profit > 0:
+        sl = max(sl, entry + profit * 0.5) if side == "BUY" else min(sl, entry - profit * 0.5)
+
+    return sl

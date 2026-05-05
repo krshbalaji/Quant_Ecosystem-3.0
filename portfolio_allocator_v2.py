@@ -1,54 +1,91 @@
 import math
+import time
+import json
+import os
 
-class PortfolioAllocatorV2:
+
+class PortfolioAllocatorV3:
     def __init__(self, capital=100000, risk_per_trade=0.01):
         self.capital = capital
         self.risk_per_trade = risk_per_trade
+        self.file = "portfolio_state.json"
+        self.positions = self._load_positions()
+
+    def _load_positions(self):
+        if os.path.exists(self.file):
+            with open(self.file, "r") as f:
+                return json.load(f)
+        return {}
+
+    def _save_positions(self):
+        with open(self.file, "w") as f:
+            json.dump(self.positions, f, indent=2)
 
     def allocate(self, signals, market_data):
-        """
-        signals = [{symbol, strength}]
-        market_data = {symbol: {"price": x, "atr": y}}
-        """
+        if not signals:
+            return []
 
-        total_strength = sum(s["strength"] for s in signals)
+        total_strength = sum(s.get("strength", 0) for s in signals)
 
         allocations = []
 
         for signal in signals:
-            symbol = signal["symbol"]
-            strength = signal["strength"]
+            symbol = signal.get("symbol")
+            side = signal.get("side")
+            strength = signal.get("strength", 0)
+
+            if not symbol or not side:
+                continue
 
             if symbol not in market_data:
                 continue
 
+            # ---- duplicate protection ----
+            if symbol in self.positions:
+                existing = self.positions[symbol]
+                if existing["side"] == side:
+                    print(f"[ALLOCATOR] Skipping duplicate: {symbol}")
+                    continue
+
             price = market_data[symbol]["price"]
             atr = market_data[symbol]["atr"]
 
-            if atr == 0:
+            if atr == 0 or price == 0:
                 continue
 
-            # 1. Weight allocation
-            weight = strength / total_strength
+            weight = strength / total_strength if total_strength else 0
 
-            # 2. Capital allocation
             capital_alloc = self.capital * weight
-
-            # 3. Risk per trade
             risk_amount = self.capital * self.risk_per_trade
 
-            # 4. Position sizing (ATR based)
-            qty = risk_amount / atr
-
-            # 5. Adjust by capital
+            qty_by_risk = risk_amount / atr
             max_qty_by_capital = capital_alloc / price
-            final_qty = min(qty, max_qty_by_capital)
 
-            allocations.append({
+            final_qty = int(min(qty_by_risk, max_qty_by_capital))
+
+            if final_qty <= 0:
+                continue
+
+            trade = {
                 "symbol": symbol,
-                "qty": int(final_qty),
+                "side": side,
+                "qty": final_qty,
+                "strength": strength,
                 "capital_used": round(final_qty * price, 2),
                 "weight": round(weight, 2)
-            })
+            }
+
+            # ---- store ----
+            self.positions[symbol] = {
+                "side": side,
+                "qty": final_qty,
+                "timestamp": time.time()
+            }
+
+            self._save_positions()
+
+            print(f"[ALLOCATOR] Trade: {trade}")
+
+            allocations.append(trade)
 
         return allocations

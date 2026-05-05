@@ -1,143 +1,82 @@
-from flask import Flask, request, jsonify
 import os
-import json
-import time
-
+from flask import Flask, request, jsonify
+from google.cloud import firestore
 from config import Config
+
+from firestore_client import get_positions, update_position
+from core.execution_engine_v2 import process_positions
 
 app = Flask(__name__)
 
-# -------- CONFIG --------
-API_KEY = Config.API_KEY
+from execution_engine_v2 import process_positions
 
-STATE = {
-    "kill_switch": True,
-    "last_signal": None
-}
+# ✅ FIXED
+db = firestore.Client()
 
-LAST_TS = {}
-COOLDOWN_SEC = 5
+API_KEY = os.getenv("API_KEY") or os.getenv("CLOUD_API_KEY")
 
 
-# -------- AUTH --------
-def authorized(req):
-    return req.headers.get("X-API-KEY") == API_KEY
-
-
-# -------- HEALTH --------
-@app.get("/")
-def root_health():
-    return {
-        "status": "ok",
-        "mode": os.getenv("EXECUTION_MODE", "D"),
-        "paper_mode": os.getenv("PAPER_MODE", "true"),
-        "live_broker_disabled": os.getenv("LIVE_BROKER_DISABLED", "true")
-    }
-
-
-@app.get("/health")
+# ---- HEALTH ----
+@app.route("/", methods=["GET"])
 def health():
     return {
-        "status": "ok",
-        "mode": os.getenv("EXECUTION_MODE", "D"),
-        "paper_mode": os.getenv("PAPER_MODE", "true"),
-        "live_broker_disabled": os.getenv("LIVE_BROKER_DISABLED", "true")
+        "status": "alive",
+        "mode": "cloud"
     }
 
 
-@app.get("/status")
-def status():
-    return STATE
+# ---- GET PORTFOLIO ----
+@app.route("/portfolio", methods=["GET"])
+def portfolio():
+    return jsonify({"positions": get_positions()})
 
 
-# -------- KILL SWITCH --------
-@app.post("/kill-switch")
-def kill_switch():
-    if not authorized(request):
-        return {"error": "unauthorized"}, 401
-
-    payload = request.get_json(silent=True) or {}
-    enabled = bool(payload.get("enabled", True))
-
-    STATE["kill_switch"] = enabled
-
-    return {
-        "kill_switch": enabled,
-        "message": "updated"
-    }
-
-
-# -------- SIGNAL --------
-@app.post("/signal")
-def signal():
-    if not authorized(request):
-        return {"error": "unauthorized"}, 401
-
-    if STATE["kill_switch"]:
-        return jsonify({
-            "accepted": False,
-            "reason": "Global kill switch active"
-        }), 403
-
-    payload = request.get_json(silent=True) or {}
-
-    symbol = payload.get("symbol")
-    side = payload.get("side")
-    qty = payload.get("qty")
-
-    if not symbol or not side or not qty:
-        return {"error": "invalid signal"}, 400
-
-    if side not in ["BUY", "SELL"]:
-        return {"error": "invalid side"}, 400
-
-    if int(qty) <= 0:
-        return {"error": "invalid qty"}, 400
-
-    now = time.time()
-
-    # cooldown protection
-    if symbol in LAST_TS and (now - LAST_TS[symbol]) < COOLDOWN_SEC:
-        return {"accepted": False, "reason": "cooldown"}, 429
-
-    LAST_TS[symbol] = now
-
-    signal_data = {
-        "symbol": symbol,
-        "side": side,
-        "qty": qty,
-        "execution_mode": os.getenv("EXECUTION_MODE", "D"),
-        "paper_only": True
-    }
-
-    STATE["last_signal"] = signal_data
-
-    # persist (important for reliability)
-    with open("/tmp/last_signal.json", "w") as f:
-        json.dump(signal_data, f)
-
-    return {
-        "accepted": True,
-        "dispatch_mode": "paper_shadow",
-        "signal": signal_data
-    }
-
-
-@app.post("/trade")
-def trade():
-    return signal()
-
-
-# -------- LATEST SIGNAL (for worker reliability) --------
-@app.get("/latest-signal")
-def latest_signal():
+# ---- CLEAR PORTFOLIO ----
+@app.route("/portfolio/clear", methods=["DELETE"])
+def clear_portfolio():
     try:
-        return json.load(open("/tmp/last_signal.json"))
-    except:
-        return {}
+        incoming_key = request.headers.get("X-API-KEY")
+
+        if incoming_key != API_KEY:
+            return {"error": "unauthorized"}, 401
+
+        docs = db.collection("portfolio").stream()
+
+        for doc in docs:
+            db.collection("portfolio").document(doc.id).delete()
+
+        return {"status": "portfolio cleared"}
+
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 
-# -------- RUN --------
+# ---- SIGNAL (USES CORE LOGIC) ----
+@app.route("/signal", methods=["POST"])
+def signal():
+    try:
+        incoming_key = request.headers.get("X-API-KEY")
+
+        if incoming_key != API_KEY:
+            return jsonify({"error": "unauthorized"}), 401
+
+        data = request.json or {}
+
+        # 🔥 NO DUPLICATE LOGIC
+        result = process_positions()
+
+        return jsonify({"status": "processed", "result": result})
+
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+@app.route("/process", methods=["POST"])
+def process():
+    process_positions()
+    return {"status": "processed"}
+    
+# ---- RUN ----
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
+    print(f"🔥 Starting Flask server on port {port}")
     app.run(host="0.0.0.0", port=port)

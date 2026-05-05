@@ -1,2 +1,6 @@
 flask
 requests
+google-cloud-secret-manager
+google-cloud-firestore
+pandas
+numpy
