@@ -11,42 +11,39 @@ from capital_allocator import can_take_trade, compute_qty
 from precision_executor import execute_signal
 from market_regime_intelligence import get_market_regime
 from universe import get_dynamic_universe
-from telegram_control import send_message, ask_trade_details
 
-# ------------------ CONFIG ------------------
-SCAN_INTERVAL = 15
+# ✅ FIXED IMPORT
+from telegram_control import send_message, start_trade_panel, process_callbacks
+
+# ---------------- CONFIG ----------------
+SCAN_INTERVAL = 30
 MIN_STRENGTH = 0.4
 COOLDOWN_SECONDS = 900
-MAX_TRADES_PER_DAY = 3
+active_trade = None
 
 recent_trades = {}
-trade_count = 0
+asked_signals = set()
 
 logger = get_logger(__name__)
 
 brain = StrategyBrain(IndicatorAdapter())
 state = TradeState(cooldown=120)
 
+# ---------------- PRICE ----------------
+def get_price(md):
+    try:
+        if hasattr(md, "empty") and not md.empty:
+            return float(md["Close"].iloc[-1])
 
-# ------------------ ENTRY SCORE ------------------
-def entry_score(md):
+        if isinstance(md, dict):
+            return float(md.get("price"))
 
-    if isinstance(md, dict):
-        return 2  # allow dict-based data (basic pass)
+    except:
+        return None
 
-    score = 0
+    return None
 
-    if md["Close"].iloc[-1] > md["Close"].rolling(20).mean().iloc[-1]:
-        score += 1
-
-    if md["Close"].iloc[-1] > md["High"].rolling(10).max().iloc[-2]:
-        score += 2
-
-    if md["Volume"].iloc[-1] > md["Volume"].rolling(20).mean().iloc[-1]:
-        score += 1
-
-    return score
-
+# ---------------- NORMALIZE ----------------
 def normalize_md(md):
 
     if isinstance(md, dict):
@@ -60,7 +57,8 @@ def normalize_md(md):
         "atr": md["Close"].rolling(14).std().iloc[-1],
         "df": md
     }
-# ------------------ MAIN LOOP ------------------
+
+# ---------------- MAIN LOOP ----------------
 if __name__ == "__main__":
 
     logger.info("🧠 Precision Trading System Started...")
@@ -69,7 +67,7 @@ if __name__ == "__main__":
         try:
             now = time.time()
 
-            # Clean cooldown
+            # cooldown clean
             recent_trades = {
                 s: t for s, t in recent_trades.items()
                 if now - t < COOLDOWN_SECONDS
@@ -80,29 +78,47 @@ if __name__ == "__main__":
 
             symbols = get_dynamic_universe()
 
-            candidates = []
+            best = None
+            best_score = 0
 
-            # ---- SCAN ----
+            # 🔁 Always listen for user actions
+            action, data = process_callbacks()
+
+            if action:
+                print(f"[USER ACTION] {action} {data}")
+
+
+            if action == "EXECUTE":
+                qty = data.get("qty", 1)
+                price = data.get("price", "MARKET")
+
+                send_message("🟡 Executing Trade...")
+                success = execute_signal(symbol, side, qty, price)
+
+                if success:
+                    send_message("✅ Trade Executed")
+                    recent_trades[symbol] = time.time()
+
+            elif action == "CANCEL":
+                send_message("❌ Trade Cancelled")
+                    
+                
+            # -------- SCAN --------
             for symbol in symbols:
 
-                md = provider.get_data(symbol)   # ✅ FIRST define md
+                md = provider.get_data(symbol)
 
                 if md is None:
                     continue
 
-                # ---- HANDLE BOTH TYPES ----
-                if isinstance(md, dict):
-                    if not md.get("price"):
-                        continue
-                else:
-                    if md.empty:
-                        continue
+                if hasattr(md, "empty") and md.empty:
+                    continue
 
-                # ---- NOW normalize ----
+                price = get_price(md)
+                if price is None:
+                    continue
+
                 data = normalize_md(md)
-
-                entry = data["price"]
-                atr = data["atr"]
 
                 decision = brain.decide(symbol)
                 if not decision:
@@ -116,111 +132,127 @@ if __name__ == "__main__":
                 if strength < MIN_STRENGTH:
                     continue
 
-                es = entry_score(md)
+                if score > best_score:
+                    best_score = score
+                    best = (symbol, decision, md)
 
-                if es < 2:
-                    continue
-
-                # Tier system
-                if score >= 100 and strength >= 1.2:
-                    tier = "A"
-                elif score >= 80 and strength >= 1.0:
-                    tier = "B"
-                else:
-                    continue
-
-                candidates.append({
-                    "symbol": symbol,
-                    "decision": decision,
-                    "score": score,
-                    "tier": tier,
-                    "md": md
-                })
-
-            if not candidates:
+            if not best:
                 print("[NO TRADE]")
                 time.sleep(SCAN_INTERVAL)
                 continue
 
-            # ---- SELECT BEST ----
-            candidates = sorted(candidates, key=lambda x: x["score"], reverse=True)
-            best = candidates[0]
+            symbol, decision, md = best
+            strength = decision["strength"]
 
-            symbol = best["symbol"]
-            decision = best["decision"]
-            md = best["md"]
+            print(f"[SELECTED] {symbol}")
 
-            print(f"[SELECTED] {symbol} tier={best['tier']}")
-
-            # ---- ENTRY PRICE ----
-            if isinstance(md, dict):
-                entry = md.get("price")
+            # -------- SIDE --------
+            if regime == "BULL" and strength > 1:
+                side = "BUY"
+            elif regime == "BEAR" and strength > 1:
+                side = "SELL"
             else:
-                entry = md["Close"].iloc[-1]
+                print("[REGIME BLOCK]")
+                continue
 
-            # ---- ATR DYNAMIC SL/TP ----
-            if isinstance(md, dict):
-                atr = md.get("atr", 0.5)  # fallback
-            else:
-                atr = md["Close"].rolling(14).std().iloc[-1]
-                
-            if decision["side"] == "BUY":
-                sl = entry - (1.2 * atr)
-                tp = entry + (2.5 * atr)
-            else:
-                sl = entry + (1.2 * atr)
-                tp = entry - (2.5 * atr)
+            print(f"[DECISION] {symbol} {side}")
 
-            # ---- CAPITAL ----
+            entry = round(get_price(md), 2)
+
+            if entry is None:
+                continue
+
+            # -------- CAPITAL --------
             ok, reason = can_take_trade()
             if not ok:
                 print(f"[CAPITAL BLOCK] {reason}")
                 continue
-
-            qty, _ = compute_qty(entry, sl, lot_size=1, max_lot_cap=4)
-
-            if not qty or qty <= 0:
-                continue
-
-            if symbol in recent_trades:
-                print(f"[SKIP] {symbol} in cooldown")
-                continue
             
-            active_positions = set()
-
-            if symbol in active_positions:
-                print(f"[SKIP] {symbol} already active")
-                continue   
-
-            # ---- TELEGRAM ----
-            result = ask_trade_details(symbol, decision["side"], entry)
-
-            if not result:
+            if symbol in recent_trades:
+                print(f"[COOLDOWN ACTIVE] {symbol}")
                 continue
 
-            qty, entry = result
+            if active_trade == symbol:
+                print(f"[ACTIVE TRADE RUNNING] {symbol}")
+                continue
+
+            if symbol in asked_signals:
+                continue
+
+
+            # -------- DUPLICATE --------
+            if symbol in recent_trades:
+                continue
+
+            if symbol in asked_signals:
+                continue
+
+            recent_trades[symbol] = time.time()
+            asked_signals.add(symbol)
+
+            # -------- TELEGRAM PANEL --------
+            start_trade_panel(symbol, side, entry)
+
+            print("[WAITING USER ACTION]")
+
+            # -------- WAIT USER --------
+            result = None
+
+            action, data = process_callbacks()
+
+            if action == "EXECUTE":
+                qty = data["qty"]
+                price = data["price"]
+
+                send_message("🟡 Executing Trade...")
+                success = execute_signal(symbol, side, qty, price)
+
+                if success:
+                    send_message("✅ Trade Executed")
+                    recent_trades[symbol] = time.time()
+                else:
+                    send_message("⚠ Trade Failed")
+
+            elif action == "CANCEL":
+                send_message("❌ Trade Cancelled")
+
+                if action == "EXECUTE":
+                    result = data
+                    break
+
+                elif action == "CANCEL":
+                    send_message("❌ Trade Cancelled")
+                    break
+
+                time.sleep(1)
+
+            # -------- SKIP --------
+            if result is None:
+                continue
+
+            if result and isinstance(result, dict):
+                qty = result.get("qty", 1)
+                price = result.get("price", "MARKET")
+            else:
+                send_message("❌ Trade Cancelled / No Input")
+                continue
+
+            asked_signals.add(symbol)
 
             send_message("🟡 Executing Trade...")
-            decision = ask_trade_details(symbol, side, entry)
 
-            # ---- EXECUTE ----
-            success = execute_signal(symbol, decision["side"], qty, entry)
+            success = execute_signal(symbol, side, qty, price)
 
             if success:
                 send_message("✅ Trade Executed")
                 recent_trades[symbol] = time.time()
-                trade_count += 1
             else:
                 send_message("⚠ Trade Rejected")
+            active_trade = symbol
 
-            if entry is None:
-                order_type = "MARKET"
-            else:
-                order_type = "LIMIT"
-                
-            recent_trades[symbol] = time.time()
-            
-            active_positions.add(symbol)
+            if now - recent_trades.get(symbol, 0) > 1800:
+                active_trade = None
+
 
         except Exception as e:
             logger.error(f"[ERROR] {e}")

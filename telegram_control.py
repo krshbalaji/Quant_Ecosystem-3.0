@@ -1,219 +1,180 @@
-# telegram_control.py
-
 import requests
-import time
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+BASE = f"https://api.telegram.org/bot{TOKEN}"
+
+# ---- GLOBAL STATE ----
+trade_state = {}
+last_update_id = None
+panel_message_id = None
 
 
-def send_message(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+# ---------------- SEND / UPDATE PANEL ----------------
+def render_panel():
 
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": text
-    }
+    text = f"""
+📊 *TRADE PANEL*
 
-    try:
-        res = requests.post(url, json=payload, timeout=5)
-        print(f"[TELEGRAM STATUS] {res.status_code}")
-    except Exception as e:
-        print(f"[TELEGRAM ERROR] {e}")
+{trade_state['symbol']} | {trade_state['side']}
+Entry: {trade_state['entry']}
 
+Qty: {trade_state['qty']}
+Price: {trade_state['price']}
+"""
 
-def ask_user(symbol, side, price, timeout=20):
-    """
-    Sends signal to Telegram and waits for YES/NO response.
-    If no response → auto skip (safe mode).
-    """
-
-    message = f"""
-📊 TRADE SIGNAL
-
-Symbol: {symbol}
-Side: {side}
-Price: {price}
-
-Reply:
-YES → Take trade
-NO → Skip
-    """
-
-    send_message(message)
-
-    print("[WAITING USER INPUT - TELEGRAM]")
-
-    start_time = time.time()
-
-    last_update_id = None
-
-    while time.time() - start_time < timeout:
-
-        try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
-            response = requests.get(url, timeout=5).json()
-
-            if "result" not in response:
-                continue
-
-            for update in response["result"]:
-
-                update_id = update["update_id"]
-
-                if last_update_id is not None and update_id <= last_update_id:
-                    continue
-
-                last_update_id = update_id
-
-                if "message" not in update:
-                    continue
-
-                text = update["message"].get("text", "").strip().lower()
-
-                if text == "yes":
-                    send_message("✅ Trade Confirmed")
-                    return True
-
-                if text == "no":
-                    send_message("❌ Trade Skipped")
-                    return False
-
-        except Exception as e:
-            print(f"[TELEGRAM POLL ERROR] {e}")
-
-        time.sleep(2)
-
-    send_message("⌛ No response → Trade skipped")
-    return False
-
-def get_command(timeout=20):
-    """
-    Lightweight command listener (used by precision_executor).
-    Returns: 'yes', 'no', or None
-    """
-
-    start_time = time.time()
-    last_update_id = None
-
-    while time.time() - start_time < timeout:
-
-        try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
-            response = requests.get(url, timeout=5).json()
-
-            if "result" not in response:
-                continue
-
-            for update in response["result"]:
-
-                update_id = update["update_id"]
-
-                if last_update_id is not None and update_id <= last_update_id:
-                    continue
-
-                last_update_id = update_id
-
-                if "message" not in update:
-                    continue
-
-                text = update["message"].get("text", "").strip().lower()
-
-                if text.startswith("y"):
-                    return True
-
-                if text.startswith("n"):
-                    return False
-
-                if text in ["yes", "no"]:
-                    return text
-
-        except Exception as e:
-            print(f"[TELEGRAM COMMAND ERROR] {e}")
-
-        time.sleep(2)
-
-    return None
-
-def ask_trade_details(symbol, side, price):
-    send_message(f"""
-📊 TRADE SIGNAL
-
-Symbol: {symbol}
-Side: {side}
-Price: {price}
-
-Reply:
-YES → proceed
-NO → skip
-""")
-
-    cmd = get_command(timeout=20)
-
-    if not cmd or str(cmd).lower().startswith("n"):
-        send_message("❌ Trade Skipped")
-        return None
-
-    # Step 2 → ask qty
-    send_message("Enter Qty (default 1):")
-    qty_input = get_command(timeout=20)
-
-    try:
-        qty = int(qty_input)
-    except:
-        qty = 1
-
-    # Step 3 → ask price override
-    send_message("Enter Price or type MARKET:")
-    price_input = get_command(timeout=20)
-
-    if price_input and str(price_input).lower() != "market":
-        try:
-            if user_input.upper() == "MARKET":
-                price = None
-            else:
-                try:
-                    price = float(user_input)
-                except:
-                    price = entry_price  # fallback to real price, NOT 1.0
-                    
-        except:
-            pass
-
-    # Step 4 → final confirmation
-    send_message(f"""
-Confirm Trade?
-
-{symbol} {side}
-Qty: {qty}
-Price: {price}
-
-YES → Confirm
-NO → Cancel
-""")
-
-    decision = ask_trade_details(symbol, side, entry)
-
-    if decision is None:
-        send_message("❌ Trade Skipped")
-        return None
-
-    final = get_command(timeout=20)
-
-    if not final or str(final).lower().startswith("n"):
-        send_message("❌ Trade Cancelled")
-        return None
-
-    return qty, price 
-
-    reply_markup = {
+    buttons = {
         "inline_keyboard": [
             [
-                {"text": "✅ Confirm", "callback_data": "YES"},
-                {"text": "❌ Skip", "callback_data": "NO"}
+                {"text": "➖ Qty", "callback_data": "qty_dec"},
+                {"text": "➕ Qty", "callback_data": "qty_inc"}
+            ],
+            [
+                {"text": "💰 -", "callback_data": "price_dec"},
+                {"text": "💰 +", "callback_data": "price_inc"}
+            ],
+            [
+                {"text": "⚡ MARKET", "callback_data": "market"}
+            ],
+            [
+                {"text": "✅ EXECUTE", "callback_data": "execute"},
+                {"text": "❌ CANCEL", "callback_data": "cancel"}
             ]
         ]
-    }   
+    }
+
+    return text, buttons
+
+
+def send_or_update_panel():
+
+    global panel_message_id
+
+    text, buttons = render_panel()
+
+    if panel_message_id is None:
+        res = requests.post(f"{BASE}/sendMessage", json={
+            "chat_id": CHAT_ID,
+            "text": text,
+            "parse_mode": "Markdown",
+            "reply_markup": buttons
+        }).json()
+
+        panel_message_id = res["result"]["message_id"]
+
+    else:
+        requests.post(f"{BASE}/editMessageText", json={
+            "chat_id": CHAT_ID,
+            "message_id": panel_message_id,
+            "text": text,
+            "parse_mode": "Markdown",
+            "reply_markup": buttons
+        })
+
+
+# ---------------- INIT PANEL ----------------
+def start_trade_panel(symbol, side, entry):
+
+    global trade_state
+
+    trade_state = {
+        "symbol": symbol,
+        "side": side,
+        "entry": entry,
+        "qty": 1,
+        "price": entry
+    }
+
+    send_or_update_panel()
+
+# -------- BACKWARD COMPATIBILITY --------
+
+def send_message(text):
+    import requests
+
+    requests.post(f"{BASE}/sendMessage", json={
+        "chat_id": CHAT_ID,
+        "text": text
+    })
+
+
+def ask_trade_details(*args, **kwargs):
+    # redirect to new system
+    return None
+
+# ---------------- HANDLE BUTTONS ----------------
+def process_callbacks():
+
+    global last_update_id
+
+    res = requests.get(f"{BASE}/getUpdates").json()
+
+    for upd in res.get("result", []):
+
+        uid = upd["update_id"]
+
+        trade_state = {
+            "mode": "IDLE",   # IDLE / PANEL / EXECUTING
+            "data": None
+        }
+
+        if last_update_id and uid <= last_update_id:
+            continue
+
+        last_update_id = uid
+
+        if "callback_query" not in upd:
+            continue
+
+        data = upd["callback_query"]["data"]
+
+        # ---- MODIFY STATE ----
+        if data == "qty_inc":
+            trade_state["qty"] += 1
+
+        elif data == "qty_dec":
+            trade_state["qty"] = max(1, trade_state["qty"] - 1)
+
+        elif data == "price_inc":
+            trade_state["price"] += 1
+
+        elif data == "price_dec":
+            trade_state["price"] -= 1
+
+        elif data == "market":
+            trade_state["price"] = "MARKET"
+
+        elif data == "execute":
+            trade_state["mode"] = "EXECUTE"
+            return "EXECUTE", trade_state
+
+        elif data == "cancel":
+            trade_state["mode"] = "CANCEL"
+            return "CANCEL", None
+
+        if price == "MARKET":
+            order_type = "MARKET"
+        else:
+            order_type = "LIMIT"
+            
+        if data == "trade":
+            start_trade_panel("HDFCBANK.NS", "SELL", 773.6)
+
+        elif data == "strike":
+            send_message("⚡ Strike Mode Activated")
+
+        elif data == "ai":
+            send_message("🧠 AI Mode Running")
+
+        elif data == "settings":
+            send_message("⚙️ Settings Panel")    
+
+        # update UI after every click
+        send_or_update_panel()
+
+    return None, None

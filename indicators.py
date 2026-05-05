@@ -39,7 +39,15 @@ def fetch_ohlc(symbol, range_="3mo", interval="1d"):
 
     for _ in range(2):
         try:
-            res = requests.get(url, headers=HEADERS, timeout=5)
+            res = requests.get(url, headers=HEADERS, timeout=(3, 5))
+            
+            try:
+                res = requests.get(url, headers=HEADERS, timeout=(3,5))
+                res.raise_for_status()
+            except Exception as e:
+                print(f"[DATA FETCH ERROR] {symbol}: {e}")
+                return None
+                
             data = res.json()
             break
         except:
