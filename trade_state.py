@@ -1,4 +1,5 @@
 import time
+ACTIVE_TRADES = {}
 
 class TradeState:
     def __init__(self, cooldown=120):

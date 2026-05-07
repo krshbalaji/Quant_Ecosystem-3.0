@@ -17,12 +17,13 @@ from telegram_control import send_message, start_trade_panel, process_callbacks
 
 # ---------------- CONFIG ----------------
 SCAN_INTERVAL = 30
-MIN_STRENGTH = 0.4
+MIN_STRENGTH = 0.25
 COOLDOWN_SECONDS = 900
 active_trade = None
 
 recent_trades = {}
 asked_signals = set()
+ACTIVE_SIGNALS = {}
 
 logger = get_logger(__name__)
 
@@ -97,7 +98,7 @@ if __name__ == "__main__":
 
                 if success:
                     send_message("✅ Trade Executed")
-                    recent_trades[symbol] = time.time()
+                 
 
             elif action == "CANCEL":
                 send_message("❌ Trade Cancelled")
@@ -129,12 +130,39 @@ if __name__ == "__main__":
 
                 print(f"[DEBUG] {symbol} score={score} strength={strength}")
 
-                if strength < MIN_STRENGTH:
+                # -------- DYNAMIC SCORE THRESHOLD --------
+                if regime == "BULL":
+                    dynamic_threshold = 35
+
+                elif regime == "BEAR":
+                    dynamic_threshold = 60
+
+                else:
+                    dynamic_threshold = 45
+
+                # Reject weak setups
+                if score < dynamic_threshold:
+                    print(f"[FILTERED] {symbol} score below threshold {dynamic_threshold}")
                     continue
 
+                # -------- ADAPTIVE STRENGTH --------
+                if regime == "BULL":
+                    min_strength = 0.25
+
+                elif regime == "BEAR":
+                    min_strength = 0.8
+
+                else:
+                    min_strength = 0.4
+
+                if strength < min_strength:
+                    print(f"[FILTERED] {symbol} weak strength ({strength} < {min_strength})")
+                    continue
+
+                # -------- BEST CANDIDATE --------
                 if score > best_score:
                     best_score = score
-                    best = (symbol, decision, md)
+                    best = (symbol, decision, md)                
 
             if not best:
                 print("[NO TRADE]")
@@ -146,13 +174,26 @@ if __name__ == "__main__":
 
             print(f"[SELECTED] {symbol}")
 
-            # -------- SIDE --------
-            if regime == "BULL" and strength > 1:
-                side = "BUY"
-            elif regime == "BEAR" and strength > 1:
-                side = "SELL"
+            # -------- SIDE DECISION --------
+
+            if regime == "BULL":
+
+                if strength >= 0.25:
+                    side = "BUY"
+                else:
+                    print("[REGIME BLOCK] weak bullish strength")
+                    continue
+
+            elif regime == "BEAR":
+
+                if strength >= 0.8:
+                    side = "SELL"
+                else:
+                    print("[REGIME BLOCK] weak bearish strength")
+                    continue
+
             else:
-                print("[REGIME BLOCK]")
+                print("[REGIME BLOCK] sideways market")
                 continue
 
             print(f"[DECISION] {symbol} {side}")
@@ -186,55 +227,97 @@ if __name__ == "__main__":
 
             if symbol in asked_signals:
                 continue
+            
+          
+            if symbol in ACTIVE_SIGNALS:
+                print(f"[ACTIVE PANEL EXISTS] {symbol}")
+                continue
 
-            recent_trades[symbol] = time.time()
-            asked_signals.add(symbol)
+            # -------- SINGLE PANEL LOCK --------
+            if symbol in ACTIVE_SIGNALS:
+                print(f"[PANEL ACTIVE] {symbol}")
+                time.sleep(SCAN_INTERVAL)
+                continue
 
-            # -------- TELEGRAM PANEL --------
+            ACTIVE_SIGNALS[symbol] = {
+                "time": time.time(),
+                "status": "WAITING"
+            }
+
+            # -------- OPEN PANEL --------
+
             start_trade_panel(symbol, side, entry)
 
             print("[WAITING USER ACTION]")
 
-            # -------- WAIT USER --------
-            result = None
+            # -------- WAIT LOOP --------
 
-            action, data = process_callbacks()
+            action = None
+            data = None
 
-            if action == "EXECUTE":
-                qty = data["qty"]
-                price = data["price"]
+            wait_start = time.time()
 
-                send_message("🟡 Executing Trade...")
-                success = execute_signal(symbol, side, qty, price)
+            while time.time() - wait_start < 120:
 
-                if success:
-                    send_message("✅ Trade Executed")
-                    recent_trades[symbol] = time.time()
-                else:
-                    send_message("⚠ Trade Failed")
+                action, data = process_callbacks()
 
-            elif action == "CANCEL":
-                send_message("❌ Trade Cancelled")
-
-                if action == "EXECUTE":
-                    result = data
-                    break
-
-                elif action == "CANCEL":
-                    send_message("❌ Trade Cancelled")
+                if action:
                     break
 
                 time.sleep(1)
 
-            # -------- SKIP --------
-            if result is None:
+            # -------- TIMEOUT --------
+
+            if not action:
+
+                ACTIVE_SIGNALS.pop(symbol, None)
+
+                print("[USER TIMEOUT]")
+
                 continue
 
-            if result and isinstance(result, dict):
-                qty = result.get("qty", 1)
-                price = result.get("price", "MARKET")
-            else:
-                send_message("❌ Trade Cancelled / No Input")
+            # -------- EXECUTE --------
+
+            if action == "EXECUTE":
+
+                qty = data["qty"]
+                price = data["price"]
+
+                send_message("🟡 Executing Trade...")
+
+                success = execute_signal(
+                    symbol,
+                    side,
+                    qty,
+                    price
+                )
+
+                if success:
+
+                    send_message("✅ Trade Executed")
+
+                    recent_trades[symbol] = time.time()
+
+                else:
+
+                    send_message("⚠ Trade Failed")
+
+                ACTIVE_SIGNALS.pop(symbol, None)
+
+            # -------- CANCEL --------
+
+            elif action == "CANCEL":
+
+                send_message("❌ Trade Cancelled")
+
+                ACTIVE_SIGNALS.pop(symbol, None)
+
+                continue
+                                
+            # -------- SKIP --------
+            if not action:
+                ACTIVE_SIGNALS.pop(symbol, None)
+                print("[USER TIMEOUT]")
                 continue
 
             asked_signals.add(symbol)
@@ -252,8 +335,7 @@ if __name__ == "__main__":
 
             if now - recent_trades.get(symbol, 0) > 1800:
                 active_trade = None
-
-
+           
         except Exception as e:
             logger.error(f"[ERROR] {e}")
 
