@@ -60,7 +60,56 @@ class ArbitrationEngine:
         grade = self.classifier.classify(signal_intent, profile, discipline_decision, market_regime)
         priority = self.classifier.compute_priority(signal_intent, profile, grade, discipline_decision)
         priority += PROFILE_PRIORITY.get(str(profile.name).upper(), 0)
-        return grade, priority
+
+        regime_adjustment = self._regime_priority_adjustment(signal_intent, market_regime)
+        if regime_adjustment.get("block"):
+            return OpportunityGrade.C, 0.0
+
+        priority += regime_adjustment.get("priority", 0.0)
+
+        if str(market_regime).upper() == "HIGH_VOLATILITY":
+            priority -= float(discipline_decision.confidence or 0.0) * 1.5
+
+        return grade, max(0.0, priority)
+
+    def _is_breakout_signal(self, signal_intent: SignalIntent) -> bool:
+        pattern = str(signal_intent.metadata.get("signal_type", "") or signal_intent.metadata.get("pattern", "")).upper()
+        if "BREAKOUT" in pattern or signal_intent.metadata.get("breakout"):
+            return True
+        return bool(str(signal_intent.metadata.get("strategy", "")).upper() in {"BREAKOUT", "MOMENTUM"})
+
+    def _is_momentum_signal(self, signal_intent: SignalIntent) -> bool:
+        if self._is_breakout_signal(signal_intent):
+            return True
+        if signal_intent.metadata.get("momentum"):
+            return True
+        return float(signal_intent.metadata.get("trend_strength", 0.0)) > 50.0
+
+    def _is_aggressive_signal(self, signal_intent: SignalIntent) -> bool:
+        if signal_intent.metadata.get("aggressive"):
+            return True
+        signal_type = str(signal_intent.metadata.get("signal_type", "")).upper()
+        if signal_type in {"BREAKOUT", "MOMENTUM", "REVERSAL"}:
+            return True
+        risk_reward = float(signal_intent.metadata.get("risk_reward") or signal_intent.metadata.get("rr") or 0.0)
+        return float(signal_intent.confidence or 0.0) >= 0.75 and risk_reward >= 1.8
+
+    def _regime_priority_adjustment(self, signal_intent: SignalIntent, market_regime: str) -> Dict[str, Any]:
+        regime = str(market_regime or "").upper()
+        adjustment = {"priority": 0.0, "block": False}
+
+        if regime == "TRENDING_BULL" and self._is_breakout_signal(signal_intent):
+            adjustment["priority"] += 12.0
+        elif regime == "RANGE_BOUND" and self._is_breakout_signal(signal_intent):
+            adjustment["priority"] -= 10.0
+
+        if regime == "CRASH_EVENT" and self._is_aggressive_signal(signal_intent):
+            adjustment["block"] = True
+
+        if regime == "TRENDING_BULL" and self._is_momentum_signal(signal_intent):
+            adjustment["priority"] += 6.0
+
+        return adjustment
 
     def _apply_correlation_guard(
         self,

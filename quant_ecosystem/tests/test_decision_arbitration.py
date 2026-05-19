@@ -11,6 +11,14 @@ from quant_ecosystem.risk.reserve_manager import ReserveManager
 from quant_ecosystem.risk.capital_allocator_v2 import CapitalAllocatorV2
 
 
+class DummyRegimeService:
+    def __init__(self, payload: dict):
+        self._payload = payload
+
+    def analyze(self, timeframe_data=None, extra_signals=None):
+        return self._payload
+
+
 class DecisionArbitrationTests(unittest.TestCase):
 
     def setUp(self):
@@ -54,13 +62,15 @@ class DecisionArbitrationTests(unittest.TestCase):
             notional=15_000,
         )
 
-        context = DecisionContext(
+        context = DecisionContext.from_regime_inputs(
             profile=self.profile,
             discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.4),
+            regime_service=DummyRegimeService(
+                {"regime": "BEAR", "confidence": 0.72, "details": {"bearness": True}},
+            ),
             capital_allocator=CapitalAllocatorV2(total_capital=100_000.0),
             reserve_manager=ReserveManager(total_capital=100_000.0, reserve_pct=0.05),
             correlation_guard=CorrelationGuard(total_capital=100_000.0),
-            market_regime="BEAR",
             portfolio_exposure_pct=25.0,
             risk_state="GREEN",
         )
@@ -93,13 +103,15 @@ class DecisionArbitrationTests(unittest.TestCase):
             metadata={"time_of_day": "AFTERNOON", "premium": True},
         )
 
-        context = DecisionContext(
+        context = DecisionContext.from_regime_inputs(
             profile=self.profile,
             discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.5),
+            regime_service=DummyRegimeService(
+                {"regime": "BULL", "confidence": 0.88, "details": {"bull_bias": True}},
+            ),
             capital_allocator=CapitalAllocatorV2(total_capital=100_000.0, reserve_pct=0.05),
             reserve_manager=ReserveManager(total_capital=100_000.0, reserve_pct=0.05),
             correlation_guard=CorrelationGuard(total_capital=100_000.0),
-            market_regime="BULL",
             portfolio_exposure_pct=40.0,
             risk_state="GREEN",
             reserve_allowed=True,
@@ -128,13 +140,15 @@ class DecisionArbitrationTests(unittest.TestCase):
             metadata={"thesis": "SOL_SHORT", "correlation_group": "SHORT"},
         )
 
-        context = DecisionContext(
+        context = DecisionContext.from_regime_inputs(
             profile=self.profile,
             discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.4),
+            regime_service=DummyRegimeService(
+                {"regime": "BEAR", "confidence": 0.65, "details": {"bear_risk": True}},
+            ),
             capital_allocator=CapitalAllocatorV2(total_capital=100_000.0),
             reserve_manager=ReserveManager(total_capital=100_000.0, reserve_pct=0.05),
             correlation_guard=guard,
-            market_regime="BEAR",
             portfolio_exposure_pct=30.0,
             risk_state="GREEN",
         )
