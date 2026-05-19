@@ -80,6 +80,30 @@ class DisciplineGovernor:
     ) -> DisciplineDecision:
         state.reset_daily_if_needed()
 
+        regime = str(market_data.get("market_regime", "") if market_data else "").upper()
+        transition_alert = bool(market_data.get("transition_alert") if market_data else False)
+        transition_type = str(market_data.get("transition_type", "") if market_data else "").upper()
+
+        if regime == "CRASH_EVENT":
+            return DisciplineDecision(
+                action=DisciplineAction.LOCK,
+                reason="crash event defensive lock",
+                confidence=0.98,
+                details={"market_regime": regime},
+            )
+
+        if transition_alert and transition_type in {"TRENDING_TO_REVERSAL", "VOLATILITY_TRANSITION", "LOW_VOL_TO_HIGH_VOL"}:
+            if signal_intent.confidence < 0.7 or signal_intent.metadata.get("aggressive"):
+                return DisciplineDecision(
+                    action=DisciplineAction.LOCK,
+                    reason=f"transition caution lock ({transition_type})",
+                    confidence=0.85,
+                    details={
+                        "transition_type": transition_type,
+                        "transition_score": float(market_data.get("transition_score", 0.0)),
+                    },
+                )
+
         if state.is_profile_locked(profile.name):
             return DisciplineDecision(
                 action=DisciplineAction.LOCK,
