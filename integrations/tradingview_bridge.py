@@ -13,7 +13,18 @@ from flask import Flask, jsonify, request
 from telegram_control import process_callbacks, send_message, start_trade_panel
 from quant_ecosystem.adapters.signal_normalizer import normalize_tradingview
 from quant_ecosystem.contracts.order_intent import OrderIntent
+from quant_ecosystem.decision import ArbitrationAction, ArbitrationEngine, DecisionContext
+from quant_ecosystem.discipline import (
+    DisciplineAction,
+    DisciplineDecision,
+    DisciplineGovernor,
+    DisciplineState,
+)
 from quant_ecosystem.execution.unified_broker_router import submit as submit_order
+from quant_ecosystem.intelligence.regime_service import RegimeService
+from quant_ecosystem.portfolio.portfolio_watchdog import PortfolioWatchdog
+from quant_ecosystem.profiles import get_profile
+from quant_ecosystem.risk.capital_allocator_v2 import CapitalAllocatorV2
 from quant_ecosystem.storage.signal_store import record_signal
 
 load_dotenv()
@@ -90,6 +101,8 @@ class NormalizedSignal:
     timestamp: float = 0.0
     nonce: Optional[str] = None
     raw: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    profile: str = "SCALP"
 
 
 @dataclass
@@ -336,6 +349,126 @@ def signal_to_dict(signal: NormalizedSignal) -> Dict[str, Any]:
     return data
 
 
+def _extract_timeframe_data(signal: NormalizedSignal) -> Dict[str, Any]:
+    if isinstance(signal.raw, dict):
+        return signal.raw.get("market_data") or signal.raw.get("timeframe_data") or {}
+    return {}
+
+
+def _signal_notional(signal: NormalizedSignal) -> float:
+    notional = signal.metadata.get("notional")
+    if isinstance(notional, (int, float)):
+        return float(notional)
+    try:
+        return float(signal.qty)
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def _build_market_data_payload(context: DecisionContext) -> Dict[str, Any]:
+    return {
+        "market_regime": context.market_regime,
+        "regime_confidence": float(context.regime_confidence or 0.0),
+        "transition_alert": bool(context.transition_alert),
+        "transition_score": float(context.transition_score or 0.0),
+        "transition_type": str(context.transition_type or "NONE").upper(),
+    }
+
+
+def _evaluate_tradingview_signal(signal: NormalizedSignal) -> Dict[str, Any]:
+    profile = get_profile(getattr(signal, "profile", "SCALP"))
+    regime_service = RegimeService()
+    timeframe_data = _extract_timeframe_data(signal)
+    extra_signals = {"source": signal.source, "strategy": signal.strategy}
+    context = DecisionContext.from_regime_inputs(
+        profile=profile,
+        discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="initial discipline", confidence=0.0),
+        regime_service=regime_service,
+        timeframe_data=timeframe_data,
+        extra_signals=extra_signals,
+        portfolio_exposure_pct=0.0,
+        symbol_exposure_pct=0.0,
+        risk_state="GREEN",
+        reserve_allowed=False,
+        metadata={
+            "bridge": "tradingview",
+            "payload_source": "webhook",
+        },
+    )
+
+    arbitration_decision = ArbitrationEngine().arbitrate([signal], context)
+    if arbitration_decision.action != ArbitrationAction.TAKE:
+        return {
+            "status": "rejected",
+            "reason": "arbitration",
+            "arbitration": {
+                "action": arbitration_decision.action.value,
+                "reason": arbitration_decision.reason,
+                "details": arbitration_decision.details or {},
+            },
+            "market_regime": context.market_regime,
+            "transition_alert": context.transition_alert,
+        }
+    discipline_decision = DisciplineGovernor().evaluate(
+        signal, profile, DisciplineState(), market_data=_build_market_data_payload(context)
+    )
+    if discipline_decision.action != DisciplineAction.ALLOW:
+        return {
+            "status": "blocked",
+            "reason": "discipline",
+            "discipline": {
+                "action": discipline_decision.action.value,
+                "reason": discipline_decision.reason,
+                "confidence": float(discipline_decision.confidence or 0.0),
+                "details": discipline_decision.details,
+            },
+            "market_regime": context.market_regime,
+            "transition_alert": context.transition_alert,
+        }
+    capital_amount = _signal_notional(signal)
+    allocator = CapitalAllocatorV2()
+    if not allocator.can_allocate(profile, capital_amount, allow_reserve=False):
+        return {
+            "status": "blocked",
+            "reason": "capital",
+            "capital_requested": capital_amount,
+            "capital_available": allocator.get_available_budget(profile),
+            "market_regime": context.market_regime,
+            "transition_alert": context.transition_alert,
+        }
+    advisory = None
+    position_data = None
+    if isinstance(signal.raw, dict):
+        position_data = signal.raw.get("position") or signal.metadata.get("position")
+    if isinstance(position_data, dict):
+        try:
+            advice = PortfolioWatchdog().recommend_action(position_data)
+            advisory = advice.to_dict()
+        except Exception:
+            advisory = None
+    return {
+        "status": "ready",
+        "market_regime": context.market_regime,
+        "regime_confidence": context.regime_confidence,
+        "transition_alert": context.transition_alert,
+        "transition_score": context.transition_score,
+        "transition_type": context.transition_type,
+        "arbitration": {
+            "action": arbitration_decision.action.value,
+            "reason": arbitration_decision.reason,
+            "details": arbitration_decision.details or {},
+        },
+        "discipline": {
+            "action": discipline_decision.action.value,
+            "reason": discipline_decision.reason,
+            "confidence": float(discipline_decision.confidence or 0.0),
+            "details": discipline_decision.details,
+        },
+        "capital_requested": capital_amount,
+        "portfolio_advisory": advisory,
+    }
+
+
 def normalize_signal(data: Dict[str, Any]) -> NormalizedSignal:
     timestamp = parse_alert_timestamp(data)
     nonce = validate_nonce(data)
@@ -347,6 +480,7 @@ def normalize_signal(data: Dict[str, Any]) -> NormalizedSignal:
     confidence = canonical.confidence
     source = canonical.source
     strategy = canonical.strategy
+    profile = str(_first_present(data, "profile", default="SCALP")).upper()
 
     if side not in {"BUY", "SELL"}:
         raise ValueError("side/action must resolve to BUY or SELL")
@@ -363,6 +497,11 @@ def normalize_signal(data: Dict[str, Any]) -> NormalizedSignal:
         timestamp=timestamp,
         nonce=nonce,
         raw=sanitized_payload(data),
+        profile=profile,
+        metadata={
+            "bridge": "tradingview",
+            "payload_source": "webhook",
+        },
     )
 
 
@@ -449,6 +588,7 @@ def handle_telegram_decision() -> Tuple[Optional[str], Optional[Dict[str, Any]]]
         confidence=pending_signal.confidence if pending_signal else 0.0,
         source=pending_signal.source if pending_signal else "TRADINGVIEW",
         strategy=state.get("strategy") or (pending_signal.strategy if pending_signal else "TRADINGVIEW"),
+        profile=pending_signal.profile if pending_signal else "SCALP",
         timestamp=pending_signal.timestamp if pending_signal else time.time(),
         nonce=pending_signal.nonce if pending_signal else None,
         raw=pending_signal.raw if pending_signal else state,
@@ -459,6 +599,12 @@ def handle_telegram_decision() -> Tuple[Optional[str], Optional[Dict[str, Any]]]
         send_message("Trade rejected: invalid approved signal.")
         return action, {"status": "rejected", "reason": "invalid approved signal"}
 
+    evaluation = _evaluate_tradingview_signal(signal)
+    if evaluation["status"] != "ready":
+        log_event(signal, "rejected", reason=evaluation.get("reason"))
+        send_message(f"Trade blocked after approval: {evaluation.get('reason')}")
+        return action, evaluation
+
     if not EXECUTION_ENABLED:
         log_event(signal, "approved", reason="execution_disabled")
         send_message("TradingView signal approved. Execution is disabled.")
@@ -466,6 +612,15 @@ def handle_telegram_decision() -> Tuple[Optional[str], Optional[Dict[str, Any]]]
             "status": "approved",
             "execution": "disabled",
             "signal": signal_to_dict(signal),
+            "market_regime": evaluation.get("market_regime"),
+            "regime_confidence": evaluation.get("regime_confidence"),
+            "transition_alert": evaluation.get("transition_alert"),
+            "transition_score": evaluation.get("transition_score"),
+            "transition_type": evaluation.get("transition_type"),
+            "arbitration": evaluation.get("arbitration"),
+            "discipline": evaluation.get("discipline"),
+            "capital_requested": evaluation.get("capital_requested"),
+            "portfolio_advisory": evaluation.get("portfolio_advisory"),
         }
 
     send_message("Executing approved TradingView trade...")
@@ -621,6 +776,12 @@ def tv_webhook():
         }
         log_event(signal, "recorded")
 
+        evaluation = _evaluate_tradingview_signal(signal)
+        if evaluation["status"] != "ready":
+            log_event(signal, evaluation["status"], reason=evaluation.get("reason"))
+            evaluation["signal_id"] = signal_id
+            return jsonify(evaluation)
+
         if APPROVAL_ENABLED:
             response = queue_for_telegram_approval(signal)
             response["signal_id"] = signal_id
@@ -629,6 +790,24 @@ def tv_webhook():
         elif EXECUTION_ENABLED:
             response = execute_signal(signal)
             response["signal_id"] = signal_id
+
+        else:
+            response = {
+                "status": "recorded",
+                "signal_id": signal_id,
+                "signal": signal_to_dict(signal),
+                "execution_enabled": EXECUTION_ENABLED,
+                "approval_enabled": APPROVAL_ENABLED,
+                "regime": evaluation.get("market_regime"),
+                "regime_confidence": evaluation.get("regime_confidence"),
+                "transition_alert": evaluation.get("transition_alert"),
+                "transition_score": evaluation.get("transition_score"),
+                "transition_type": evaluation.get("transition_type"),
+                "arbitration": evaluation.get("arbitration"),
+                "discipline": evaluation.get("discipline"),
+                "capital_requested": evaluation.get("capital_requested"),
+                "portfolio_advisory": evaluation.get("portfolio_advisory"),
+            }
     except Exception as exc:
         log_event(signal, "rejected", reason=str(exc))
         return jsonify({"status": "error", "msg": str(exc)}), 500

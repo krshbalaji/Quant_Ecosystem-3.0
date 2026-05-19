@@ -26,7 +26,13 @@ class MarketRegimeDetector:
         self.volatility_analyzer = volatility_analyzer or VolatilityAnalyzer()
         self.liquidity_analyzer = liquidity_analyzer or LiquidityAnalyzer()
         self.classifier = classifier or RegimeClassifier()
-        self.timeframe_weights = timeframe_weights or {"5m": 1.0, "15m": 1.2, "1h": 1.4, "1d": 1.8}
+        self.timeframe_weights = timeframe_weights or {
+            "5m": 1.0,
+            "15m": 1.2,
+            "1h": 1.4,
+            "4h": 1.6,
+            "1d": 1.8,
+        }
         self._listeners: List[Callable[[Dict], None]] = []
         self._state: Dict = {
             "regime": "RANGE_BOUND",

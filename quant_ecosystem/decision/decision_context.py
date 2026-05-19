@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 from quant_ecosystem.contracts.signal_intent import SignalIntent
 from quant_ecosystem.discipline import DisciplineDecision
+from quant_ecosystem.intelligence.regime_memory import RegimeMemory
 from quant_ecosystem.intelligence.regime_service import RegimeService
 from quant_ecosystem.profiles.base_profile import BaseProfile
 from quant_ecosystem.risk.capital_allocator_v2 import CapitalAllocatorV2
@@ -20,14 +21,18 @@ class DecisionContext:
     portfolio_exposure_pct: float = 0.0
     symbol_exposure_pct: float = 0.0
     market_regime: str = "NEUTRAL"
+    legacy_regime: str = "UNKNOWN"
     regime_confidence: float = 0.0
+    regime_mode: str = "STABLE"
     transition_alert: bool = False
     transition_score: float = 0.0
     transition_type: str = "NONE"
     regime_details: Optional[Dict[str, Any]] = None
+    regime_memory: Optional[RegimeMemory] = None
     risk_state: str = "GREEN"
     reserve_allowed: bool = False
     is_premium_opportunity: bool = False
+    metadata: Optional[Dict[str, Any]] = None
 
     @classmethod
     def from_regime_inputs(
@@ -44,8 +49,10 @@ class DecisionContext:
         return cls(
             profile=profile,
             discipline_decision=discipline_decision,
-            market_regime=payload.get("regime", "UNKNOWN"),
+            market_regime=payload.get("regime_v2", payload.get("regime", "UNKNOWN")),
+            legacy_regime=payload.get("legacy_regime", payload.get("regime", "UNKNOWN")),
             regime_confidence=payload.get("regime_confidence", 0.0),
+            regime_mode=payload.get("regime_mode", "STABLE"),
             transition_alert=payload.get("transition_alert", False),
             transition_score=payload.get("transition_score", 0.0),
             transition_type=payload.get("transition_type", "NONE"),

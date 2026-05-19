@@ -36,6 +36,24 @@ PROFILE_PRIORITY: Dict[str, int] = {
     "INVESTMENT": 1,
 }
 
+STRATEGY_COMPATIBILITY: Dict[str, set] = {
+    "BREAKOUT": {"TRENDING_BULLISH", "TRENDING_BEARISH", "VOLATILE_BREAKOUT", "TRANSITION"},
+    "MOMENTUM": {"TRENDING_BULLISH", "TRENDING_BEARISH", "VOLATILE_BREAKOUT"},
+    "TREND_FOLLOW": {"TRENDING_BULLISH", "TRENDING_BEARISH"},
+    "MEAN_REVERT": {"RANGE_BOUND", "MEAN_REVERSION", "ACCUMULATION", "DISTRIBUTION"},
+    "LIQUIDITY_REVERSAL": {"LIQUIDITY_SWEEP", "TRANSITION", "RANGE_BOUND"},
+    "SWING": {"RANGE_BOUND", "TRENDING_BULLISH", "TRENDING_BEARISH", "VOLATILE_BREAKOUT"},
+}
+
+LOW_REGIME_CONFIDENCE_THRESHOLD = 0.45
+TRANSITION_PENALTY = 12.0
+INCOMPATIBLE_STRATEGY_PENALTY = 10.0
+WEAK_PERFORMANCE_BLOCK_THRESHOLD = {
+    "win_rate": 0.33,
+    "pf": 0.85,
+    "min_trades": 12,
+}
+
 
 class ArbitrationEngine:
     def __init__(self, classifier: Optional[OpportunityClassifier] = None):
@@ -55,6 +73,8 @@ class ArbitrationEngine:
         signal_intent: SignalIntent,
         discipline_decision: Any,
         market_regime: str,
+        regime_confidence: float = 1.0,
+        regime_memory: Optional[Any] = None,
     ) -> Tuple[OpportunityGrade, float]:
         profile = self._profile_for_signal(signal_intent)
         grade = self.classifier.classify(signal_intent, profile, discipline_decision, market_regime)
@@ -66,6 +86,12 @@ class ArbitrationEngine:
             return OpportunityGrade.C, 0.0
 
         priority += regime_adjustment.get("priority", 0.0)
+
+        if regime_confidence < LOW_REGIME_CONFIDENCE_THRESHOLD:
+            priority -= 8.0
+
+        if str(market_regime).upper() == "TRANSITION":
+            priority -= TRANSITION_PENALTY
 
         if str(market_regime).upper() == "HIGH_VOLATILITY":
             priority -= float(discipline_decision.confidence or 0.0) * 1.5
@@ -98,18 +124,70 @@ class ArbitrationEngine:
         regime = str(market_regime or "").upper()
         adjustment = {"priority": 0.0, "block": False}
 
-        if regime == "TRENDING_BULL" and self._is_breakout_signal(signal_intent):
+        if regime == "TRENDING_BULLISH" and self._is_breakout_signal(signal_intent):
             adjustment["priority"] += 12.0
         elif regime == "RANGE_BOUND" and self._is_breakout_signal(signal_intent):
             adjustment["priority"] -= 10.0
+        elif regime == "VOLATILE_BREAKOUT" and self._is_breakout_signal(signal_intent):
+            adjustment["priority"] += 8.0
+
+        strategy = str(signal_intent.strategy or "").upper()
+        if strategy and not self._is_strategy_compatible(strategy, regime):
+            adjustment["priority"] -= INCOMPATIBLE_STRATEGY_PENALTY
 
         if regime == "CRASH_EVENT" and self._is_aggressive_signal(signal_intent):
             adjustment["block"] = True
 
-        if regime == "TRENDING_BULL" and self._is_momentum_signal(signal_intent):
+        if regime == "TRENDING_BULLISH" and self._is_momentum_signal(signal_intent):
             adjustment["priority"] += 6.0
 
+        if regime == "TRANSITION" and self._is_aggressive_signal(signal_intent):
+            adjustment["priority"] -= 5.0
+
         return adjustment
+
+    def _is_strategy_compatible(self, strategy: str, market_regime: str) -> bool:
+        regime = str(market_regime or "").upper()
+        allowed = STRATEGY_COMPATIBILITY.get(strategy)
+        if allowed is None:
+            return True
+        return regime in allowed
+
+    def _strategy_performance_adjustment(
+        self,
+        signal_intent: SignalIntent,
+        market_regime: str,
+        regime_memory: Optional[Any],
+    ) -> float:
+        if regime_memory is None:
+            return 0.0
+
+        strategy = str(signal_intent.strategy or "").upper()
+        if not strategy:
+            return 0.0
+
+        bias = float(regime_memory.strategy_bias(strategy, market_regime))
+        return bias
+
+    def _should_reject_weak_combination(
+        self,
+        signal_intent: SignalIntent,
+        market_regime: str,
+        regime_memory: Optional[Any],
+    ) -> bool:
+        if regime_memory is None:
+            return False
+
+        strategy = str(signal_intent.strategy or "").upper()
+        if not strategy:
+            return False
+
+        metrics = regime_memory.strategy_metrics(strategy, market_regime)
+        return (
+            metrics.get("trades", 0) >= WEAK_PERFORMANCE_BLOCK_THRESHOLD["min_trades"]
+            and metrics.get("win_rate", 0.0) < WEAK_PERFORMANCE_BLOCK_THRESHOLD["win_rate"]
+            and metrics.get("pf", 0.0) < WEAK_PERFORMANCE_BLOCK_THRESHOLD["pf"]
+        )
 
     def _apply_correlation_guard(
         self,
@@ -154,6 +232,8 @@ class ArbitrationEngine:
                 signal,
                 context.discipline_decision,
                 context.market_regime,
+                regime_confidence=context.regime_confidence,
+                regime_memory=context.regime_memory,
             )
             scored.append((signal, grade, priority))
 
@@ -161,6 +241,14 @@ class ArbitrationEngine:
         best_signal, best_grade, best_priority = scored[0]
         runner_up = scored[1][0] if len(scored) > 1 else None
         runner_grade = scored[1][1] if len(scored) > 1 else None
+
+        if self._should_reject_weak_combination(best_signal, context.market_regime, context.regime_memory):
+            return ArbitrationDecision(
+                action=ArbitrationAction.REJECT,
+                reason="historically weak strategy/regime combination",
+                selected_signal=best_signal,
+                details={"grade": best_grade.value},
+            )
 
         correlation_ok, correlation_reason = self._apply_correlation_guard(context, best_signal)
         if not correlation_ok:

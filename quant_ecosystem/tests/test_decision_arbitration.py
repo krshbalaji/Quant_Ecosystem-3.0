@@ -158,6 +158,21 @@ class DecisionArbitrationTests(unittest.TestCase):
         self.assertEqual(decision.action, ArbitrationAction.REJECT)
         self.assertIn("correlation guard", decision.reason)
 
+    def test_incompatible_strategy_penalty(self):
+        mean_revert_signal = SignalIntent.from_mapping(
+            {
+                "symbol": "AAPL",
+                "side": "BUY",
+                "profile": ProfileTypes.SWING,
+                "strategy": "MEAN_REVERT",
+                "confidence": 0.75,
+                "metadata": {"signal_type": "REVERSAL"},
+            }
+        )
+
+        adjustment = self.classifier._regime_priority_adjustment(mean_revert_signal, "TRENDING_BULLISH")
+        self.assertLess(adjustment["priority"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
