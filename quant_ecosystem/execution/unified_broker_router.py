@@ -97,13 +97,27 @@ class UnifiedBrokerRouter:
         self.mode = str(mode or "PAPER").upper()
         self.paper_broker = paper_broker or PaperBroker()
         self.live_broker = live_broker
+        self.capital_governor = None
+        self._submission_locks = {}
+        self._duplicate_ttl = 60
 
     def submit(self, order_intent: OrderIntent | Mapping[str, Any]) -> Dict[str, Any]:
+        import os
+
         order = _as_order_intent(order_intent)
         validation = validate_order(order)
 
         if not validation["ok"]:
             return validation
+
+        if str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on"):
+            _log_order(order, "rejected", "GLOBAL_KILL_SWITCH_ACTIVE")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "reason": "GLOBAL_KILL_SWITCH_ACTIVE",
+                "order": order.to_dict(),
+            }
 
         if self.mode in PAPER_MODES:
             return self.paper_submit(order)
@@ -120,18 +134,32 @@ class UnifiedBrokerRouter:
         }
 
     def paper_submit(self, order_intent: OrderIntent | Mapping[str, Any]) -> Dict[str, Any]:
+        import os
+
         order = _as_order_intent(order_intent)
         validation = validate_order(order)
 
         if not validation["ok"]:
             return validation
 
+        if str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on"):
+            _log_order(order, "rejected", "GLOBAL_KILL_SWITCH_ACTIVE")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "PAPER",
+                "reason": "GLOBAL_KILL_SWITCH_ACTIVE",
+                "order": order.to_dict(),
+            }
+
         data = order.to_dict()
+
         result = self.paper_broker.place_order(
             data["symbol"],
             data["side"],
             data["qty"],
         )
+
         _log_order(order, "executed")
 
         return {
@@ -143,6 +171,10 @@ class UnifiedBrokerRouter:
         }
 
     def live_submit(self, order_intent: OrderIntent | Mapping[str, Any]) -> Dict[str, Any]:
+        import os
+        import time
+        import hashlib
+
         order = _as_order_intent(order_intent)
         validation = validate_order(order)
 
@@ -150,6 +182,21 @@ class UnifiedBrokerRouter:
             return validation
 
         data = order.to_dict()
+        metadata = dict(data.get("metadata") or {})
+
+        kill_switch = str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in (
+            "1", "true", "yes", "on"
+        )
+
+        if kill_switch:
+            _log_order(order, "rejected", "GLOBAL_KILL_SWITCH_ACTIVE")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "GLOBAL_KILL_SWITCH_ACTIVE",
+                "order": data,
+            }
 
         if self.live_broker is None:
             _log_order(order, "rejected", "live broker not configured")
@@ -160,6 +207,114 @@ class UnifiedBrokerRouter:
                 "reason": "live broker not configured",
                 "order": data,
             }
+
+        if not data.get("approval_id"):
+            _log_order(order, "rejected", "APPROVAL_REQUIRED")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "APPROVAL_REQUIRED",
+                "order": data,
+            }
+
+        approval_timeout = int(os.getenv("EXECUTION_APPROVAL_TIMEOUT_SEC", "300"))
+        approval_ts = metadata.get("approval_ts")
+
+        if approval_ts is None:
+            _log_order(order, "rejected", "MISSING_APPROVAL_TIMESTAMP")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "MISSING_APPROVAL_TIMESTAMP",
+                "order": data,
+            }
+
+        try:
+            age = time.time() - float(approval_ts)
+        except Exception:
+            _log_order(order, "rejected", "INVALID_APPROVAL_TIMESTAMP")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "INVALID_APPROVAL_TIMESTAMP",
+                "order": data,
+            }
+
+        if age > approval_timeout:
+            _log_order(order, "rejected", "STALE_APPROVAL")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "STALE_APPROVAL",
+                "order": data,
+            }
+
+        whitelist_raw = os.getenv("EXECUTION_INSTRUMENT_WHITELIST", "")
+        if whitelist_raw.strip():
+            whitelist = {
+                item.strip().upper()
+                for item in whitelist_raw.split(",")
+                if item.strip()
+            }
+
+            if data["symbol"].upper() not in whitelist:
+                _log_order(order, "rejected", "INSTRUMENT_NOT_WHITELISTED")
+                return {
+                    "ok": False,
+                    "decision": "rejected",
+                    "mode": "LIVE",
+                    "reason": "INSTRUMENT_NOT_WHITELISTED",
+                    "order": data,
+                }
+
+        capital_governor = getattr(self, "capital_governor", None)
+        if capital_governor:
+            allow_fn = getattr(capital_governor, "allow", None)
+            if callable(allow_fn):
+                try:
+                    if allow_fn(data) is False:
+                        _log_order(order, "rejected", "CAPITAL_GOVERNOR_BLOCKED")
+                        return {
+                            "ok": False,
+                            "decision": "rejected",
+                            "mode": "LIVE",
+                            "reason": "CAPITAL_GOVERNOR_BLOCKED",
+                            "order": data,
+                        }
+                except Exception as exc:
+                    _log_order(order, "rejected", str(exc))
+                    return {
+                        "ok": False,
+                        "decision": "rejected",
+                        "mode": "LIVE",
+                        "reason": str(exc),
+                        "order": data,
+                    }
+
+        fp_raw = "|".join([
+            data["symbol"],
+            data["side"],
+            str(data["qty"]),
+            str(data["approval_id"]),
+        ])
+        fp = hashlib.sha256(fp_raw.encode()).hexdigest()
+
+        existing = self._submission_locks.get(fp)
+        if existing and (time.time() - existing) < self._duplicate_ttl:
+            _log_order(order, "rejected", "DUPLICATE_SUBMISSION_BLOCKED")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "DUPLICATE_SUBMISSION_BLOCKED",
+                "order": data,
+            }
+
+        self._submission_locks[fp] = time.time()
 
         try:
             result = self.live_broker.place_order(
@@ -183,7 +338,32 @@ class UnifiedBrokerRouter:
                 "order": data,
             }
 
+        if result is None:
+            _log_order(order, "rejected", "BROKER_NO_ACK")
+            return {
+                "ok": False,
+                "decision": "rejected",
+                "mode": "LIVE",
+                "reason": "BROKER_NO_ACK",
+                "order": data,
+            }
+
+        if isinstance(result, dict):
+            if not any(
+                key in result
+                for key in ("order_id", "broker_order_id", "status", "ack")
+            ):
+                _log_order(order, "rejected", "INVALID_BROKER_ACK")
+                return {
+                    "ok": False,
+                    "decision": "rejected",
+                    "mode": "LIVE",
+                    "reason": "INVALID_BROKER_ACK",
+                    "order": data,
+                }
+
         _log_order(order, "executed")
+
         return {
             "ok": True,
             "decision": "executed",
