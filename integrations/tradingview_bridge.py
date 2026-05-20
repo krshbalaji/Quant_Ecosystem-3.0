@@ -236,18 +236,21 @@ def _cleanup_expiring_cache(cache: Dict[str, float], now: Optional[float] = None
 
 def expire_pending_approvals(now: Optional[float] = None) -> None:
     now = now or time.time()
-    expired_symbols = [
-        symbol
-        for symbol, pending in PENDING_SIGNALS.items()
+
+    expired_keys = [
+        key
+        for key, pending in PENDING_SIGNALS.items()
         if pending.expires_at <= now
     ]
 
-    for symbol in expired_symbols:
-        pending = PENDING_SIGNALS.pop(symbol, None)
+    for key in expired_keys:
+        pending = PENDING_SIGNALS.pop(key, None)
         if pending:
             log_event(pending.signal, "rejected", reason="approval_timeout")
-            send_message(f"TradingView approval expired: {pending.signal.side} {pending.signal.qty} {symbol}")
-
+            send_message(
+                f"TradingView approval expired: "
+                f"{pending.signal.side} {pending.signal.qty} {pending.signal.symbol}"
+            )
 
 def validate_nonce(data: Dict[str, Any]) -> Optional[str]:
     nonce = _first_present(data, "nonce", "alert_id", "id")
@@ -273,7 +276,8 @@ def create_fingerprint(signal: NormalizedSignal) -> str:
             signal.side,
             signal.strategy,
             str(signal.qty),
-            str(signal.time_bucket),
+            str(signal.timestamp),
+            str(signal.nonce or "NO_NONCE"),
         ]
     )
 
@@ -372,6 +376,20 @@ def record_canonical_signal(signal: NormalizedSignal) -> str:
 
 
 def execute_signal(signal: NormalizedSignal) -> Dict[str, Any]:
+    if os.getenv("GLOBAL_KILL_SWITCH", "").lower() in {"1", "true", "yes", "on"}:
+        log_event(signal, "rejected", reason="global_kill_switch")
+        return {
+            "status": "rejected",
+            "reason": "GLOBAL_KILL_SWITCH_ACTIVE",
+        }
+
+    if not EXECUTION_ENABLED:
+        log_event(signal, "rejected", reason="execution_disabled")
+        return {
+            "status": "rejected",
+            "reason": "EXECUTION_DISABLED",
+        }
+
     order = OrderIntent(
         symbol=signal.symbol,
         side=signal.side,
@@ -379,16 +397,19 @@ def execute_signal(signal: NormalizedSignal) -> Dict[str, Any]:
         order_type="MARKET" if signal.entry == "MARKET" else "LIMIT",
         profile="INTRADAY",
         reason="TRADINGVIEW_SIGNAL",
-        approval_id=signal.nonce,
+        approval_id=signal.nonce or create_fingerprint(signal),
         source=signal.source,
         metadata={
             "strategy": signal.strategy,
             "entry": signal.entry,
             "confidence": signal.confidence,
             "timestamp": signal.timestamp,
+            "approval_ts": time.time(),
         },
     )
+
     result = submit_order(order, mode=BROKER_MODE)
+
     decision = "executed" if result.get("ok") else "rejected"
     log_event(signal, decision, reason=result.get("reason"))
 
@@ -402,62 +423,72 @@ def execute_signal(signal: NormalizedSignal) -> Dict[str, Any]:
 
 def queue_for_telegram_approval(signal: NormalizedSignal) -> Dict[str, Any]:
     expire_pending_approvals()
-    PENDING_SIGNALS[signal.symbol] = PendingApproval(
+
+    fingerprint = create_fingerprint(signal)
+
+    PENDING_SIGNALS[fingerprint] = PendingApproval(
         signal=signal,
         expires_at=time.time() + APPROVAL_TIMEOUT_SECONDS,
     )
+
     start_trade_panel(
         symbol=signal.symbol,
         side=signal.side,
         entry=signal.entry,
         regime=signal.source,
     )
+
     log_event(signal, "queued")
 
     return {
         "status": "queued",
         "approval": "telegram",
         "approval_expires_in_sec": APPROVAL_TIMEOUT_SECONDS,
+        "fingerprint": fingerprint,
         "signal": signal_to_dict(signal),
     }
 
 
 def handle_telegram_decision() -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
     expire_pending_approvals()
+
+    if os.getenv("GLOBAL_KILL_SWITCH", "").lower() in {"1", "true", "yes", "on"}:
+        return "BLOCKED", {"status": "blocked", "reason": "GLOBAL_KILL_SWITCH_ACTIVE"}
+
     action, state = process_callbacks()
 
     if action == "CANCEL":
         symbol = state.get("symbol") if state else None
-        pending = PENDING_SIGNALS.pop(symbol, None) if symbol else None
+        fingerprint = state.get("fingerprint") if state else None
+
+        pending = None
+        if fingerprint:
+            pending = PENDING_SIGNALS.pop(fingerprint, None)
+
+        elif symbol:
+            for key, candidate in list(PENDING_SIGNALS.items()):
+                if candidate.signal.symbol == symbol:
+                    pending = PENDING_SIGNALS.pop(key, None)
+                    break
+
         if pending:
             log_event(pending.signal, "rejected", reason="cancelled")
+
         send_message("Trade cancelled from Telegram.")
         return action, {"status": "cancelled", "symbol": symbol}
 
     if action != "EXECUTE" or not state:
         return action, None
 
-    symbol = state.get("symbol")
-    pending = PENDING_SIGNALS.pop(symbol, None) if symbol else None
+    fingerprint = state.get("fingerprint")
+    pending = PENDING_SIGNALS.pop(fingerprint, None) if fingerprint else None
     pending_signal = pending.signal if pending else None
-    signal = NormalizedSignal(
-        symbol=_normalize_symbol(symbol or (pending_signal.symbol if pending_signal else "")),
-        side=state.get("side") or (pending_signal.side if pending_signal else ""),
-        qty=_normalize_qty(state.get("qty") or (pending_signal.qty if pending_signal else DEFAULT_QTY)),
-        time_bucket=pending_signal.time_bucket if pending_signal else int(time.time() // DUPLICATE_TTL_SECONDS),
-        entry=state.get("price") or state.get("entry") or (pending_signal.entry if pending_signal else "MARKET"),
-        confidence=pending_signal.confidence if pending_signal else 0.0,
-        source=pending_signal.source if pending_signal else "TRADINGVIEW",
-        strategy=state.get("strategy") or (pending_signal.strategy if pending_signal else "TRADINGVIEW"),
-        timestamp=pending_signal.timestamp if pending_signal else time.time(),
-        nonce=pending_signal.nonce if pending_signal else None,
-        raw=pending_signal.raw if pending_signal else state,
-    )
 
-    if not signal.symbol or signal.side not in {"BUY", "SELL"}:
-        log_event(signal, "rejected", reason="invalid_approved_signal")
-        send_message("Trade rejected: invalid approved signal.")
-        return action, {"status": "rejected", "reason": "invalid approved signal"}
+    if not pending_signal:
+        send_message("Trade rejected: approval context missing.")
+        return action, {"status": "rejected", "reason": "approval context missing"}
+
+    signal = pending_signal
 
     if not EXECUTION_ENABLED:
         log_event(signal, "approved", reason="execution_disabled")
@@ -473,120 +504,23 @@ def handle_telegram_decision() -> Tuple[Optional[str], Optional[Dict[str, Any]]]
     send_message(f"Trade executed: {signal.side} {signal.qty} {signal.symbol}")
     return action, result
 
-
-def _approval_worker() -> None:
-    while True:
-        try:
-            handle_telegram_decision()
-        except Exception as exc:
-            print("[TRADINGVIEW APPROVAL WORKER ERROR]", exc)
-
-        time.sleep(APPROVAL_POLL_SECONDS)
-
-
-def start_approval_worker() -> None:
-    global _approval_worker_started
-
-    if not APPROVAL_ENABLED or not APPROVAL_WORKER_ENABLED:
-        return
-
-    with _approval_worker_lock:
-        if _approval_worker_started:
-            return
-
-        thread = threading.Thread(target=_approval_worker, daemon=True)
-        thread.start()
-        _approval_worker_started = True
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    expire_pending_approvals()
-    return jsonify(
-        {
-            "status": "ok",
-            "service": "tradingview_bridge",
-            "approval_enabled": APPROVAL_ENABLED,
-            "execution_enabled": EXECUTION_ENABLED,
-            "broker_mode": BROKER_MODE,
-            "pending": len(PENDING_SIGNALS),
-            "duplicate_cache": len(DUPLICATE_CACHE),
-            "nonce_cache": len(NONCE_CACHE),
-        }
-    )
-
-
-@app.route("/", methods=["GET"])
-def root():
-    expire_pending_approvals()
-    rows = []
-
-    for symbol, pending in PENDING_SIGNALS.items():
-        signal = pending.signal
-        expires_in = max(0, int(pending.expires_at - time.time()))
-        rows.append(
-            "<tr>"
-            f"<td>{escape(symbol)}</td>"
-            f"<td>{escape(signal.side)}</td>"
-            f"<td>{escape(str(signal.qty))}</td>"
-            f"<td>{escape(signal.source)}</td>"
-            f"<td>{escape(signal.strategy)}</td>"
-            f"<td>{expires_in}s</td>"
-            "</tr>"
-        )
-
-    pending_rows = "".join(rows) or "<tr><td colspan='6'>No pending approvals</td></tr>"
-
-    return f"""
-    <!doctype html>
-    <html>
-      <head>
-        <title>QE3 TradingView Bridge</title>
-        <style>
-          body {{ font-family: Arial, sans-serif; margin: 32px; background: #f7f7f8; color: #1f2933; }}
-          h1 {{ margin-bottom: 8px; }}
-          .status {{ display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; margin: 24px 0; }}
-          .box {{ background: white; border: 1px solid #ddd; border-radius: 6px; padding: 14px; }}
-          .label {{ color: #667085; font-size: 12px; text-transform: uppercase; }}
-          .value {{ font-size: 20px; margin-top: 6px; }}
-          table {{ width: 100%; border-collapse: collapse; background: white; border: 1px solid #ddd; }}
-          th, td {{ text-align: left; padding: 10px; border-bottom: 1px solid #eee; }}
-        </style>
-      </head>
-      <body>
-        <h1>QE3 TradingView Bridge</h1>
-        <div>Webhook service is online.</div>
-        <div class="status">
-          <div class="box"><div class="label">Broker Mode</div><div class="value">{escape(BROKER_MODE)}</div></div>
-          <div class="box"><div class="label">Approval</div><div class="value">{escape(str(APPROVAL_ENABLED))}</div></div>
-          <div class="box"><div class="label">Pending</div><div class="value">{len(PENDING_SIGNALS)}</div></div>
-          <div class="box"><div class="label">Execution</div><div class="value">{escape(str(EXECUTION_ENABLED))}</div></div>
-        </div>
-        <h2>Pending Approvals</h2>
-        <table>
-          <thead><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Source</th><th>Strategy</th><th>Expires</th></tr></thead>
-          <tbody>{pending_rows}</tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-@app.route("/telegram/poll", methods=["POST"])
-def telegram_poll():
-    action, result = handle_telegram_decision()
-    return jsonify({"status": "ok", "action": action, "result": result})
-
-
 @app.route("/tv-webhook", methods=["POST"])
 @app.route("/tradingview-webhook", methods=["POST"])
 def tv_webhook():
     expire_pending_approvals()
     data = request.get_json(silent=True)
 
+    if os.getenv("GLOBAL_KILL_SWITCH", "").lower() in {"1", "true", "yes", "on"}:
+        log_event(None, "rejected", reason="global_kill_switch")
+        return jsonify({"status": "error", "msg": "GLOBAL_KILL_SWITCH_ACTIVE"}), 503
+
     if not isinstance(data, dict):
         log_event(None, "rejected", reason="invalid_json")
         return jsonify({"status": "error", "msg": "invalid or empty JSON payload"}), 400
+
+    if not WEBHOOK_SECRET or WEBHOOK_SECRET == "QE3_SECRET":
+        log_event(None, "rejected", reason="unsafe_secret_configuration")
+        return jsonify({"status": "error", "msg": "unsafe webhook secret configuration"}), 503
 
     if not validate_secret(data):
         log_event(None, "rejected", reason="invalid_secret")
@@ -612,6 +546,7 @@ def tv_webhook():
 
     try:
         signal_id = record_canonical_signal(signal)
+
         response = {
             "status": "recorded",
             "signal_id": signal_id,
@@ -619,6 +554,7 @@ def tv_webhook():
             "execution_enabled": EXECUTION_ENABLED,
             "approval_enabled": APPROVAL_ENABLED,
         }
+
         log_event(signal, "recorded")
 
         if APPROVAL_ENABLED:
@@ -629,6 +565,7 @@ def tv_webhook():
         elif EXECUTION_ENABLED:
             response = execute_signal(signal)
             response["signal_id"] = signal_id
+
     except Exception as exc:
         log_event(signal, "rejected", reason=str(exc))
         return jsonify({"status": "error", "msg": str(exc)}), 500
