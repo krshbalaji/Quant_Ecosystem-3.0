@@ -1116,126 +1116,193 @@ class ExecutionRouter:
     # Primary async entry point
     # ------------------------------------------------------------------
 
-    async def execute(
-        self,
-        signal: Optional[Dict] = None,
-        market_bias: str = "NEUTRAL",
-        regime: str = "MEAN_REVERSION",
-    ) -> Dict:
+    async def execute(self, signal: dict, **kwargs):
         """
-        Async execution entry point.
+        Sovereign execution entrypoint (Mode D hardened).
 
-        If signal is provided it is enqueued at the appropriate priority;
-        otherwise a signal is generated from the strategy engine.
+        Flow:
+        validate -> kill switch -> normalize -> strategy authority ->
+        approval enforcement -> duplicate suppression -> portfolio governance ->
+        execution dispatch
         """
-        if signal is not None:
-            await self._order_queue.enqueue(signal, market_bias=market_bias, regime=regime)
+        import os
+        import time
+        import hashlib
 
-        item = await self._order_queue.dequeue()
-        if item is not None:
-            result = self._execute_item(
-                signal=item.signal,
-                market_bias=item.market_bias,
-                regime=item.regime,
-            )
-        else:
-            result = self.run_cycle(signal=None, market_bias=market_bias, regime=regime)
+        def _cfg(name, default=None):
+            cfg = getattr(self, "config", None)
+            if cfg is None:
+                return default
+            if isinstance(cfg, dict):
+                return cfg.get(name, default)
+            return getattr(cfg, name, default)
 
-        if self.telegram and result.get("status") == "TRADE":
-            try:
-                self.telegram.notify_trade(result)
-            except Exception as exc:
-                logger.warning("Telegram notification failed: %s", exc)
+        def _audit(event, payload=None):
+            audit_fn = getattr(self, "_audit", None)
+            if callable(audit_fn):
+                try:
+                    audit_fn(event, payload or {})
+                except Exception:
+                    pass
 
-        return result
-
-    # ------------------------------------------------------------------
-    # Synchronous shim (backward compat)
-    # ------------------------------------------------------------------
-
-    def execute_trade(
-        self,
-        signal: Optional[Dict] = None,
-        market_bias: str = "NEUTRAL",
-        regime: str = "MEAN_REVERSION",
-    ) -> Dict:
-        try:
-            loop = asyncio.get_running_loop()
-            import concurrent.futures
-            fut = asyncio.run_coroutine_threadsafe(
-                self.execute(signal=signal, market_bias=market_bias, regime=regime),
-                loop,
-            )
-            return fut.result(timeout=10)
-        except RuntimeError:
-            return asyncio.run(
-                self.execute(signal=signal, market_bias=market_bias, regime=regime)
-            )
-
-    # ------------------------------------------------------------------
-    # Synchronous cycle
-    # ------------------------------------------------------------------
-
-    def run_cycle(
-        self,
-        signal: Optional[Dict] = None,
-        market_bias: str = "NEUTRAL",
-        regime: str = "MEAN_REVERSION",
-    ) -> Dict:
-        self._cycle_no += 1
-
-        if not self.state:
-            return _skip("NO_STATE")
-        if getattr(self.state, "trading_halted", False):
-            return _skip("TRADING_HALTED")
-        if not getattr(self.state, "trading_enabled", True):
-            return _skip("TRADING_DISABLED")
-        if not getattr(self.state, "auto_mode", True) and signal is None:
-            return _skip("AUTO_DISABLED")
-        cooldown = getattr(self.state, "cooldown", 0)
-        if cooldown > 0:
-            self.state.cooldown = cooldown - 1
-            return _skip("COOLDOWN")
-
-        snapshots = self._snapshot_builder.build(
-            symbols=self._dynamic_symbols(regime),
-            regime=regime,
-            state=self.state,
-            portfolio_engine=self.portfolio_engine,
+        # ------------------------------------------------------------------
+        # GLOBAL KILL SWITCH
+        # ------------------------------------------------------------------
+        kill_switch = (
+            _cfg("GLOBAL_KILL_SWITCH", False)
+            or str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on")
         )
-        if not snapshots:
-            return _skip("NO_MARKET_DATA")
+        if kill_switch:
+            _audit("execution_blocked_kill_switch", {"signal": signal})
+            return {
+                "ok": False,
+                "reason": "GLOBAL_KILL_SWITCH_ACTIVE",
+            }
 
-        self.state.latest_prices = {s["symbol"]: s["price"] for s in snapshots}
-        prev_equity   = self.state.equity
-        prev_realized = float(getattr(self.state, "realized_pnl", 0))
+        # ------------------------------------------------------------------
+        # SIGNAL VALIDATION
+        # ------------------------------------------------------------------
+        validator = getattr(self, "_is_valid_signal", None)
+        if callable(validator):
+            try:
+                if not validator(signal):
+                    _audit("execution_invalid_signal", {"signal": signal})
+                    return {
+                        "ok": False,
+                        "reason": "INVALID_SIGNAL",
+                    }
+            except Exception as e:
+                _audit("execution_validation_error", {"error": str(e)})
+                return {
+                    "ok": False,
+                    "reason": f"VALIDATION_ERROR: {e}",
+                }
 
-        if self.reconciler:
+        # ------------------------------------------------------------------
+        # NORMALIZATION
+        # ------------------------------------------------------------------
+        normalizer = getattr(self, "_normalize_signal", None)
+        if callable(normalizer):
             try:
-                self.reconciler.reconcile(latest_prices=self.state.latest_prices)
-            except Exception:
-                pass
-        elif self.portfolio_engine:
-            try:
-                self.state.mark_to_market(self.portfolio_engine)
+                signal = normalizer(signal)
             except Exception:
                 pass
 
-        candidate = signal or self._select_signal(
-            snapshots=snapshots, market_bias=market_bias, regime=regime,
-        )
-        if not candidate:
-            candidate = self._maybe_rebalance_signal(regime=regime)
-        if not candidate:
-            return _skip("NO_SIGNAL")
+        strategy_ok, strategy_reason = self._gate_strategy_authority(signal)
+        if not strategy_ok:
+            _audit("execution_strategy_blocked", {"reason": strategy_reason})
+            return {
+                "ok": False,
+                "reason": strategy_reason,
+            }
 
-        return self._execute_item(
-            signal=candidate,
-            market_bias=market_bias,
-            regime=regime,
-            prev_equity=prev_equity,
-            prev_realized=prev_realized,
-        )
+        # ------------------------------------------------------------------
+        # APPROVAL ENFORCEMENT
+        # ------------------------------------------------------------------
+        approval_timeout = int(_cfg("EXECUTION_APPROVAL_TIMEOUT_SEC", 300))
+        approval_token = signal.get("approval_token")
+        approval_ts = signal.get("approval_ts")
+        explicit_override = bool(kwargs.get("explicit_override", False))
+
+        if not explicit_override:
+            if not approval_token or not approval_ts:
+                _audit("execution_missing_approval", {"signal": signal})
+                return {
+                    "ok": False,
+                    "reason": "APPROVAL_REQUIRED",
+                }
+
+            try:
+                age = time.time() - float(approval_ts)
+            except Exception:
+                return {
+                    "ok": False,
+                    "reason": "INVALID_APPROVAL_TIMESTAMP",
+                }
+
+            if age > approval_timeout:
+                _audit("execution_stale_approval", {"age": age})
+                return {
+                    "ok": False,
+                    "reason": "STALE_APPROVAL",
+                }
+
+        # ------------------------------------------------------------------
+        # DUPLICATE SUPPRESSION
+        # ------------------------------------------------------------------
+        state = getattr(self, "state", None)
+        if state is None:
+            self.state = {}
+            state = self.state
+
+        recent_exec = state.setdefault("_recent_exec", {})
+        duplicate_ttl = int(_cfg("DUPLICATE_EXECUTION_TTL_SEC", 60))
+
+        fp_raw = "|".join([
+            str(signal.get("symbol", "")),
+            str(signal.get("side", "")),
+            str(signal.get("strategy", "")),
+            str(signal.get("qty", signal.get("quantity", ""))),
+        ])
+        fingerprint = hashlib.sha256(fp_raw.encode()).hexdigest()
+
+        existing_ts = recent_exec.get(fingerprint)
+        if existing_ts and (time.time() - existing_ts) < duplicate_ttl:
+            _audit("execution_duplicate_blocked", {"fingerprint": fingerprint})
+            return {
+                "ok": False,
+                "reason": "DUPLICATE_EXECUTION_BLOCKED",
+            }
+
+        recent_exec[fingerprint] = time.time()
+
+        # cleanup stale cache
+        now = time.time()
+        stale_keys = [
+            k for k, ts in recent_exec.items()
+            if (now - ts) > duplicate_ttl
+        ]
+        for k in stale_keys:
+            recent_exec.pop(k, None)
+
+        # ------------------------------------------------------------------
+        # PORTFOLIO GOVERNANCE
+        # ------------------------------------------------------------------
+        portfolio_governor = getattr(self, "portfolio_governor", None)
+        if portfolio_governor:
+            allow_fn = getattr(portfolio_governor, "allow", None)
+            if callable(allow_fn):
+                try:
+                    allowed = allow_fn(signal)
+                    if allowed is False:
+                        _audit("execution_portfolio_blocked", {"signal": signal})
+                        return {
+                            "ok": False,
+                            "reason": "PORTFOLIO_GOVERNOR_BLOCKED",
+                        }
+                except Exception as e:
+                    return {
+                        "ok": False,
+                        "reason": f"PORTFOLIO_GOVERNOR_ERROR: {e}",
+                    }
+
+        # ------------------------------------------------------------------
+        # EXECUTION DISPATCH
+        # ------------------------------------------------------------------
+        executor = getattr(self, "_execute_signal", None)
+        if callable(executor):
+            _audit("execution_dispatch", {"signal": signal})
+            return await executor(signal, **kwargs)
+
+        submitter = getattr(self, "submit_order", None)
+        if callable(submitter):
+            _audit("execution_submit_order", {"signal": signal})
+            return submitter(signal, **kwargs)
+
+        return {
+            "ok": False,
+            "reason": "NO_EXECUTION_BACKEND_AVAILABLE",
+        }
 
     
 
@@ -1243,303 +1310,229 @@ class ExecutionRouter:
     # Sovereignty Gate
     # ------------------------------------------------------------------
 
-    def _gate_strategy_authority(self, signal):
-
-        if not self.registry or not self.governor:
-            return True, "sovereignty_disabled"
-
-        sid = str(signal.get("strategy_id", "")).strip()
-
-        if not sid:
-            return False, "missing_strategy_id"
-
-        row = self.registry.get(sid)
-
-        if not row:
-            return False, "strategy_not_registered"
-
-        stage = str(row.get("stage", "")).upper()
-
-        if stage not in {"LIVE", "SHADOW", "PAPER"}:
-            return False, f"stage_not_executable:{stage}"
-
-        if float(row.get("allocation_pct", 0)) <= 0:
-            return False, "no_capital_allocated"
-
-        if sid not in self.governor.get_active_ids():
-            return False, "not_governor_active"
-
-        return True, "ok"
+    def _gate_strategy_authority(self, signal: dict):
+        """
+        Strategy sovereignty gate.
+        Fixes:
+        - dead token validation
+        - registry naming mismatch
+        """
+        strategy = signal.get("strategy")
         token = signal.get("execution_token")
 
-        if not self.token_authority:
-            return False, "token_authority_missing"
+        if not strategy:
+            return False, "MISSING_STRATEGY"
 
-        if not self.token_authority.validate(sid, token):
-            return False, "invalid_execution_token"
-    
-    # ------------------------------------------------------------------
-    # Core execution pipeline
-    # ------------------------------------------------------------------
+        registry = getattr(self, "strategy_registry", None)
+        if registry is None:
+            return False, "STRATEGY_REGISTRY_UNAVAILABLE"
 
-    def _execute_item(
-        self,
-        signal: Dict,
-        market_bias: str,
-        regime: str,
-        prev_equity: Optional[float] = None,
-        prev_realized: Optional[float] = None,
-    ) -> Dict:
-        if prev_equity is None:
-            prev_equity   = getattr(self.state, "equity", 0.0)
-        if prev_realized is None:
-            prev_realized = float(getattr(self.state, "realized_pnl", 0))
-
-        if bool(getattr(self.config, "strict_market_hours", False)):
-            if not self._is_symbol_tradable_now(signal.get("symbol")):
-                self._reset_risk_block_state()
-                return _skip("MARKET_CLOSED")
-
-        if not self._is_valid_signal(signal):
-            # ---- Portfolio Sovereignty Gate ----
-            
-
-                if not allowed:
-                    self._reset_risk_block_state()
-                    return _skip(f"PORTFOLIO_BLOCK:{reason}")
-                ok, reason = self._gate_strategy_authority(signal)
-
-                if not ok:
-                    self._reset_risk_block_state()
-                    return _skip(f"STRATEGY_BLOCKED:{reason}")
-            
-                self._reset_risk_block_state()
-                return _skip("INVALID_SIGNAL")
-
-        is_rebalance = bool(signal.get("rebalance_assist", False))
-        if not is_rebalance and not self._passes_context_filter(signal, regime):
-            self._reset_risk_block_state()
-            return _skip("WEAK_CONTEXT")
-
-        if self._is_symbol_in_cooldown(signal["symbol"]):
-            self._reset_risk_block_state()
-            return _skip("SYMBOL_COOLDOWN")
-
-        # ---- Risk gate pipeline ----------------------------------------
-        gate_ctx = {
-            "risk_engine":        self.risk_engine,
-            "portfolio_engine":   self.portfolio_engine,
-            "cycle_no":           self._cycle_no,
-            "symbol_cooldown":    self._symbol_cooldown_until,
-            "strategy_cooldown":  self._strategy_cooldown_until,
-            "max_open_positions": int(getattr(self.config, "max_open_positions", 20)),
-        }
-        gate = self._risk_gate.check(self.state, signal, gate_ctx)
-        if not gate.allowed:
-            if gate.reason in _RISK_GATE_EXPOSURE_REASONS:
-                self._track_risk_block(gate.reason)
-                liq = self._maybe_liquidation_assist(gate.reason, regime)
-                if liq:
-                    return liq
-            else:
-                self._reset_risk_block_state()
-            return _skip(gate.reason)
-
-        # ---- Legacy risk_engine.allow_trade() (backward compat) --------
-        if self.risk_engine:
-            try:
-                allowed, reason = self.risk_engine.allow_trade(
-                    self.state,
-                    portfolio_exposure_pct   = self._portfolio_exposure_pct(),
-                    symbol_exposure_pct      = self._symbol_exposure_pct(signal["symbol"]),
-                    daily_trade_count        = self._daily_trade_count(),
-                    symbol_daily_loss_pct    = self._symbol_daily_loss_pct(signal["symbol"]),
-                    sector_exposure_pct      = self._sector_exposure_pct(signal["symbol"]),
-                    strategy_exposure_pct    = self._strategy_exposure_pct(signal.get("strategy_id")),
-                    asset_exposure_pct       = self._asset_exposure_pct(self._asset_class(signal["symbol"])),
-                    exposure_reducing        = self._is_exposure_reducing_signal(signal),
-                    active_strategy_count    = self._active_strategy_count(),
-                )
-                if not allowed:
-                    if self._is_exposure_block(reason):
-                        self._track_risk_block(reason)
-                        liq = self._maybe_liquidation_assist(reason, regime)
-                        if liq:
-                            return liq
-                    else:
-                        self._reset_risk_block_state()
-                    return _skip(reason)
-            except Exception as exc:
-                logger.warning("risk_engine.allow_trade failed: %s", exc)
-
-        self._reset_risk_block_state()
-               
-        # ---- Quantity allocation ----------------------------------------
-        qty, size_reason = self._allocate_quantity(signal)
-        if qty <= 0:
-            return _skip(size_reason)
-
-        # Advisory: reserve capital via CapitalIntelligenceEngine
-        if self.capital_intelligence:
-            try:
-                self.capital_intelligence.allocate(
-                    signal.get("strategy_id", "unknown"),
-                    float(signal["price"]) * qty,
-                )
-            except Exception:
-                pass
-
-        # ---- Slippage & fee --------------------------------------------
-        intended_price = signal["price"]
-        slippage_bps   = self._compute_slippage_bps(signal)
-        fill_price     = self._apply_slippage(intended_price, signal["side"], slippage_bps)
-        fill_notional  = _quantize(fill_price * qty, 4)
-        fee            = _quantize(fill_notional * (getattr(self.config, "broker_fee_bps", 3) / 10000.0), 4)
-
-        # ---- Broker dispatch -------------------------------------------
-        asset_class = self._asset_class(signal["symbol"])
-        order = self._multi_broker.place_order(
-            symbol=signal["symbol"],
-            side=signal["side"],
-            qty=qty,
-            price=fill_price,
-            fee=fee,
-            asset_class=asset_class,
-            meta={
-                "strategy_id":      signal.get("strategy_id"),
-                "trade_type":       signal.get("trade_type") or self._trade_type(signal),
-                "regime":           regime,
-                "rebalance_assist": bool(signal.get("rebalance_assist", False)),
-            },
-        )
-
-        # ---- Portfolio accounting --------------------------------------
-        realized_pnl = self._apply_fill_accounting(
-            order=order,
-            fill_price=fill_price,
-            fill_notional=fill_notional,
-            fee=fee,
-            prev_realized=prev_realized,
-        )
-
-        cycle_pnl = _quantize(getattr(self.state, "equity", 0.0) - prev_equity, 4)
         try:
-            self.state.update_loss_streak(cycle_pnl_abs=cycle_pnl)
-        except Exception:
-            pass
+            if hasattr(registry, "exists"):
+                if not registry.exists(strategy):
+                    return False, "UNKNOWN_STRATEGY"
+            elif hasattr(registry, "__contains__"):
+                if strategy not in registry:
+                    return False, "UNKNOWN_STRATEGY"
+        except Exception as e:
+            return False, f"STRATEGY_REGISTRY_ERROR: {e}"
 
-        # Strategy cooldown
-        sid = signal.get("strategy_id", "")
-        if sid:
-            tt  = str(signal.get("trade_type") or self._trade_type(signal)).upper()
-            gap = _COOLDOWN_BY_TRADE_TYPE.get(tt, 2)
-            self._strategy_cooldown_until[sid] = self._cycle_no + gap
+        # ------------------------------------------------------------------
+        # TOKEN AUTHORITY (dead validation fixed)
+        # ------------------------------------------------------------------
+        token_authority = getattr(self, "token_authority", None)
+        if token_authority:
+            validator = (
+                getattr(token_authority, "validate", None)
+                or getattr(token_authority, "verify", None)
+                or getattr(token_authority, "is_valid", None)
+            )
+            if callable(validator):
+                try:
+                    valid = validator(token, strategy=strategy)
+                    if valid is False:
+                        return False, "INVALID_EXECUTION_TOKEN"
+                except TypeError:
+                    try:
+                        valid = validator(token)
+                        if valid is False:
+                            return False, "INVALID_EXECUTION_TOKEN"
+                    except Exception as e:
+                        return False, f"TOKEN_AUTHORITY_ERROR: {e}"
+                except Exception as e:
+                    return False, f"TOKEN_AUTHORITY_ERROR: {e}"
 
-        trade_record = self._build_trade_record(
-            signal=signal, order=order,
-            fill_price=fill_price, intended_price=intended_price,
-            slippage_bps=slippage_bps, fee=fee,
-            realized_pnl=realized_pnl, cycle_pnl=cycle_pnl,
-            regime=regime,
-        )
-        try:
-            self.state.record_trade(trade_record)
-        except Exception:
-            pass
-        self._symbol_strategy_owner[order.get("symbol", signal["symbol"])] = sid
-        self._set_symbol_cooldown(
-            order.get("symbol", signal["symbol"]), trade_record.get("trade_type", "INTRADAY")
-        )
+        # ------------------------------------------------------------------
+        # REGISTRY GOVERNOR
+        # ------------------------------------------------------------------
+        governor = getattr(self, "registry_governor", None)
+        if governor:
+            allow_fn = (
+                getattr(governor, "allow", None)
+                or getattr(governor, "authorize", None)
+                or getattr(governor, "approve", None)
+            )
+            if callable(allow_fn):
+                try:
+                    allowed = allow_fn(strategy, signal)
+                    if allowed is False:
+                        return False, "REGISTRY_GOVERNOR_BLOCKED"
+                except TypeError:
+                    try:
+                        allowed = allow_fn(strategy)
+                        if allowed is False:
+                            return False, "REGISTRY_GOVERNOR_BLOCKED"
+                    except Exception as e:
+                        return False, f"REGISTRY_GOVERNOR_ERROR: {e}"
+                except Exception as e:
+                    return False, f"REGISTRY_GOVERNOR_ERROR: {e}"
 
-        return {
-            "status":             "TRADE",
-            "order_id":           order.get("order_id") or order.get("id", ""),
-            "symbol":             order.get("symbol", signal["symbol"]),
-            "side":               order.get("side", signal["side"]),
-            "qty":                order.get("qty", qty),
-            "price":              trade_record["price"],
-            "pnl":                trade_record["cycle_pnl"],
-            "equity":             trade_record["equity"],
-            "strategy_id":        trade_record["strategy_id"],
-            "strategy_stage":     trade_record["strategy_stage"],
-            "shadow_mode":        trade_record["shadow_mode"],
-            "trade_type":         trade_record["trade_type"],
-            "regime":             trade_record["regime"],
-            "confidence":         trade_record["confidence"],
-            "liquidation_assist": False,
-            "rebalance_assist":   trade_record["rebalance_assist"],
-            "broker":             order.get("broker", self._multi_broker.account_source),
-        }
-
-    # ------------------------------------------------------------------
-    # Fill accounting
-    # ------------------------------------------------------------------
-
-    def _apply_fill_accounting(
-        self,
-        order: Dict,
-        fill_price: float,
-        fill_notional: float,
-        fee: float,
-        prev_realized: float,
-    ) -> float:
-        realized_pnl = 0.0
-        if self.reconciler:
-            try:
-                snapshot = self.reconciler.reconcile(latest_prices=getattr(self.state, "latest_prices", {}))
-                realized_pnl = float(getattr(self.state, "realized_pnl", 0)) - prev_realized
-                if abs(realized_pnl) < 1e-8:
-                    realized_pnl = float(order.get("realized_pnl", 0.0))
-            except Exception as exc:
-                logger.debug("Reconciler error: %s", exc)
-        elif self.portfolio_engine:
-            try:
-                fill_result = self.portfolio_engine.apply_fill(
-                    symbol=order.get("symbol", ""),
-                    side=order.get("side", ""),
-                    qty=order.get("qty", 0),
-                    price=fill_price,
-                )
-                realized_pnl = float(fill_result.get("realized_pnl", 0.0))
-                self.state.apply_fill_accounting(
-                    side=order.get("side", ""),
-                    fill_notional=fill_notional,
-                    fee=fee,
-                    realized_pnl=realized_pnl,
-                )
-                self.state.open_positions = self.portfolio_engine.exposure()
-                self.state.mark_to_market(self.portfolio_engine)
-            except Exception as exc:
-                logger.debug("fill_accounting error: %s", exc)
-
-        # Release CIE reservation on close
-        if self.capital_intelligence and abs(realized_pnl) > 0:
-            try:
-                sid = (order.get("meta") or {}).get("strategy_id", "unknown")
-                self.capital_intelligence.release(sid)
-            except Exception:
-                pass
-
-        return realized_pnl
+        return True, "ok"
 
     # ------------------------------------------------------------------
     # Operational controls
     # ------------------------------------------------------------------
 
-    def submit_order(
-        self,
-        symbol: str,
-        side: str,
-        qty: int,
-        price: float,
-        fee: float = 0.0,
-        meta: Optional[Dict] = None,
-    ) -> Dict:
-        """Direct broker submission bypassing signal pipeline."""
-        return self._multi_broker.place_order(
-            symbol=symbol, side=side, qty=qty, price=price, fee=fee,
-            meta=meta or {}, asset_class=self._asset_class(symbol),
+    def submit_order(self, signal: dict, **kwargs):
+        """
+        Hardened broker submission path.
+        Direct broker bypass disabled unless explicit override.
+        """
+        import os
+        import time
+        import hashlib
+
+        def _cfg(name, default=None):
+            cfg = getattr(self, "config", None)
+            if cfg is None:
+                return default
+            if isinstance(cfg, dict):
+                return cfg.get(name, default)
+            return getattr(cfg, name, default)
+
+        kill_switch = (
+            _cfg("GLOBAL_KILL_SWITCH", False)
+            or str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on")
         )
+        if kill_switch:
+            return {
+                "ok": False,
+                "reason": "GLOBAL_KILL_SWITCH_ACTIVE",
+            }
+
+        explicit_override = bool(kwargs.get("explicit_override", False))
+        allow_direct = bool(_cfg("ALLOW_DIRECT_BROKER_OVERRIDE", False))
+
+        if explicit_override and not allow_direct:
+            return {
+                "ok": False,
+                "reason": "DIRECT_OVERRIDE_DISABLED",
+            }
+
+        approval_timeout = int(_cfg("EXECUTION_APPROVAL_TIMEOUT_SEC", 300))
+        approval_token = signal.get("approval_token")
+        approval_ts = signal.get("approval_ts")
+
+        if not explicit_override:
+            if not approval_token or not approval_ts:
+                return {
+                    "ok": False,
+                    "reason": "APPROVAL_REQUIRED",
+                }
+
+            try:
+                if (time.time() - float(approval_ts)) > approval_timeout:
+                    return {
+                        "ok": False,
+                        "reason": "STALE_APPROVAL",
+                    }
+            except Exception:
+                return {
+                    "ok": False,
+                    "reason": "INVALID_APPROVAL_TIMESTAMP",
+                }
+
+        state = getattr(self, "state", None)
+        if state is None:
+            self.state = {}
+            state = self.state
+
+        locks = state.setdefault("_submission_locks", {})
+        lock_ttl = int(_cfg("DUPLICATE_EXECUTION_TTL_SEC", 60))
+
+        fp_raw = "|".join([
+            str(signal.get("symbol", "")),
+            str(signal.get("side", "")),
+            str(signal.get("strategy", "")),
+            str(signal.get("qty", signal.get("quantity", ""))),
+        ])
+        fp = hashlib.sha256(fp_raw.encode()).hexdigest()
+
+        existing = locks.get(fp)
+        if existing and (time.time() - existing) < lock_ttl:
+            return {
+                "ok": False,
+                "reason": "DUPLICATE_SUBMISSION_BLOCKED",
+            }
+
+        locks[fp] = time.time()
+
+        whitelist = _cfg("INSTRUMENT_WHITELIST", None)
+        symbol = signal.get("symbol")
+
+        if whitelist:
+            if symbol not in whitelist:
+                return {
+                    "ok": False,
+                    "reason": "INSTRUMENT_NOT_WHITELISTED",
+                }
+
+        portfolio_governor = getattr(self, "portfolio_governor", None)
+        if portfolio_governor:
+            allow_fn = getattr(portfolio_governor, "allow", None)
+            if callable(allow_fn):
+                try:
+                    if allow_fn(signal) is False:
+                        return {
+                            "ok": False,
+                            "reason": "CAPITAL_GOVERNOR_BLOCKED",
+                        }
+                except Exception as e:
+                    return {
+                        "ok": False,
+                        "reason": f"CAPITAL_GOVERNOR_ERROR: {e}",
+                    }
+
+        broker = getattr(self, "_multi_broker", None)
+        if broker is None:
+            return {
+                "ok": False,
+                "reason": "BROKER_UNAVAILABLE",
+            }
+
+        place_fn = getattr(broker, "place_order", None)
+        if not callable(place_fn):
+            return {
+                "ok": False,
+                "reason": "BROKER_PLACE_ORDER_UNAVAILABLE",
+            }
+
+        response = place_fn(signal)
+
+        if response is None:
+            return {
+                "ok": False,
+                "reason": "BROKER_NO_ACK",
+            }
+
+        if isinstance(response, dict):
+            if not any(k in response for k in ("order_id", "broker_order_id", "status", "ack")):
+                return {
+                    "ok": False,
+                    "reason": "INVALID_BROKER_ACK",
+                }
+
+        return response
 
     def update_positions(self) -> Dict:
         if not self.portfolio_engine:
