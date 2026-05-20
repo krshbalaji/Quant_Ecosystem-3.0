@@ -33,31 +33,64 @@ class CommandHandler:
             return "Unauthorized user."
 
         raw = str(command_text or "").strip()
+
         if not raw:
             return "Empty command."
+
         if not raw.startswith("/"):
-            raw = "/" + raw
+            return "Explicit slash commands only."
 
         parts = raw[1:].split()
         cmd = parts[0].lower() if parts else ""
+
         if "@" in cmd:
             cmd = cmd.split("@", 1)[0]
+
         args = parts[1:]
 
         if cmd == "status":
             return self._status()
+
         if cmd == "system_health":
             return self._system_health()
+
         if cmd == "pause":
-            return self._pause()
+            if not args or args[0] != "QE3_APPROVE":
+                return "Approval token required."
+            if self.trading_loop:
+                return self.trading_loop.stop_loop()
+            if self.router:
+                try:
+                    self.router.stop_trading()
+                    self.router.set_auto_mode(False)
+                    return "Trading paused."
+                except Exception as exc:
+                    return f"Pause failed: {exc}"
+            return "Router unavailable."
+
         if cmd == "resume":
-            return self._resume()
+            if not args or args[0] != "QE3_APPROVE":
+                return "Approval token required."
+            if self.trading_loop:
+                return self.trading_loop.start_loop()
+            if self.router:
+                try:
+                    self.router.start_trading()
+                    self.router.set_auto_mode(True)
+                    return "Trading resumed."
+                except Exception as exc:
+                    return f"Resume failed: {exc}"
+            return "Router unavailable."
+
         if cmd == "activate_strategy":
             return self._activate_strategy(args)
+
         if cmd == "deactivate_strategy":
             return self._deactivate_strategy(args)
+
         if cmd == "allocate_capital":
             return self._allocate_capital(args)
+
         return "Unknown command."
 
     def is_authorized(self, user_id: int | str) -> bool:
@@ -78,8 +111,7 @@ class CommandHandler:
         return reporter.system_health()
 
     def _pause(self) -> str:
-        if self.trading_loop:
-            return self.trading_loop.stop_loop()
+        return "Pause requires explicit approval token. Use /pause QE3_APPROVE"
         router = self.router
         if not router:
             return "Router unavailable."
@@ -91,8 +123,7 @@ class CommandHandler:
             return f"Pause failed: {exc}"
 
     def _resume(self) -> str:
-        if self.trading_loop:
-            return self.trading_loop.start_loop()
+        return "Resume requires explicit approval token. Use /resume QE3_APPROVE"
         router = self.router
         if not router:
             return "Router unavailable."
@@ -104,10 +135,17 @@ class CommandHandler:
             return f"Resume failed: {exc}"
 
     def _activate_strategy(self, args) -> str:
-        if not args:
-            return "Usage: /activate_strategy <name>"
+        if len(args) < 2:
+            return "Usage: /activate_strategy <name> <approval_token>"
+
         name = str(args[0]).strip()
+        approval_token = str(args[1]).strip()
+
+        if approval_token != "QE3_APPROVE":
+            return "Approval token required."
+
         selector = self.strategy_selector
+
         if selector and hasattr(selector, "activation_manager"):
             try:
                 return selector.activation_manager.activate_strategy(name)
@@ -115,38 +153,61 @@ class CommandHandler:
                 return f"Activation failed: {exc}"
 
         controller = self.autonomous_controller
+
         if controller and self.router and hasattr(controller, "deploy_strategy"):
             return controller.deploy_strategy(self.router, name)
-        return "Strategy activation path unavailable."
 
+        return "Strategy activation path unavailable."
+        
     def _deactivate_strategy(self, args) -> str:
-        if not args:
-            return "Usage: /deactivate_strategy <name>"
+        if len(args) < 2:
+            return "Usage: /deactivate_strategy <name> <approval_token>"
+
         name = str(args[0]).strip()
+        approval_token = str(args[1]).strip()
+
+        if approval_token != "QE3_APPROVE":
+            return "Approval token required."
+
         selector = self.strategy_selector
+
         if selector and hasattr(selector, "activation_manager"):
             try:
                 return selector.activation_manager.deactivate_strategy(name)
             except Exception as exc:
                 return f"Deactivation failed: {exc}"
-        return "Strategy deactivation path unavailable."
 
+        return "Strategy deactivation path unavailable."
+        
     def _allocate_capital(self, args) -> str:
-        if len(args) < 2:
-            return "Usage: /allocate_capital <strategy> <amount_pct>"
+        if len(args) < 3:
+            return "Usage: /allocate_capital <strategy> <amount_pct> <approval_token>"
+
         strategy = str(args[0]).strip()
+
         try:
             amount = float(args[1])
         except ValueError:
-            return "Invalid amount. Example: /allocate_capital core_momentum_v1 20"
+            return "Invalid amount."
+
+        approval_token = str(args[2]).strip()
+        expected = "QE3_APPROVE"
+
+        if approval_token != expected:
+            return "Approval token required."
 
         layer = self.capital_allocator_layer
+
         if layer and hasattr(layer, "set_manual_allocation"):
-            value = layer.set_manual_allocation(strategy, amount)
-            return f"Allocation override set: {strategy}={value}%"
+            try:
+                value = layer.set_manual_allocation(strategy, amount)
+                return f"Allocation override set: {strategy}={value}%"
+            except Exception as exc:
+                return f"Allocation failed: {exc}"
 
         controller = self.autonomous_controller
+
         if controller and self.router and hasattr(controller, "allocate"):
             return controller.allocate(self.router, strategy, amount)
-        return "Capital allocation path unavailable."
 
+        return "Capital allocation path unavailable."

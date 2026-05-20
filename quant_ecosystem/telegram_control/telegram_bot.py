@@ -54,18 +54,23 @@ class QuantTelegramBot:
     async def _on_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.effective_message or not update.effective_user:
             return
+
         text = str(update.effective_message.text or "").strip()
         user_id = str(update.effective_user.id)
+
         reply = self.command_handler.handle(text, user_id=user_id)
         await update.effective_message.reply_text(reply)
-
+        
     async def _on_plain_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.effective_message or not update.effective_user:
             return
-        text = str(update.effective_message.text or "").strip()
-        if not text.startswith("/"):
-            text = "/" + text
-        user_id = str(update.effective_user.id)
-        reply = self.command_handler.handle(text, user_id=user_id)
-        await update.effective_message.reply_text(reply)
 
+        user_id = str(update.effective_user.id)
+
+        if not self.command_handler.is_authorized(user_id):
+            await update.effective_message.reply_text("Unauthorized user.")
+            return
+
+        await update.effective_message.reply_text(
+            "Plain text commands are disabled. Use explicit slash commands only."
+        )
