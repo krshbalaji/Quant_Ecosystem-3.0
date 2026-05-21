@@ -7,6 +7,7 @@ from quant_ecosystem.security.security_governor import SecurityGovernor
 from quant_ecosystem.security.security_audit import SecurityAuditTrail
 from quant_ecosystem.security.rate_limit_guard import RateLimitGuard
 from quant_ecosystem.security.replay_guard import ReplayGuard
+from quant_ecosystem.security.session_guard import SessionGuard
 
 class CommandHandler:
     """Parses Telegram commands and dispatches to injected system components."""
@@ -37,6 +38,10 @@ class CommandHandler:
         self.router = router
         self.rate_limit_guard = RateLimitGuard()
         self.replay_guard = ReplayGuard()
+        self.session_guard = SessionGuard()
+
+    def validate_session(self, user_id, username=None):
+        return self.session_guard.validate(user_id, username)    
 
     def handle(self, command_text: str, user_id: int | str) -> str:
         if not self.is_authorized(user_id):

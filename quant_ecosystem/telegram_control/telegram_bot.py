@@ -59,8 +59,15 @@ class QuantTelegramBot:
         if not update.effective_message or not update.effective_user:
             return
 
-        text = str(update.effective_message.text or "").strip()
-        user_id = str(update.effective_user.id)
+        user = update.effective_user
+        user_id = user.id
+        username = getattr(user, "username", None)
+
+        if not self.command_handler.validate_session(user_id, username):
+            await update.message.reply_text(
+                "Session mismatch detected. Command rejected."
+            )
+            return
 
         reply = self.command_handler.handle(text, user_id=user_id)
         await update.effective_message.reply_text(reply)
