@@ -1245,15 +1245,13 @@ class ExecutionRouter:
 
     def _gate_strategy_authority(self, signal):
 
-        if not self.registry or not self.governor:
-            return True, "sovereignty_disabled"
+        registry = getattr(self, "strategy_registry", None)
+        governor = getattr(self, "registry_governor", None)
 
-        sid = str(signal.get("strategy_id", "")).strip()
+        if not registry or not governor:
+            return True, "NO_GOVERNANCE"
 
-        if not sid:
-            return False, "missing_strategy_id"
-
-        row = self.registry.get(sid)
+        row = registry.get(sid)
 
         if not row:
             return False, "strategy_not_registered"
@@ -1266,7 +1264,7 @@ class ExecutionRouter:
         if float(row.get("allocation_pct", 0)) <= 0:
             return False, "no_capital_allocated"
 
-        if sid not in self.governor.get_active_ids():
+        if sid not in governor.get_active_ids():
             return False, "not_governor_active"
 
         return True, "ok"
@@ -1301,20 +1299,14 @@ class ExecutionRouter:
                 return _skip("MARKET_CLOSED")
 
         if not self._is_valid_signal(signal):
-            # ---- Portfolio Sovereignty Gate ----
-            
+            self._reset_risk_block_state()
+            return _skip("INVALID_SIGNAL")
 
-                if not allowed:
-                    self._reset_risk_block_state()
-                    return _skip(f"PORTFOLIO_BLOCK:{reason}")
-                ok, reason = self._gate_strategy_authority(signal)
-
-                if not ok:
-                    self._reset_risk_block_state()
-                    return _skip(f"STRATEGY_BLOCKED:{reason}")
-            
-                self._reset_risk_block_state()
-                return _skip("INVALID_SIGNAL")
+        # ---- Strategy authority gate ----
+        ok, reason = self._gate_strategy_authority(signal)
+        if not ok:
+            self._reset_risk_block_state()
+            return _skip(f"STRATEGY_BLOCKED:{reason}")
 
         is_rebalance = bool(signal.get("rebalance_assist", False))
         if not is_rebalance and not self._passes_context_filter(signal, regime):
