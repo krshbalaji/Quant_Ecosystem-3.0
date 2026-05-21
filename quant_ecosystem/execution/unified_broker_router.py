@@ -4,7 +4,7 @@ from typing import Any, Dict, Mapping, Optional
 
 from broker.paper_broker import PaperBroker
 from quant_ecosystem.contracts.order_intent import OrderIntent
-
+from quant_ecosystem.security.security_governor import SecurityGovernor
 
 PAPER_MODES = {"PAPER", "SIM", "SIMULATED", "DRY_RUN"}
 LIVE_MODES = {"LIVE", "REAL"}
@@ -97,6 +97,7 @@ class UnifiedBrokerRouter:
         self.mode = str(mode or "PAPER").upper()
         self.paper_broker = paper_broker or PaperBroker()
         self.live_broker = live_broker
+        SecurityGovernor.validate_security_configuration(mode=self.mode)
         self.capital_governor = None
         self._submission_locks = {}
         self._duplicate_ttl = 60
@@ -110,7 +111,7 @@ class UnifiedBrokerRouter:
         if not validation["ok"]:
             return validation
 
-        if str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on"):
+        if SecurityGovernor.is_kill_switch_active():
             _log_order(order, "rejected", "GLOBAL_KILL_SWITCH_ACTIVE")
             return {
                 "ok": False,
@@ -142,7 +143,7 @@ class UnifiedBrokerRouter:
         if not validation["ok"]:
             return validation
 
-        if str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on"):
+        if SecurityGovernor.is_kill_switch_active():
             _log_order(order, "rejected", "GLOBAL_KILL_SWITCH_ACTIVE")
             return {
                 "ok": False,

@@ -61,6 +61,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, time as dtime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
+from quant_ecosystem.security.security_governor import SecurityGovernor
 
 logger = logging.getLogger(__name__)
 
@@ -956,7 +957,11 @@ class ExecutionRouter:
 
         # Config — lazy import to avoid import-time side effects
         self.config = self._load_config()
+        mode_value = None
+        if isinstance(self.config, dict):
+            mode_value = self.config.get("BROKER_MODE") or self.config.get("MODE")
 
+        SecurityGovernor.validate_security_configuration(mode=mode_value)
         
         # Indicator engines — lazy import
         self.instrument_policy = self._load_instrument_policy()
@@ -1150,7 +1155,7 @@ class ExecutionRouter:
         # ------------------------------------------------------------------
         kill_switch = (
             _cfg("GLOBAL_KILL_SWITCH", False)
-            or str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on")
+            or SecurityGovernor.is_kill_switch_active()
         )
         if kill_switch:
             _audit("execution_blocked_kill_switch", {"signal": signal})
@@ -1412,7 +1417,7 @@ class ExecutionRouter:
 
         kill_switch = (
             _cfg("GLOBAL_KILL_SWITCH", False)
-            or str(os.getenv("GLOBAL_KILL_SWITCH", "")).lower() in ("1", "true", "yes", "on")
+            or SecurityGovernor.is_kill_switch_active()
         )
         if kill_switch:
             return {

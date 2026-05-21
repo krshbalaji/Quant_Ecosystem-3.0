@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Iterable, Optional
+from quant_ecosystem.security.security_governor import SecurityGovernor
 
 
 class CommandHandler:
@@ -55,7 +56,7 @@ class CommandHandler:
             return self._system_health()
 
         if cmd == "pause":
-            if not args or args[0] != "QE3_APPROVE":
+            if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
                 return "Approval token required."
             if self.trading_loop:
                 return self.trading_loop.stop_loop()
@@ -69,7 +70,7 @@ class CommandHandler:
             return "Router unavailable."
 
         if cmd == "resume":
-            if not args or args[0] != "QE3_APPROVE":
+            if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
                 return "Approval token required."
             if self.trading_loop:
                 return self.trading_loop.start_loop()
@@ -111,7 +112,7 @@ class CommandHandler:
         return reporter.system_health()
 
     def _pause(self) -> str:
-        return "Pause requires explicit approval token. Use /pause QE3_APPROVE"
+        return "Pause requires explicit approval token. Use /pause <approval_token>"
         router = self.router
         if not router:
             return "Router unavailable."
@@ -123,7 +124,7 @@ class CommandHandler:
             return f"Pause failed: {exc}"
 
     def _resume(self) -> str:
-        return "Resume requires explicit approval token. Use /resume QE3_APPROVE"
+        return "Resume requires explicit approval token. Use /resume <approval_token>"
         router = self.router
         if not router:
             return "Router unavailable."
@@ -141,7 +142,7 @@ class CommandHandler:
         name = str(args[0]).strip()
         approval_token = str(args[1]).strip()
 
-        if approval_token != "QE3_APPROVE":
+        if approval_token != SecurityGovernor.get_telegram_approval_token():
             return "Approval token required."
 
         selector = self.strategy_selector
@@ -166,7 +167,7 @@ class CommandHandler:
         name = str(args[0]).strip()
         approval_token = str(args[1]).strip()
 
-        if approval_token != "QE3_APPROVE":
+        if approval_token != SecurityGovernor.get_telegram_approval_token():
             return "Approval token required."
 
         selector = self.strategy_selector
@@ -191,7 +192,7 @@ class CommandHandler:
             return "Invalid amount."
 
         approval_token = str(args[2]).strip()
-        expected = "QE3_APPROVE"
+        expected = SecurityGovernor.get_telegram_approval_token()
 
         if approval_token != expected:
             return "Approval token required."

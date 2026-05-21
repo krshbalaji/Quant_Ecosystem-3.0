@@ -14,14 +14,14 @@ from telegram_control import process_callbacks, send_message, start_trade_panel
 from quant_ecosystem.adapters.signal_normalizer import normalize_tradingview
 from quant_ecosystem.contracts.order_intent import OrderIntent
 from quant_ecosystem.execution.unified_broker_router import submit as submit_order
+from quant_ecosystem.security.security_governor import SecurityGovernor
 from quant_ecosystem.storage.signal_store import record_signal
 
 load_dotenv()
 
 app = Flask(__name__)
 
-
-WEBHOOK_SECRET = os.getenv("TRADINGVIEW_WEBHOOK_SECRET", os.getenv("WEBHOOK_SECRET", "QE3_SECRET"))
+WEBHOOK_SECRET = ""
 BROKER_MODE = os.getenv("TRADINGVIEW_BROKER_MODE", os.getenv("BROKER_MODE", "paper"))
 DEFAULT_QTY = int(os.getenv("TRADINGVIEW_DEFAULT_QTY", "1"))
 EXECUTION_ENABLED = os.getenv("TRADINGVIEW_EXECUTION_ENABLED", "false").lower() in {
@@ -49,6 +49,7 @@ APPROVAL_POLL_SECONDS = float(os.getenv("TRADINGVIEW_APPROVAL_POLL_SECONDS", "3"
 REPLAY_WINDOW_SECONDS = int(os.getenv("TRADINGVIEW_REPLAY_WINDOW_SECONDS", "120"))
 DUPLICATE_TTL_SECONDS = int(os.getenv("TRADINGVIEW_DUPLICATE_TTL_SECONDS", "120"))
 APPROVAL_TIMEOUT_SECONDS = int(os.getenv("TRADINGVIEW_APPROVAL_TIMEOUT_SECONDS", "300"))
+SecurityGovernor.validate_security_configuration(mode=BROKER_MODE)
 
 SIDE_ALIASES = {
     "BUY": "BUY",
@@ -510,7 +511,7 @@ def tv_webhook():
     expire_pending_approvals()
     data = request.get_json(silent=True)
 
-    if os.getenv("GLOBAL_KILL_SWITCH", "").lower() in {"1", "true", "yes", "on"}:
+    if SecurityGovernor.is_kill_switch_active():
         log_event(None, "rejected", reason="global_kill_switch")
         return jsonify({"status": "error", "msg": "GLOBAL_KILL_SWITCH_ACTIVE"}), 503
 
@@ -518,8 +519,10 @@ def tv_webhook():
         log_event(None, "rejected", reason="invalid_json")
         return jsonify({"status": "error", "msg": "invalid or empty JSON payload"}), 400
 
-    if not WEBHOOK_SECRET or WEBHOOK_SECRET == "QE3_SECRET":
-        log_event(None, "rejected", reason="unsafe_secret_configuration")
+    try:
+        WEBHOOK_SECRET = SecurityGovernor.get_tradingview_webhook_secret()
+    except RuntimeError as exc:
+        log_event(None, "rejected", reason=str(exc))
         return jsonify({"status": "error", "msg": "unsafe webhook secret configuration"}), 503
 
     if not validate_secret(data):
