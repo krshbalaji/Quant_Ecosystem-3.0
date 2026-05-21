@@ -21,6 +21,11 @@ class CommandHandler:
         router=None, **kwargs
     ):
         self.authorized_users = {str(uid).strip() for uid in (authorized_users or []) if str(uid).strip()}
+
+        self.viewer_users = set(self.authorized_users)
+        self.operator_users = {str(uid).strip() for uid in kwargs.get("operator_users", []) if str(uid).strip()}
+        self.admin_users = {str(uid).strip() for uid in kwargs.get("admin_users", []) if str(uid).strip()}
+        self.break_glass_users = {str(uid).strip() for uid in kwargs.get("break_glass_users", []) if str(uid).strip()}
         self.autonomous_controller = autonomous_controller
         self.strategy_selector = strategy_selector
         self.risk_manager = risk_manager
@@ -48,6 +53,12 @@ class CommandHandler:
             cmd = cmd.split("@", 1)[0]
 
         args = parts[1:]
+
+        if cmd in {"pause", "resume"} and not self.has_operator_access(user_id):
+            return "Operator privilege required."
+
+        if cmd in {"activate_strategy", "deactivate_strategy", "allocate_capital"} and not self.has_admin_access(user_id):
+            return "Admin privilege required."
 
         if cmd == "status":
             return self._status()
@@ -95,9 +106,26 @@ class CommandHandler:
         return "Unknown command."
 
     def is_authorized(self, user_id: int | str) -> bool:
-        if not self.authorized_users:
-            return False
-        return str(user_id).strip() in self.authorized_users
+        return self.has_viewer_access(user_id)
+
+    def _uid(self, user_id):
+        return str(user_id).strip()
+
+    def has_viewer_access(self, user_id):
+        uid = self._uid(user_id)
+        return uid in self.viewer_users
+
+    def has_operator_access(self, user_id):
+        uid = self._uid(user_id)
+        return uid in self.operator_users or uid in self.admin_users or uid in self.break_glass_users
+
+    def has_admin_access(self, user_id):
+        uid = self._uid(user_id)
+        return uid in self.admin_users or uid in self.break_glass_users
+
+    def has_break_glass_access(self, user_id):
+        uid = self._uid(user_id)
+        return uid in self.break_glass_users
 
     def _status(self) -> str:
         reporter = self.system_status_reporter
