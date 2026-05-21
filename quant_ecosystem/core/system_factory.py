@@ -798,7 +798,8 @@ class SystemFactory:
             logger.debug("FyersBroker (paper/simulated) initialized.")
         except Exception:
             logger.warning("FyersBroker unavailable — using no-op broker.", exc_info=True)
-            broker = _NoOpBroker()
+            from quant_ecosystem.broker.paper_broker import PaperBroker
+            broker = PaperBroker()
             router._broker = broker
 
         # Broker router (thin wrapper)

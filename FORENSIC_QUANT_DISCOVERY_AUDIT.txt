@@ -1,0 +1,118 @@
+FORENSIC QUANT DISCOVERY AUDIT
+Generated: 2026-05-21
+
+========================================================
+SECTION 1 — PROJECT INVENTORY
+========================================================
+Project Name: quant_ecosystem-3.0-git-FRESH (primary workspace)
+Absolute Path: C:\Users\Home PLUS\Desktop\New folder (2)\quant_ecosystem-3.0-git-FRESH
+Estimated Purpose: Full-stack quant research + execution platform (research, strategies, execution adapters, portfolio/risk, orchestration).
+Tech Stack: Python 3.x, CCXT/adapter-style broker modules, Docker support, telemetry & research engines, JSON/flatfile persistence, unit tests.
+Last Modified: 2026-05-21 15:58:01
+Approx Size: 646,350,131 bytes (~616 MB)
+File Count: 19,760
+Git Repo? Y
+
+Notable sibling / subprojects (within workspace):
+- ELITE MULTIBAGGER AUTO-MODULE (v1.0)/multibagger_engine (legacy module folder)
+- multibagger_engine_v2 (separate data folder)
+- quant_ecosystem/ (primary package) — comprehensive modular tree
+
+========================================================
+SECTION 2 — MODULE MAP
+========================================================
+Detected modules (workspace scan):
+- Execution: quant_ecosystem/execution/* (execution_router, planner, broker_router, unified_broker_router)
+- Broker / Adapters: broker/*, quant_ecosystem/broker/adapters/* (coinswitch_adapter, fyers_adapter), coinswitch_broker.py, paper_broker.py
+- Strategies: quant_ecosystem/strategies/* (trend, volatility, momentum, mean_reversion, live_strategy_engine)
+- Research: quant_ecosystem/research/* (alpha engines, mutation/evolution, backtest_engine)
+- Data / Market Feed: quant_ecosystem/market_data/market_data_engine.py
+- Risk: quant_ecosystem/risk/* (risk_engine, survival_playbook, black_swan_guard)
+- Monitoring / Control: quant_ecosystem/control/*, watchdog-like modules
+- Alerting: telegram_* files and quant_ecosystem/communication/telegram_* (bot, control_center, notifier)
+- Cloud / Deployment: Dockerfile, cloudrun_app.py, requirements.txt
+- Storage / Persistence: quant_ecosystem/storage/* (trade_store, feature store under data/)
+- Tests: quant_ecosystem/tests/* (unit tests for multiple subsystems)
+- Orchestration / Launcher: launcher.py, main.py, worker.py, strategy_loop.py
+
+========================================================
+SECTION 3 — DUPLICATE DETECTION
+========================================================
+Possible duplicates within workspace:
+- multibagger_engine (ELITE MULTIBAGGER AUTO-MODULE (v1.0)) and multibagger_engine_v2 — clear fork/versioned copies.
+- Multiple broker implementations: top-level broker/ and quant_ecosystem/broker/ (overlapping responsibilities)
+- Telegram integrations appear in multiple locations (root telegram_*.py, quant_ecosystem/communication, quant_ecosystem/control/telegram) — potential duplicate implementations/overlap.
+Shared code fragments:
+- Strategy factory and base strategy classes used across strategies/* and research/* engines.
+Older copies / shadow backups:
+- Folder names and data subfolders with "v2", "AUTO-MODULE (v1.0)" indicate versioned forks and legacy copies.
+
+========================================================
+SECTION 4 — HIGH VALUE REUSABLE ASSETS
+========================================================
+- Broker adapters and broker_router: central to execution portability (fyers, coinswitch adapters)
+- Execution router / unified_broker_router
+- Strategy factory and base strategy scaffolding
+- Research engines: alpha evolution, strategy_mutation_engine, backtest_engine
+- Telegram notifier + control center (alerting + operator UI)
+- Market data ingestion engine (market_data_engine.py)
+- Risk and capital allocation modules (risk_engine, capital_allocator_v2)
+- Dockerfile + cloudrun_app.py (deployment artifacts)
+
+These are high-value components to retain and refactor into a single master-base.
+
+========================================================
+SECTION 5 — TECHNICAL DEBT
+========================================================
+Observed items likely to require attention:
+- Missing centralized packaging metadata (no pyproject.toml found) — repo uses requirements.txt only.
+- Duplicate implementations (telegram & broker adapters) increasing maintenance burden.
+- Legacy folders (multibagger v1/v2) that need consolidation.
+- Large file counts and mixed top-level modules (some code exists outside the package directory) — refactor recommended.
+- Potential stale configs and unclear environment isolation (no consistent project root for virtualenv, varied scripts).
+- No comprehensive CI artifacts detected (limited GitHub Actions / workflows in scanned files).
+
+Security / environment notes:
+- No automated secrets scan performed; search for hardcoded secrets not run due to read-only forensic mode.
+
+========================================================
+SECTION 6 — HIDDEN STRATEGY ASSETS
+========================================================
+Detected strategy logic (representative):
+- volatility: atr_breakout.py, volatility_expansion.py
+- momentum: time_series_momentum.py, cross_section_momentum.py
+- trend: donchian_trend.py, ema_trend.py, breakout_trend.py
+- mean reversion: vwap_reversion.py, rsi_reversion.py, bollinger_reversion.py
+- microstructure: liquidity_imbalance.py, volume_spike.py
+- Other: factory/strategy_factory.py, factory/strategy_bank_layer.py
+No explicit SMC/ICT labels found by text scan, but multiple trend/microstructure modules implement similar alpha models.
+
+========================================================
+SECTION 7 — MATURITY SCORE
+========================================================
+Scoring heuristic (0–100) based on completeness, modularity, packaging, and presence of CI/deployment:
+- quant_ecosystem-3.0-git-FRESH (workspace): 75/100 — many modular components, broker adapters, research engines and deployment artifacts present; needs consolidation, packaging, and removal of duplicates.
+- ELITE MULTIBAGGER AUTO-MODULE (v1.0): 45/100 — legacy fork, likely partial, needs review.
+
+========================================================
+SECTION 8 — RECOMMENDED MASTER BASE
+========================================================
+Recommendation: Use the current workspace `quant_ecosystem-3.0-git-FRESH` as the master base. Rationale:
+- Broad coverage: execution adapters, research engines, strategies, telemetry, risk, and orchestration present.
+- Existing Dockerfile and cloudrun artifacts provide deployment starting points.
+- Contains strategy factory and research mutation/alpha engines to continue experimentation.
+
+========================================================
+SCAN LIMITATIONS / NEXT STEPS
+========================================================
+- This audit focused on the active workspace and a targeted scan under C:\Users (read-only). A full-drive, enterprise-scale scan across C:, D:, E: with deep recursion was attempted but is constrained by execution time and environment; I can run an expanded, throttled scan on request.
+- No modifications were performed; all operations were read-only.
+
+========================================================
+FILES & ARTIFACTS USED FOR THIS AUDIT
+========================================================
+- Workspace path scanned: C:\Users\Home PLUS\Desktop\New folder (2)\quant_ecosystem-3.0-git-FRESH
+- Search patterns: quant, ecosystem, qe, trade, trading, broker, execution, strategy, telegram, dashboard, research, cloudrun, docker, deploy
+
+========================================================
+END OF REPORT

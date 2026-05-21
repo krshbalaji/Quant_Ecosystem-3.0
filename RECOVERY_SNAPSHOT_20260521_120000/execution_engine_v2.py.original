@@ -11,10 +11,9 @@ TRAIL_GAP = 0.01
 def fetch_price(symbol):
     try:
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d"
-        data = requests.get(url, timeout=5).json()
+        data = requests.get(url).json()
         return data["chart"]["result"][0]["meta"]["regularMarketPrice"]
-    except Exception as e:
-        print(f"[fetch_price error] {symbol}: {e}")
+    except:
         return None
 
 
@@ -64,13 +63,11 @@ def process_positions():
             close_position(symbol)
             log_trade(symbol, side, qty, entry, current, pnl)
 
-            # record trade to ai memory (use correct variable names)
-            try:
-                from ai_memory import record_trade
-                pnl_local = calculate_pnl(entry, current, side)
-                record_trade(symbol, side, pnl_local)
-            except Exception as e:
-                print(f"[record_trade error] {symbol}: {e}")
+            from ai_memory import record_trade
+
+            pnl = calculate_pnl(entry_price, current_price, side)
+
+            record_trade(symbol, side, pnl)
 
         # ---- HARD SL ----
         elif pnl < -BASE_SL:
@@ -78,4 +75,4 @@ def process_positions():
             close_position(symbol)
             log_trade(symbol, side, qty, entry, current, pnl)
 
-        broker.place_order(symbol, "BUY" if side == "SELL" else "SELL", qty)    
+        broker.place_order(symbol, "BUY" if side == "SELL" else "SELL", qty)

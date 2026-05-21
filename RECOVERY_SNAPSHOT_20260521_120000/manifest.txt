@@ -1,0 +1,10 @@
+RECOVERY SNAPSHOT manifest
+Timestamp: 2026-05-21 12:00:00
+
+Included originals:
+- execution_engine_v2.py (original copy)
+- main.py (original copy)
+- quant_ecosystem_core_system_factory.py (original copy)
+
+Notes:
+- Secrets and env files not included; user must verify and mask any sensitive files before external storage.

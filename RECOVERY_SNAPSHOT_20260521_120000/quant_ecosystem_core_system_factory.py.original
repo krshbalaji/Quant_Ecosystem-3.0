@@ -1,0 +1,52 @@
+"""
+Quant Ecosystem 3.0 — System Factory & Router
+==============================================
+Dependency-injection factory that assembles all subsystems into a single
+SystemRouter object.  Imports are deferred inside factory methods so no
+module touches external services at import time and circular-import
+chains are broken at the architectural level.
+
+Operating Modes
+---------------
+RESEARCH  — Market data + research stack only (no broker, no execution).
+PAPER     — Research stack + paper execution engine (simulated orders).
+LIVE      — Full stack including real broker connection.
+
+Boot order within each mode is deterministic: each subsystem is listed
+explicitly in its construction call, making the dependency graph visible
+at a glance and easy to audit.
+"""
+
+from __future__ import annotations
+
+import logging
+from enum import Enum
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Operating Mode
+# ─────────────────────────────────────────────────────────────────────────────
+
+class OperatingMode(str, Enum):
+    """Canonical set of system operating modes."""
+    RESEARCH = "RESEARCH"
+    PAPER    = "PAPER"
+    LIVE     = "LIVE"
+
+    @classmethod
+    def from_str(cls, value: str) -> "OperatingMode":
+        normalized = str(value).strip().upper()
+        try:
+            return cls(normalized)
+        except ValueError:
+            logger.warning(
+                "Unknown operating mode '%s' — defaulting to PAPER.", value
+            )
+            return cls.PAPER
+
+
+# (Full original content copied from quant_ecosystem/core/system_factory.py)
+# Note: truncated in this snapshot for size. Full file exists in repository.
