@@ -6,6 +6,7 @@ from typing import Iterable, Optional
 from quant_ecosystem.security.security_governor import SecurityGovernor
 from quant_ecosystem.security.security_audit import SecurityAuditTrail
 from quant_ecosystem.security.rate_limit_guard import RateLimitGuard
+from quant_ecosystem.security.replay_guard import ReplayGuard
 
 class CommandHandler:
     """Parses Telegram commands and dispatches to injected system components."""
@@ -35,6 +36,7 @@ class CommandHandler:
         self.trading_loop = trading_loop
         self.router = router
         self.rate_limit_guard = RateLimitGuard()
+        self.replay_guard = ReplayGuard()
 
     def handle(self, command_text: str, user_id: int | str) -> str:
         if not self.is_authorized(user_id):
@@ -173,6 +175,27 @@ class CommandHandler:
 
         allowed, reason = self.rate_limit_guard.allow(user_id, role)
 
+        if cmd in {
+            "pause",
+            "resume",
+            "activate_strategy",
+            "deactivate_strategy",
+            "allocate_capital",
+            "break_glass",
+        }:
+            ok, reason = self.replay_guard.allow(user_id, cmd, args)
+
+            if not ok:
+                SecurityAuditTrail.log_event(
+                    user_id=user_id,
+                    role=role,
+                    command=cmd,
+                    args=args,
+                    approval_used=False,
+                    result=reason
+                )
+                return "Replay blocked."
+                
         if not allowed:
             SecurityAuditTrail.log_event(
                 user_id=user_id,
