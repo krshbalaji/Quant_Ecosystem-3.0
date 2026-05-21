@@ -1079,7 +1079,7 @@ class ExecutionRouter:
 
             while True:
                 try:
-                    self.run_cycle()
+                    self.execute_trade(None)
                 except Exception as e:
                     logger.error("execution loop error: %s", e)
 
