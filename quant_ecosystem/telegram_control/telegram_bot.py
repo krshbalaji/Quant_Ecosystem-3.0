@@ -33,6 +33,10 @@ class QuantTelegramBot:
         self.app.add_handler(TgCommandHandler("deactivate_strategy", self._on_command))
         self.app.add_handler(TgCommandHandler("allocate_capital", self._on_command))
         self.app.add_handler(TgCommandHandler("system_health", self._on_command))
+        self.app.add_handler(TgCommandHandler("emergency_stop", self._on_command))
+        self.app.add_handler(TgCommandHandler("kill_switch", self._on_command))
+        self.app.add_handler(TgCommandHandler("live_arm", self._on_command))
+        self.app.add_handler(TgCommandHandler("live_disarm", self._on_command))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._on_plain_text))
         return self
 

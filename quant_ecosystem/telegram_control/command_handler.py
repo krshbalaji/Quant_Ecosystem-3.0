@@ -57,8 +57,8 @@ class CommandHandler:
         if cmd in {"pause", "resume"} and not self.has_operator_access(user_id):
             return "Operator privilege required."
 
-        if cmd in {"activate_strategy", "deactivate_strategy", "allocate_capital"} and not self.has_admin_access(user_id):
-            return "Admin privilege required."
+        if cmd in {"emergency_stop", "kill_switch", "live_arm", "live_disarm"} and not self.has_break_glass_access(user_id):
+            return "Break-glass privilege required."
 
         if cmd == "status":
             return self._status()
@@ -103,8 +103,67 @@ class CommandHandler:
         if cmd == "allocate_capital":
             return self._allocate_capital(args)
 
+        if cmd == "emergency_stop":
+            return self._emergency_stop(args)
+
+        if cmd == "kill_switch":
+            return self._kill_switch(args)
+
+        if cmd == "live_arm":
+            return self._live_arm(args)
+
+        if cmd == "live_disarm":
+            return self._live_disarm(args)
+
         return "Unknown command."
 
+    def _emergency_stop(self, args) -> str:
+        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
+            return "Approval token required."
+
+        try:
+            if self.router:
+                self.router.stop_trading()
+                self.router.set_auto_mode(False)
+            if self.trading_loop:
+                self.trading_loop.stop_loop()
+            return "EMERGENCY STOP EXECUTED."
+        except Exception as exc:
+            return f"Emergency stop failed: {exc}"
+
+
+    def _kill_switch(self, args) -> str:
+        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
+            return "Approval token required."
+
+        try:
+            SecurityGovernor.activate_kill_switch()
+            if self.router:
+                self.router.stop_trading()
+                self.router.set_auto_mode(False)
+            return "KILL SWITCH ACTIVATED."
+        except Exception as exc:
+            return f"Kill switch failed: {exc}"
+
+
+    def _live_arm(self, args) -> str:
+        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
+            return "Approval token required."
+
+        return "LIVE ARM acknowledged. Runtime live enable path controlled separately."
+
+
+    def _live_disarm(self, args) -> str:
+        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
+            return "Approval token required."
+
+        try:
+            if self.router:
+                self.router.set_auto_mode(False)
+            return "LIVE DISARMED."
+        except Exception as exc:
+            return f"Live disarm failed: {exc}"
+            
     def is_authorized(self, user_id: int | str) -> bool:
         return self.has_viewer_access(user_id)
 
