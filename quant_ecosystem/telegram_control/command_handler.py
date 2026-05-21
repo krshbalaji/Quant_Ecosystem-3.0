@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Iterable, Optional
 from quant_ecosystem.security.security_governor import SecurityGovernor
 from quant_ecosystem.security.security_audit import SecurityAuditTrail
+from quant_ecosystem.security.rate_limit_guard import RateLimitGuard
 
 class CommandHandler:
     """Parses Telegram commands and dispatches to injected system components."""
@@ -33,6 +34,7 @@ class CommandHandler:
         self.capital_allocator_layer = capital_allocator_layer
         self.trading_loop = trading_loop
         self.router = router
+        self.rate_limit_guard = RateLimitGuard()
 
     def handle(self, command_text: str, user_id: int | str) -> str:
         if not self.is_authorized(user_id):
@@ -167,6 +169,21 @@ class CommandHandler:
     def is_authorized(self, user_id: int | str) -> bool:
         return self.has_viewer_access(user_id)
 
+        role = self.resolve_role(user_id)
+
+        allowed, reason = self.rate_limit_guard.allow(user_id, role)
+
+        if not allowed:
+            SecurityAuditTrail.log_event(
+                user_id=user_id,
+                role=role,
+                command=cmd,
+                args=args,
+                approval_used=False,
+                result=reason
+            )
+            return f"Command denied: {reason}"
+        
     def _uid(self, user_id):
         return str(user_id).strip()
 
