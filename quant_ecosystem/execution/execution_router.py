@@ -1079,7 +1079,8 @@ class ExecutionRouter:
 
             while True:
                 try:
-                    self.execute_trade(None)
+                    import asyncio
+                    asyncio.run(self.execute(None))
                 except Exception as e:
                     logger.error("execution loop error: %s", e)
 
