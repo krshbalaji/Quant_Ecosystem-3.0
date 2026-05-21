@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 from quant_ecosystem.security.security_governor import SecurityGovernor
-
+from quant_ecosystem.security.security_audit import SecurityAuditTrail
 
 class CommandHandler:
     """Parses Telegram commands and dispatches to injected system components."""
