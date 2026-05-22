@@ -482,7 +482,14 @@ class MultiBrokerRouter:
 
         result = result or {}
         result.setdefault("order_id", result.get("id", ""))
-        result.setdefault("broker", getattr(broker, "account_source", "UNKNOWN"))
+        result.setdefault(
+            "broker",
+            getattr(
+                broker,
+                "account_source",
+                type(broker).__name__.upper()
+            )
+        )
         return result
 
     def get_positions(self, asset_class: str = "EQUITY") -> List:

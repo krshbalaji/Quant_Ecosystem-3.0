@@ -259,8 +259,16 @@ class SystemFactory:
         config = Any
         ):
         self._config = config
+        cfg_obj = getattr(config, "Config", config)
+
         self._mode = OperatingMode.from_str(
-            str(getattr(config, "mode", "PAPER"))
+            str(
+                getattr(
+                    cfg_obj,
+                    "mode",
+                    getattr(cfg_obj, "MODE", "PAPER")
+                )
+            )
         )
 
     # ── Public entry point ────────────────────────────────────────────────────
@@ -860,6 +868,7 @@ class SystemFactory:
                 reconciler=getattr(router, "reconciler", None),
                 symbols=getattr(router, "symbols", None),
                 portfolio_governor=portfolio_governor,
+                mode=self._mode.value,
             )
 
             router._execution_router = er
@@ -1454,4 +1463,4 @@ def build_router(config: Any) -> SystemRouter:
     Returns:
         A SystemRouter ready to be passed to MasterOrchestrator.
     """
-    return SystemFactory(config).build()
+    return SystemFactory(config=config).build()

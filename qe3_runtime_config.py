@@ -35,6 +35,8 @@ class Config:
     BACKOFF_FACTOR = float(os.getenv("BACKOFF_FACTOR", 0.3))
     TIMEOUT = int(os.getenv("TIMEOUT", 5))
 
+    MODE = os.getenv("MODE", "PAPER")
+       
     # 🔥 Alias for http_client expectation
     REQUEST_TIMEOUT = TIMEOUT
 
