@@ -110,8 +110,16 @@ class CommandHandler:
             ok, raw = self._validate_signed_command(str(command_text or "").strip())
 
             if not ok:
+                SecurityAuditTrail.log_event(
+                    event_type="telegram_invalid_signature",
+                    severity="HIGH",
+                    metadata={
+                        "user_id": str(user_id),
+                        "raw_command": str(command_text or "")[:200],
+                    },
+                )
                 return "Invalid or expired command signature."
-
+                
             parts = raw[1:].split()
             cmd = parts[0].lower()
             args = parts[1:]
