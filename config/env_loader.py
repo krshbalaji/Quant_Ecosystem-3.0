@@ -14,6 +14,7 @@ class Env:
 
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+    TELEGRAM_COMMAND_SECRET = os.getenv("TELEGRAM_COMMAND_SECRET")
 
     LIVE_TRADING = os.getenv("LIVE_TRADING","false").lower() == "true"
 

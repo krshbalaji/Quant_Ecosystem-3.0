@@ -11,7 +11,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler as TgCommandHandler, ContextTypes, MessageHandler, filters
 
 from quant_ecosystem.telegram_control.command_handler import CommandHandler
-
+from quant_ecosystem.security.command_signer import CommandSigner
+from config.env_loader import Env
 
 class QuantTelegramBot:
     """Remote Telegram control bot with authorization gate."""
@@ -20,6 +21,22 @@ class QuantTelegramBot:
         self.token = (token or "").strip()
         self.command_handler = command_handler
         self.app: Optional[Application] = None
+
+        cfg = Env()
+        secret = getattr(cfg, "TELEGRAM_COMMAND_SECRET", None)
+
+        self.command_signer = (
+            CommandSigner(secret)
+            if secret
+            else None
+        )
+
+    def sign_command(self, cmd: str) -> str:
+        if not self.command_signer:
+            return cmd
+
+        sig, ts = self.command_signer.sign(cmd)
+        return f"{cmd} {ts} {sig}"
 
     def build(self) -> "QuantTelegramBot":
         if not self.token:
@@ -69,7 +86,9 @@ class QuantTelegramBot:
             )
             return
 
+        text = update.effective_message.text or ""
         reply = self.command_handler.handle(text, user_id=user_id)
+        
         await update.effective_message.reply_text(reply)
         
     async def _on_plain_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

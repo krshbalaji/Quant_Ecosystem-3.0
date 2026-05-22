@@ -8,6 +8,8 @@ from quant_ecosystem.security.security_audit import SecurityAuditTrail
 from quant_ecosystem.security.rate_limit_guard import RateLimitGuard
 from quant_ecosystem.security.replay_guard import ReplayGuard
 from quant_ecosystem.security.session_guard import SessionGuard
+from quant_ecosystem.security.command_signer import CommandSigner
+from config.env_loader import Env
 
 class CommandHandler:
     """Parses Telegram commands and dispatches to injected system components."""
@@ -40,6 +42,35 @@ class CommandHandler:
         self.replay_guard = ReplayGuard()
         self.session_guard = SessionGuard()
 
+        cfg = Env()
+        secret = getattr(cfg, "TELEGRAM_COMMAND_SECRET", None)
+
+        self.command_signer = (
+            CommandSigner(secret)
+            if secret
+            else None
+        )
+
+    def _validate_signed_command(self, raw_text: str) -> tuple[bool, str]:
+        if not self.command_signer:
+            return False, ""
+
+        try:
+            parts = raw_text.rsplit(" ", 2)
+
+            if len(parts) != 3:
+                return False, ""
+
+            command, ts, sig = parts
+            ts = int(ts)
+        except Exception:
+            return False, ""
+
+        if not self.command_signer.verify(command, ts, sig):
+            return False, ""
+
+        return True, command
+        
     def validate_session(self, user_id, username=None):
         return self.session_guard.validate(user_id, username)    
 
@@ -54,14 +85,38 @@ class CommandHandler:
 
         if not raw.startswith("/"):
             return "Explicit slash commands only."
-
+            
         parts = raw[1:].split()
         cmd = parts[0].lower() if parts else ""
 
         if "@" in cmd:
             cmd = cmd.split("@", 1)[0]
 
-        args = parts[1:]
+        args = parts[1:]        
+
+        SIGNED_COMMANDS = {
+            "pause",
+            "resume",
+            "activate_strategy",
+            "deactivate_strategy",
+            "allocate_capital",
+            "emergency_stop",
+            "kill_switch",
+            "live_arm",
+            "live_disarm",
+        }
+
+        if cmd in SIGNED_COMMANDS:
+            ok, raw = self._validate_signed_command(str(command_text or "").strip())
+
+            if not ok:
+                return "Invalid or expired command signature."
+
+            parts = raw[1:].split()
+            cmd = parts[0].lower()
+            args = parts[1:]
+            
+        
 
         if cmd in {"pause", "resume"} and not self.has_operator_access(user_id):
             return "Operator privilege required."
@@ -76,8 +131,7 @@ class CommandHandler:
             return self._system_health()
 
         if cmd == "pause":
-            if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
-                return "Approval token required."
+            # signed command already authenticated
             if self.trading_loop:
                 return self.trading_loop.stop_loop()
             if self.router:
@@ -90,8 +144,7 @@ class CommandHandler:
             return "Router unavailable."
 
         if cmd == "resume":
-            if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
-                return "Approval token required."
+            # signed command already authenticated
             if self.trading_loop:
                 return self.trading_loop.start_loop()
             if self.router:
@@ -127,8 +180,7 @@ class CommandHandler:
         return "Unknown command."
 
     def _emergency_stop(self, args) -> str:
-        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
-            return "Approval token required."
+        # signed command already authenticated
 
         try:
             if self.router:
@@ -142,8 +194,7 @@ class CommandHandler:
 
 
     def _kill_switch(self, args) -> str:
-        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
-            return "Approval token required."
+        # signed command already authenticated
 
         try:
             SecurityGovernor.activate_kill_switch()
@@ -156,15 +207,13 @@ class CommandHandler:
 
 
     def _live_arm(self, args) -> str:
-        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
-            return "Approval token required."
+        # signed command already authenticated
 
         return "LIVE ARM acknowledged. Runtime live enable path controlled separately."
 
 
     def _live_disarm(self, args) -> str:
-        if not args or args[0] != SecurityGovernor.get_telegram_approval_token():
-            return "Approval token required."
+        # signed command already authenticated
 
         try:
             if self.router:
