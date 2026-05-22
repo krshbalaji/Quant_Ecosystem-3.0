@@ -3,7 +3,7 @@ import os
 
 from config.env_loader import Env
 from quant_ecosystem.utils.decimal_utils import quantize
-
+from quant_ecosystem.broker.fyers_token_manager import FyersTokenManager
 
 class FyersBroker:
 
@@ -31,31 +31,75 @@ class FyersBroker:
         self.tradebook = []
 
     def connect(self):
-        # Keep startup resilient: if live API is not ready, continue in simulated mode.
         if not self.client_id:
-            print("⚠ FYERS API not configured. Using simulated broker.")
+            print("FYERS API not configured. Using simulated broker.")
             self.connected = True
+            self.account_source = "SIMULATED"
             return
 
+        from quant_ecosystem.broker.adapters.fyers_adapter import FyersAdapter
+
+        def try_live_connect():
+            fresh_token = (os.getenv("FYERS_ACCESS_TOKEN", "") or "").strip()
+
+            if not fresh_token:
+                raise RuntimeError("FYERS access token missing")
+
+            adapter = FyersAdapter(
+                app_id=self.client_id,
+                access_token=fresh_token,
+            )
+            adapter.login()
+
+            auth_probe = adapter.get_funds()
+
+            if isinstance(auth_probe, dict) and auth_probe.get("code") == -16:
+                raise RuntimeError("FYERS authentication failed: access token invalid/expired")
+
+            self.live_client = adapter
+            self.connected = True
+            self.account_source = "FYERS_LIVE"
+
+            print("Broker Connected : Fyers (live)")
+
         try:
-            from quant_ecosystem.broker.adapters.fyers_adapter import FyersAdapter
+            try_live_connect()
+            return
 
-            if self.access_token:
-                adapter = FyersAdapter(app_id=self.client_id, access_token=self.access_token)
-                adapter.login()
-                self.live_client = adapter
-                self.account_source = "FYERS_LIVE"
-                print("Broker Connected : Fyers (live)")
-            else:
-                print("⚠ FYERS access token missing. Using simulated broker.")
-        except Exception as exc:
-            print(f"⚠ FYERS live init failed ({exc}). Using simulated broker.")
+        except Exception as e:
+            print(f"FYERS auth failed: {e}")
+            print("Attempting automatic token refresh...")
 
+            try:
+                mgr = FyersTokenManager()
+                mgr.generate_token()
+
+                try_live_connect()
+
+                print("FYERS live reconnected after token refresh.")
+                return
+
+            except Exception as refresh_err:
+                print(f"Token refresh failed: {refresh_err}")
+
+        print("Falling back to simulated broker.")
         self.connected = True
+        self.live_client = None
+        self.account_source = "SIMULATED"
 
     def place_order(self, symbol, side, qty, price=None, fee=0.0, meta=None, **kwargs):
         if not self.connected:
             raise RuntimeError("Broker not connected")
+
+        if self.live_client:
+            return self.live_client.place_order(
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                price=price,
+                fee=fee,
+                meta=meta or {},
+            )    
 
         side = str(side).upper().strip()
         if side not in {"BUY", "SELL"}:
@@ -111,7 +155,14 @@ class FyersBroker:
         return [item.copy() for item in self.orders]
 
     def get_positions(self):
+        if self.live_client:
+            try:
+                return self.live_client.get_positions()
+            except Exception as e:
+                print(f"LIVE SNAPSHOT FAILED: {e}")
+
         rows = []
+        
         for symbol, pos in self.positions.items():
             rows.append(
                 {
@@ -123,6 +174,12 @@ class FyersBroker:
         return rows
 
     def get_account_snapshot(self, latest_prices=None):
+        if self.live_client:
+            try:
+                return self.live_client.get_account_snapshot()
+            except Exception as e:
+                print(f"LIVE SNAPSHOT FAILED: {e}")
+            
         latest_prices = latest_prices or {}
         unrealized = 0.0
         market_value = 0.0
