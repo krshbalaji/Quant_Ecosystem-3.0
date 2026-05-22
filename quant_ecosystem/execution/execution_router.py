@@ -1802,7 +1802,11 @@ class ExecutionRouter:
         elif self.risk_engine:
             try:
                 risk_budget = self.risk_engine.trade_risk(getattr(self.state, "equity", 0))
-                base_qty    = int(risk_budget / price) if price > 0 else 0
+                base_qty = (
+                    max(int(risk_budget / price), 1)
+                    if price > 0 and risk_budget > 0
+                    else 0
+                )
             except Exception:
                 base_qty = 0
         else:
