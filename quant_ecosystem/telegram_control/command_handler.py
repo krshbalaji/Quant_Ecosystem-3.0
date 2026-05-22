@@ -223,10 +223,12 @@ class CommandHandler:
             return f"Live disarm failed: {exc}"
             
     def is_authorized(self, user_id: int | str) -> bool:
-        return self.has_viewer_access(user_id)
-
         role = self.resolve_role(user_id)
 
+        allowed, _ = self.rate_limit_guard.allow(user_id, role)
+
+        return self.has_viewer_access(user_id) and allowed
+        
         allowed, reason = self.rate_limit_guard.allow(user_id, role)
 
         if cmd in {
@@ -280,6 +282,23 @@ class CommandHandler:
         uid = self._uid(user_id)
         return uid in self.break_glass_users
 
+    def resolve_role(self, user_id):
+        uid = self._uid(user_id)
+
+        if uid in self.break_glass_users:
+            return "break_glass"
+
+        if uid in self.admin_users:
+            return "admin"
+
+        if uid in self.operator_users:
+            return "operator"
+
+        if uid in self.viewer_users:
+            return "viewer"
+
+        return "unknown"
+        
     def _status(self) -> str:
         reporter = self.system_status_reporter
         if not reporter:
@@ -317,15 +336,11 @@ class CommandHandler:
             return f"Resume failed: {exc}"
 
     def _activate_strategy(self, args) -> str:
-        if len(args) < 2:
-            return "Usage: /activate_strategy <name> <approval_token>"
+        if len(args) < 1:
+            return "Usage: /activate_strategy <name>"
 
         name = str(args[0]).strip()
-        approval_token = str(args[1]).strip()
-
-        if approval_token != SecurityGovernor.get_telegram_approval_token():
-            return "Approval token required."
-
+        
         selector = self.strategy_selector
 
         if selector and hasattr(selector, "activation_manager"):
@@ -342,15 +357,11 @@ class CommandHandler:
         return "Strategy activation path unavailable."
         
     def _deactivate_strategy(self, args) -> str:
-        if len(args) < 2:
-            return "Usage: /deactivate_strategy <name> <approval_token>"
+        if len(args) < 1:
+            return "Usage: /deactivate_strategy <name>"
 
         name = str(args[0]).strip()
-        approval_token = str(args[1]).strip()
-
-        if approval_token != SecurityGovernor.get_telegram_approval_token():
-            return "Approval token required."
-
+        
         selector = self.strategy_selector
 
         if selector and hasattr(selector, "activation_manager"):
@@ -362,8 +373,8 @@ class CommandHandler:
         return "Strategy deactivation path unavailable."
         
     def _allocate_capital(self, args) -> str:
-        if len(args) < 3:
-            return "Usage: /allocate_capital <strategy> <amount_pct> <approval_token>"
+        if len(args) < 2:
+            return "Usage: /allocate_capital <strategy> <amount_pct>"
 
         strategy = str(args[0]).strip()
 
@@ -371,13 +382,7 @@ class CommandHandler:
             amount = float(args[1])
         except ValueError:
             return "Invalid amount."
-
-        approval_token = str(args[2]).strip()
-        expected = SecurityGovernor.get_telegram_approval_token()
-
-        if approval_token != expected:
-            return "Approval token required."
-
+        
         layer = self.capital_allocator_layer
 
         if layer and hasattr(layer, "set_manual_allocation"):
