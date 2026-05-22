@@ -802,6 +802,10 @@ class SystemFactory:
         try:
             from quant_ecosystem.broker.fyers_broker import FyersBroker  # noqa: PLC0415
             broker = FyersBroker(config=self._config)
+
+            if self._mode.value == "LIVE":
+                broker.connect()
+                
             router._broker = broker
             logger.debug("FyersBroker (paper/simulated) initialized.")
         except Exception:
@@ -908,6 +912,8 @@ class SystemFactory:
                 live_broker = CoinSwitchBroker()
             else:
                 raise ValueError(f"Unsupported broker: {broker_name!r}")
+            live_broker = FyersBroker(config=self._config)
+            live_broker.connect()
 
             from quant_ecosystem.broker.broker_router import BrokerRouter  # noqa: PLC0415
             live_broker_router = BrokerRouter(broker=live_broker)
@@ -915,8 +921,9 @@ class SystemFactory:
             # Rewire ExecutionRouter to the live broker
             if router._execution_router is not None:
                 router._execution_router.broker = live_broker_router
-                router._broker = live_broker
-                router._broker_router = live_broker_router
+                
+            router._broker_router = live_broker_router
+            router._broker = live_broker
 
             logger.info("Live broker '%s' connected successfully.", broker_name)
 
