@@ -11,6 +11,9 @@ from quant_ecosystem.security.session_guard import SessionGuard
 from quant_ecosystem.security.command_signer import CommandSigner
 from config.env_loader import Env
 
+MAX_COMMAND_LENGTH = 512
+MAX_AUDIT_PREVIEW = 120
+
 class CommandHandler:
     """Parses Telegram commands and dispatches to injected system components."""
 
@@ -51,12 +54,20 @@ class CommandHandler:
             else None
         )
 
+    def _sanitize_command_text(self, text: str) -> str:
+        cleaned = "".join(
+            ch for ch in text
+            if ch.isprintable() and ch not in "\r\n\t"
+        )
+        return cleaned.strip()
+        
     def _validate_signed_command(self, raw_text: str) -> tuple[bool, str]:
         if not self.command_signer:
             return False, ""
 
         try:
-            parts = raw_text.rsplit(" ", 2)
+            if raw_text.count(" ") > 8:
+                return False, ""
 
             if len(parts) != 3:
                 return False, ""
@@ -78,7 +89,18 @@ class CommandHandler:
         if not self.is_authorized(user_id):
             return "Unauthorized user."
 
-        raw = str(command_text or "").strip()
+        raw = self._sanitize_command_text(str(command_text or ""))
+
+        if not raw:
+            return "Empty command."
+
+        if len(raw) > MAX_COMMAND_LENGTH:
+            SecurityAuditTrail.log_event(
+                event_type="telegram_oversized_command",
+                severity="HIGH",
+                metadata={"user_id": str(user_id)},
+            )
+            return "Command rejected."
 
         if not raw:
             return "Empty command."
@@ -115,7 +137,7 @@ class CommandHandler:
                     severity="HIGH",
                     metadata={
                         "user_id": str(user_id),
-                        "raw_command": str(command_text or "")[:200],
+                        "raw_command": raw[:MAX_AUDIT_PREVIEW],
                     },
                 )
                 return "Invalid or expired command signature."
