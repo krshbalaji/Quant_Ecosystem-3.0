@@ -10,7 +10,11 @@ class LiveBroker:
             "qty": kwargs["qty"],
         }
 
-
+    def get_orders(self):
+        return [
+            {"id": "LIVE001"}
+        ]
+        
 class Risk:
     def approve_trade(self, *args, **kwargs):
         return True

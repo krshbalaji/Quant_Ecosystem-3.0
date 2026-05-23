@@ -4,6 +4,8 @@ import os
 from config.env_loader import Env
 from quant_ecosystem.utils.decimal_utils import quantize
 from quant_ecosystem.broker.fyers_token_manager import FyersTokenManager
+from quant_ecosystem.notifications.telegram_notifier import TelegramNotifier
+
 
 class FyersBroker:
 
@@ -82,6 +84,10 @@ class FyersBroker:
             except Exception as refresh_err:
                 print(f"Token refresh failed: {refresh_err}")
 
+                TelegramNotifier().send(
+                    f"⚠️ *QE3 FYERS AUTH FAILURE*\n{refresh_err}"
+                )
+                
         print("Falling back to simulated broker.")
         self.connected = True
         self.live_client = None

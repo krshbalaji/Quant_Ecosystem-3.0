@@ -61,6 +61,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, time as dtime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
+from quant_ecosystem.execution.execution_audit import log_execution_event
+from quant_ecosystem.execution.broker_response_validator import (
+    validate_live_broker_response,
+    BrokerResponseError,
+)
+from quant_ecosystem.execution.execution_exceptions import (
+    ExecutionIntegrityError,
+)
+from quant_ecosystem.notifications.telegram_notifier import TelegramNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -406,6 +415,7 @@ class MultiBrokerRouter:
         self.mode = str(mode).upper()
         self._brokers: Dict[str, Any] = {}
         self._paper = _PaperBroker()
+        self._notifier = TelegramNotifier()
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -485,6 +495,28 @@ class MultiBrokerRouter:
                     asset_class,
                     exc,
                 )
+
+                self._notifier.send(
+                    f"❌ *QE3 LIVE ORDER REJECTED*\n"
+                    f"Symbol: {symbol}\n"
+                    f"Side: {side}\n"
+                    f"Qty: {qty}\n"
+                    f"Price: {price}\n"
+                    f"Error: {exc}"
+                )
+
+                log_execution_event({
+                    "mode": self.mode,
+                    "symbol": symbol,
+                    "side": side,
+                    "qty": qty,
+                    "price": price,
+                    "asset_class": asset_class,
+                    "status": "REJECTED",
+                    "error": str(exc),
+                })
+
+                                    
                 raise RuntimeError(
                     f"LIVE broker execution failed: {symbol}/{asset_class}: {exc}"
                 ) from exc
@@ -508,23 +540,81 @@ class MultiBrokerRouter:
         result = result or {}
 
         if str(self.mode).upper() == "LIVE":
-            if not isinstance(result, dict):
-                raise RuntimeError(
-                    f"LIVE broker returned invalid response type: {type(result).__name__}"
-                )
-
-            if str(result.get("s", "")).lower() == "error":
-                raise RuntimeError(
-                    f"LIVE broker rejected order: {result.get('message', 'unknown error')}"
-                )
-
-            order_id = result.get("order_id") or result.get("id")
-            if not order_id:
-                raise RuntimeError(
-                    f"LIVE broker returned no order id: {result}"
-                )
-
+            try:
+                result = validate_live_broker_response(result)
+            except Exception as exc:
+                raise RuntimeError(f"LIVE broker rejected order: {exc}") from exc
+                
         result.setdefault("order_id", result.get("id", ""))
+        result.setdefault(
+            "broker",
+            getattr(
+                broker,
+                "account_source",
+                type(broker).__name__.upper()
+            )
+        )
+
+        if str(self.mode).upper() == "LIVE":
+            try:
+                live_orders = broker.get_orders()
+            except Exception:
+                live_orders = []
+
+            order_id = str(result.get("order_id", "")).strip()
+
+            if order_id:
+                found = False
+
+                if isinstance(live_orders, list):
+                    found = any(
+                        str(o.get("id", "")).strip() == order_id
+                        or str(o.get("order_id", "")).strip() == order_id
+                        for o in live_orders
+                        if isinstance(o, dict)
+                    )
+
+                elif isinstance(live_orders, dict):
+                    rows = (
+                        live_orders.get("orderBook")
+                        or live_orders.get("orders")
+                        or []
+                    )
+
+                    found = any(
+                        str(o.get("id", "")).strip() == order_id
+                        or str(o.get("order_id", "")).strip() == order_id
+                        for o in rows
+                        if isinstance(o, dict)
+                    )
+
+                if not found:
+                    raise ExecutionIntegrityError(
+                        f"Broker acknowledged order but reconciliation failed: {order_id}"
+                    )
+
+        log_execution_event({
+            "mode": self.mode,
+            "symbol": symbol,
+            "side": side,
+            "qty": qty,
+            "price": price,
+            "asset_class": asset_class,
+            "broker_response": result,
+            "status": "SUCCESS",
+        })
+
+        if str(self.mode).upper() == "LIVE":
+            self._notifier.send(
+                f"✅ *QE3 LIVE ORDER ACCEPTED*\n"
+                f"Symbol: {symbol}\n"
+                f"Side: {side}\n"
+                f"Qty: {qty}\n"
+                f"Price: {price}\n"
+                f"Order ID: {result.get('order_id','UNKNOWN')}"
+            )
+            
+        return result
         result.setdefault(
             "broker",
             getattr(

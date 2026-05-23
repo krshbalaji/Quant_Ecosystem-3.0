@@ -10,7 +10,11 @@ class DummyBroker:
             "qty": kwargs["qty"],
         }
 
-
+    def get_orders(self):
+        return [
+            {"id": "TEST123"}
+        ]
+        
 class DummyRisk:
     def approve_trade(self, *args, **kwargs):
         return True
