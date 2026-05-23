@@ -1,8 +1,20 @@
 import pytest
 from quant_ecosystem.execution.execution_router import MultiBrokerRouter
-
+from quant_ecosystem.broker.broker_capabilities import BrokerCapabilities
 
 class FakeLiveBroker:
+    ENABLE_RECONCILIATION = True
+
+    capabilities = BrokerCapabilities(
+        broker_name="fake_live",
+        supported_markets=["INDIA"],
+        supported_assets=["EQUITY"],
+        supports_reconciliation=True,
+        supports_retry=True,
+        supports_cancel_order=False,
+        supports_modify_order=False,
+    )
+
     def place_order(self, **kwargs):
         return {
             "s": "ok",

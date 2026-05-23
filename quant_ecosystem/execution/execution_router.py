@@ -79,7 +79,9 @@ from quant_ecosystem.execution.order_status_normalizer import OrderStatusNormali
 from quant_ecosystem.execution.order_reconciler import OrderReconciler
 from quant_ecosystem.execution.broker_health import BrokerHealth
 from quant_ecosystem.market.session_guard import SessionGuard
+from quant_ecosystem.execution.retry_policy import execute_with_retry
 from quant_ecosystem.market.symbol_normalizer import SymbolNormalizer
+from quant_ecosystem.broker.broker_capabilities import BrokerCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -131,13 +133,6 @@ _RISK_GATE_EXPOSURE_REASONS = frozenset({
     "MAX_ASSET_EXPOSURE",
 })
 
-_RECONCILIATION_CAPABLE_BROKERS = {
-    "fyers",
-    "groww",
-    "lemonn",
-    "viewtrade",
-    "coinswitch",
-}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 0. Broker Adapters
@@ -477,6 +472,49 @@ class MultiBrokerRouter:
 
         return self._health[broker_name]
 
+    def _get_broker_name(self, broker) -> str:
+        for name, instance in self._brokers.items():
+            if instance is broker:
+                return name
+
+        return getattr(
+            broker,
+            "account_source",
+            type(broker).__name__,
+        ).lower()
+
+    def _get_capabilities(self, broker):
+        """
+        Return broker capability contract.
+        Supports both Pack17 brokers and legacy brokers.
+        """
+
+        if hasattr(broker, "get_capabilities"):
+            caps = broker.get_capabilities()
+            if caps is not None:
+                return caps
+
+        broker_class = type(broker).__name__.lower()
+
+        class _LegacyCaps:
+            supports_retry = True
+            supports_health_check = hasattr(broker, "health_check")
+            requires_market_session = True
+
+            @property
+            def supports_reconciliation(self):
+                if "dummy" in broker_class or "mock" in broker_class:
+                    return False
+
+                return bool(
+                    getattr(
+                        broker,
+                        "ENABLE_RECONCILIATION",
+                        False
+                    )
+                )
+
+        return _LegacyCaps()
                
     # ------------------------------------------------------------------
     # Internal selection
@@ -529,7 +567,26 @@ class MultiBrokerRouter:
     # ------------------------------------------------------------------
     # Order dispatch
     # ------------------------------------------------------------------
+    def modify_order(
+        self,
+        broker_name: str,
+        order_id: str,
+        qty: int = None,
+        price: float = None,
+    ):
+        broker = self._brokers[broker_name]
+        caps = self._get_capabilities(broker)
 
+        if not caps.supports_modify_order:
+            raise RuntimeError(
+                f"{broker_name} does not support modify_order"
+            )
+
+        return broker.modify_order(
+            order_id=order_id,
+            qty=qty,
+            price=price,
+        )
     def place_order(
         self,
         symbol: str,
@@ -556,34 +613,38 @@ class MultiBrokerRouter:
             getattr(self, "_strict_market_hours", False)
         )
 
-        if self.mode == "LIVE" and strict_market_hours:
+        broker = self._select(asset_class, market)
+
+        broker_name = self._get_broker_name(broker)
+        caps = self._get_capabilities(broker)
+
+        if (
+            str(self.mode).upper() == "LIVE"
+            and strict_market_hours
+            and getattr(caps, "requires_market_session", False)
+        ):
             if not self._session_guard.is_market_open(market, asset_class):
                 raise RuntimeError(
                     f"MARKET CLOSED: market={market}, asset={asset_class}"
                 )
 
-        broker = self._select(asset_class, market)
-
-        broker_name = None
-
-        for name, instance in self._brokers.items():
-            if instance is broker:
-                broker_name = name
-                break
-
-        if not broker_name:
-            broker_name = getattr(
-                broker,
-                "account_source",
-                type(broker).__name__
-            ).lower()
-
         health = self._broker_health(broker_name)
-
+             
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
-            result = execute_with_retry(
-                lambda: broker.place_order(
+            if caps.supports_retry:
+                result = execute_with_retry(
+                    lambda: broker.place_order(
+                        symbol=normalized_symbol,
+                        side=side,
+                        qty=qty,
+                        price=price,
+                        fee=fee,
+                        meta=meta or {},
+                    )
+                )
+            else:
+                result = broker.place_order(
                     symbol=normalized_symbol,
                     side=side,
                     qty=qty,
@@ -591,8 +652,18 @@ class MultiBrokerRouter:
                     fee=fee,
                     meta=meta or {},
                 )
-            )
 
+            if (
+                caps.supports_health_check
+                and hasattr(broker, "health_check")
+            ):
+                broker_health = broker.health_check()
+
+                if not broker_health.get("healthy", False):
+                    raise RuntimeError(
+                        f"BROKER UNHEALTHY: {broker_name}"
+                    )
+                    
             if str(self.mode).upper() == "LIVE":
                 result = validate_live_broker_response(result)
 
@@ -602,26 +673,31 @@ class MultiBrokerRouter:
                 )
 
                 order_id = (
-                    result.get("order_id")
+                    result.get("broker_order_id")
+                    or result.get("order_id")
                     or result.get("id")
                     or ""
                 )
-
+                
                 broker_class = type(broker).__name__.lower()
 
-                supports_reconciliation = (
-                    broker_name in _RECONCILIATION_CAPABLE_BROKERS
-                    and "dummy" not in broker_class
-                    and "mock" not in broker_class
-                    and broker_class != "livebroker"
+                skip_reconciliation = (
+                    "dummy" in broker_class
+                    or "mock" in broker_class
                 )
 
-                if order_id and supports_reconciliation:
+                if (
+                    str(self.mode).upper() == "LIVE"
+                    and order_id
+                    and caps.supports_reconciliation
+                    and not skip_reconciliation
+                ):
                     reconciled = self._reconciler.wait_for_final_state(
                         broker_name=broker_name,
                         broker=broker,
                         order_id=order_id,
                     )
+
                     result["reconciled_status"] = reconciled
 
             health.record_success()
@@ -680,6 +756,20 @@ class MultiBrokerRouter:
             )
 
         return result
+    def cancel_order(
+        self,
+        broker_name: str,
+        order_id: str,
+    ):
+        broker = self._brokers[broker_name]
+        caps = self._get_capabilities(broker)
+
+        if not caps.supports_cancel_order:
+            raise RuntimeError(
+                f"{broker_name} does not support cancel_order"
+            )
+
+        return broker.cancel_order(order_id)
 
     def get_positions(self, asset_class: str = "EQUITY", market: str = "INDIA") -> List:
         broker = self._select(asset_class, market)

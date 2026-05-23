@@ -1,16 +1,18 @@
 from typing import Any, Dict, List, Optional
 
 from quant_ecosystem.broker.base_broker import BaseBroker
-from quant_ecosystem.broker.broker_capabilities import COINSWITCH_CAPABILITIES
+from quant_ecosystem.broker.broker_capabilities import GROWW_CAPABILITIES
 
 
-class CoinSwitchBroker(BaseBroker):
+class GrowwBroker(BaseBroker):
     """
-    QE3 CoinSwitch crypto broker adapter.
-    Capability-aware Pack17 scaffold.
+    QE3 Groww adapter (Pack17 capability contract version).
+
+    Adapter scaffold until live API integration is finalized.
+    Router can safely reason about capabilities immediately.
     """
 
-    capabilities = COINSWITCH_CAPABILITIES
+    capabilities = GROWW_CAPABILITIES
 
     def __init__(self, config=None, **kwargs):
         self._config = config
@@ -33,11 +35,11 @@ class CoinSwitchBroker(BaseBroker):
     ) -> Dict[str, Any]:
 
         order = {
-            "order_id": f"COINSWITCH-{len(self.orders)+1}",
-            "status": "filled",
-            "executed_quantity": qty,
-            "remaining_quantity": 0,
-            "average_price": price,
+            "order_id": f"GROWW-{len(self.orders)+1}",
+            "status": "FILLED",
+            "filled_qty": qty,
+            "remaining_qty": 0,
+            "avg_price": price,
             "symbol": symbol,
             "side": side,
             "qty": qty,
@@ -60,11 +62,6 @@ class CoinSwitchBroker(BaseBroker):
         qty: int = None,
         price: float = None,
     ):
-        if not self.capabilities.supports_modify_order:
-            raise RuntimeError(
-                "CoinSwitch does not support modify_order"
-            )
-
         return {
             "status": "MODIFIED",
             "order_id": order_id,
@@ -82,7 +79,7 @@ class CoinSwitchBroker(BaseBroker):
                 return order
 
         raise RuntimeError(
-            f"CoinSwitch order not found: {order_id}"
+            f"Groww order not found: {order_id}"
         )
 
     def get_order_history(self):
@@ -98,8 +95,11 @@ class CoinSwitchBroker(BaseBroker):
     def get_balance(self):
         return {
             "available_cash": 0.0,
-            "currency": "USDT",
+            "currency": "INR",
         }
+
+    def get_holdings(self):
+        return []
 
     def get_ltp(self, symbol: str):
         return {
@@ -116,7 +116,7 @@ class CoinSwitchBroker(BaseBroker):
 
     def health_check(self):
         return {
-            "broker": "coinswitch",
+            "broker": "groww",
             "healthy": True,
             "details": "adapter scaffold healthy",
         }
