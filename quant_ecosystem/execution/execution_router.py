@@ -71,6 +71,12 @@ from quant_ecosystem.execution.execution_exceptions import (
 )
 from quant_ecosystem.notifications.telegram_notifier import TelegramNotifier
 
+from quant_ecosystem.execution.retry_policy import (
+    execute_with_retry,
+    CircuitBreaker,
+)
+from quant_ecosystem.notifications.telegram_notifier import TelegramNotifier
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,18 +86,29 @@ logger = logging.getLogger(__name__)
 
 # Maps asset class → preferred live broker name (must match MultiBrokerRouter
 # registration key).  Fallback is _PaperBroker if that broker is not wired in.
-_ASSET_BROKER_MAP: Dict[str, str] = {
-    "EQUITY":    "fyers",
-    "FUTURES":   "fyers",
-    "OPTIONS":   "fyers",
-    "FOREX":     "fyers",
-    "CRYPTO":    "binance",       # Binance preferred; CoinSwitch is alternate
-    "COMMODITY": "fyers",
-}
+BROKER_ROUTING = {
+    "INDIA": {
+        "EQUITY": ["fyers", "groww", "lemonn"],
+        "FUTURES": ["fyers"],
+        "OPTIONS": ["fyers"],
+        "COMMODITY": ["fyers"],
+    },
 
-# Alternate broker for each asset class when primary is unavailable.
-_ASSET_BROKER_ALT: Dict[str, str] = {
-    "CRYPTO": "coinswitch",
+    "US": {
+        "EQUITY": ["viewtrade", "ibkr", "alpaca"],
+        "OPTIONS": ["ibkr"],
+        "FUTURES": ["ibkr"],
+    },
+
+    "GLOBAL": {
+        "FOREX": ["ibkr", "oanda"],
+        "CFD": ["ibkr"],
+    },
+
+    "CRYPTO": {
+        "SPOT": ["coinswitch", "binance"],
+        "FUTURES": ["binance"],
+    }
 }
 
 _COOLDOWN_BY_TRADE_TYPE: Dict[str, int] = {
@@ -416,6 +433,10 @@ class MultiBrokerRouter:
         self._brokers: Dict[str, Any] = {}
         self._paper = _PaperBroker()
         self._notifier = TelegramNotifier()
+        self._circuit_breaker = CircuitBreaker()
+        self._recent_orders = {}
+        self._telegram = TelegramNotifier()
+
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -436,37 +457,38 @@ class MultiBrokerRouter:
     # Internal selection
     # ------------------------------------------------------------------
 
-    def _select(self, asset_class: str) -> Any:
+    def _select(self, asset_class: str, market: str = "INDIA") -> Any:
         if self.mode != "LIVE":
             return self._paper
 
-        preferred = _ASSET_BROKER_MAP.get(asset_class.upper(), "fyers")
-        broker = self._brokers.get(preferred)
-        if broker is not None:
-            return broker
+        market = (market or "INDIA").upper()
+        asset_class = asset_class.upper()
 
-        # Try alternate broker for this asset class
-        alt = _ASSET_BROKER_ALT.get(asset_class.upper())
-        if alt:
-            broker = self._brokers.get(alt)
+        market_map = BROKER_ROUTING.get(market)
+        if not market_map:
+            raise RuntimeError(f"Unsupported market: {market}")
+
+        broker_chain = market_map.get(asset_class)
+        if not broker_chain:
+            raise RuntimeError(
+                f"No broker routing defined for market={market}, asset={asset_class}"
+            )
+
+        for broker_name in broker_chain:
+            broker = self._brokers.get(broker_name)
             if broker is not None:
                 logger.debug(
-                    "Using alternate broker '%s' for asset class '%s'.", alt, asset_class
+                    "Selected broker '%s' for market=%s asset=%s",
+                    broker_name,
+                    market,
+                    asset_class,
                 )
                 return broker
 
-        if str(self.mode).upper() == "LIVE":
-            raise RuntimeError(
-                f"LIVE broker execution failed: broker not registered for asset class '{asset_class}'"
-            )
-
-        logger.warning(
-            "Broker '%s' not registered for asset class '%s'; falling back to paper.",
-            preferred,
-            asset_class,
+        raise RuntimeError(
+            f"No live broker available for market={market}, asset={asset_class}"
         )
-        return self._paper
-
+        
     # ------------------------------------------------------------------
     # Order dispatch
     # ------------------------------------------------------------------
@@ -479,13 +501,29 @@ class MultiBrokerRouter:
         price: float,
         fee: float = 0.0,
         meta: Optional[Dict] = None,
-        asset_class: str = "EQUITY",
+        asset_class: str="EQUITY",
+        market: str = "INDIA",
     ) -> Dict:
-        broker = self._select(asset_class)
+        broker = self._select(asset_class, market)
+        if str(self.mode).upper() == "LIVE":
+            self._circuit_breaker.check()
+            self._duplicate_guard(symbol, side, qty)
+            
         try:
-            result = broker.place_order(
-                symbol=symbol, side=side, qty=qty,
-                price=price, fee=fee, meta=meta or {},
+            def _submit():
+                return broker.place_order(
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    price=price,
+                    fee=fee,
+                    meta=meta or {},
+                )
+
+            result = (
+                execute_with_retry(_submit)
+                if str(self.mode).upper() == "LIVE"
+                else _submit()
             )
         except Exception as exc:
             if str(self.mode).upper() == "LIVE":
@@ -504,6 +542,15 @@ class MultiBrokerRouter:
                     f"Price: {price}\n"
                     f"Error: {exc}"
                 )
+
+                self._circuit_breaker.record_failure(str(exc))
+
+                try:
+                    self._telegram.send_message(
+                        f"🚨 QE3 LIVE FAILURE\n{symbol}\n{exc}"
+                    )
+                except Exception:
+                    pass
 
                 log_execution_event({
                     "mode": self.mode,
@@ -542,6 +589,7 @@ class MultiBrokerRouter:
         if str(self.mode).upper() == "LIVE":
             try:
                 result = validate_live_broker_response(result)
+                self._circuit_breaker.record_success()
             except Exception as exc:
                 raise RuntimeError(f"LIVE broker rejected order: {exc}") from exc
                 
@@ -644,6 +692,20 @@ class MultiBrokerRouter:
         return ",".join(s for s in sources if s) or "UNKNOWN"
 
 
+    def _duplicate_guard(self, symbol, side, qty, window=10):
+        import time
+
+        key = f"{symbol}:{side}:{qty}"
+        now = time.time()
+
+        last = self._recent_orders.get(key)
+        if last and (now - last) < window:
+            raise RuntimeError(
+                f"DUPLICATE ORDER BLOCKED: {symbol} {side} {qty}"
+            )
+
+        self._recent_orders[key] = now
+        
 # ──────────────────────────────────────────────────────────────────────────────
 # 2. RiskGatePipeline
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1536,8 +1598,8 @@ class ExecutionRouter:
             side=signal["side"],
             qty=qty,
             price=fill_price,
-            fee=fee,
-            asset_class=asset_class,
+            asset_class=signal.get("asset_class", "EQUITY"),
+            market=signal.get("market", "INDIA"),
             meta={
                 "strategy_id":      signal.get("strategy_id"),
                 "trade_type":       signal.get("trade_type") or self._trade_type(signal),
