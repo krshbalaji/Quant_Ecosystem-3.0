@@ -445,9 +445,15 @@ class MultiBrokerRouter:
                 )
                 return broker
 
+        if str(self.mode).upper() == "LIVE":
+            raise RuntimeError(
+                f"LIVE broker execution failed: broker not registered for asset class '{asset_class}'"
+            )
+
         logger.warning(
             "Broker '%s' not registered for asset class '%s'; falling back to paper.",
-            preferred, asset_class,
+            preferred,
+            asset_class,
         )
         return self._paper
 
@@ -472,15 +478,52 @@ class MultiBrokerRouter:
                 price=price, fee=fee, meta=meta or {},
             )
         except Exception as exc:
+            if str(self.mode).upper() == "LIVE":
+                logger.critical(
+                    "LIVE broker order failed for %s/%s: %s. NO paper fallback allowed.",
+                    symbol,
+                    asset_class,
+                    exc,
+                )
+                raise RuntimeError(
+                    f"LIVE broker execution failed: {symbol}/{asset_class}: {exc}"
+                ) from exc
+
             logger.error(
                 "Broker.place_order raised for %s/%s: %s. Retrying with paper broker.",
-                symbol, asset_class, exc,
+                symbol,
+                asset_class,
+                exc,
             )
+
             result = self._paper.place_order(
-                symbol=symbol, side=side, qty=qty, price=price, fee=fee, meta=meta or {},
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                price=price,
+                fee=fee,
+                meta=meta or {},
             )
 
         result = result or {}
+
+        if str(self.mode).upper() == "LIVE":
+            if not isinstance(result, dict):
+                raise RuntimeError(
+                    f"LIVE broker returned invalid response type: {type(result).__name__}"
+                )
+
+            if str(result.get("s", "")).lower() == "error":
+                raise RuntimeError(
+                    f"LIVE broker rejected order: {result.get('message', 'unknown error')}"
+                )
+
+            order_id = result.get("order_id") or result.get("id")
+            if not order_id:
+                raise RuntimeError(
+                    f"LIVE broker returned no order id: {result}"
+                )
+
         result.setdefault("order_id", result.get("id", ""))
         result.setdefault(
             "broker",
@@ -490,6 +533,7 @@ class MultiBrokerRouter:
                 type(broker).__name__.upper()
             )
         )
+
         return result
 
     def get_positions(self, asset_class: str = "EQUITY") -> List:
