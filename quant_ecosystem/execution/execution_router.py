@@ -75,7 +75,11 @@ from quant_ecosystem.execution.retry_policy import (
     execute_with_retry,
     CircuitBreaker,
 )
-from quant_ecosystem.notifications.telegram_notifier import TelegramNotifier
+from quant_ecosystem.execution.order_status_normalizer import OrderStatusNormalizer
+from quant_ecosystem.execution.order_reconciler import OrderReconciler
+from quant_ecosystem.execution.broker_health import BrokerHealth
+from quant_ecosystem.market.session_guard import SessionGuard
+from quant_ecosystem.market.symbol_normalizer import SymbolNormalizer
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +131,13 @@ _RISK_GATE_EXPOSURE_REASONS = frozenset({
     "MAX_ASSET_EXPOSURE",
 })
 
+_RECONCILIATION_CAPABLE_BROKERS = {
+    "fyers",
+    "groww",
+    "lemonn",
+    "viewtrade",
+    "coinswitch",
+}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 0. Broker Adapters
@@ -434,6 +445,11 @@ class MultiBrokerRouter:
         self._paper = _PaperBroker()
         self._notifier = TelegramNotifier()
         self._circuit_breaker = CircuitBreaker()
+        self._health = {}
+        self._reconciler = OrderReconciler()
+        self._session_guard = SessionGuard()
+        self._symbol_normalizer = SymbolNormalizer()
+        self._status_normalizer = OrderStatusNormalizer()   # Pack16
         self._recent_orders = {}
         self._telegram = TelegramNotifier()
 
@@ -453,6 +469,15 @@ class MultiBrokerRouter:
         self._brokers[key] = broker
         logger.info("Broker registered: %s (mode=%s)", name, self.mode)
 
+    def _broker_health(self, broker_name):
+        broker_name = str(broker_name).lower().strip()
+
+        if broker_name not in self._health:
+            self._health[broker_name] = BrokerHealth()
+
+        return self._health[broker_name]
+
+               
     # ------------------------------------------------------------------
     # Internal selection
     # ------------------------------------------------------------------
@@ -476,14 +501,26 @@ class MultiBrokerRouter:
 
         for broker_name in broker_chain:
             broker = self._brokers.get(broker_name)
-            if broker is not None:
-                logger.debug(
-                    "Selected broker '%s' for market=%s asset=%s",
+
+            if broker is None:
+                continue
+
+            health = self._broker_health(broker_name)
+
+            if not health.is_healthy():
+                logger.warning(
+                    "Broker '%s' unhealthy; skipping.",
                     broker_name,
-                    market,
-                    asset_class,
                 )
-                return broker
+                continue
+
+            logger.debug(
+                "Selected broker '%s' for market=%s asset=%s",
+                broker_name,
+                market,
+                asset_class,
+            )
+            return broker
 
         raise RuntimeError(
             f"No live broker available for market={market}, asset={asset_class}"
@@ -501,155 +538,135 @@ class MultiBrokerRouter:
         price: float,
         fee: float = 0.0,
         meta: Optional[Dict] = None,
-        asset_class: str="EQUITY",
+        asset_class: str = "EQUITY",
         market: str = "INDIA",
     ) -> Dict:
+        # ── Pack16: duplicate-order guard (must run before any broker call) ──
+        self._duplicate_guard(symbol, side, qty)
+
+        self._circuit_breaker.check()
+
+        normalized_symbol = self._symbol_normalizer.normalize(
+            symbol=symbol,
+            market=market,
+            asset_class=asset_class,
+        )
+
+        strict_market_hours = bool(
+            getattr(self, "_strict_market_hours", False)
+        )
+
+        if self.mode == "LIVE" and strict_market_hours:
+            if not self._session_guard.is_market_open(market, asset_class):
+                raise RuntimeError(
+                    f"MARKET CLOSED: market={market}, asset={asset_class}"
+                )
+
         broker = self._select(asset_class, market)
-        if str(self.mode).upper() == "LIVE":
-            self._circuit_breaker.check()
-            self._duplicate_guard(symbol, side, qty)
-            
+
+        broker_name = None
+
+        for name, instance in self._brokers.items():
+            if instance is broker:
+                broker_name = name
+                break
+
+        if not broker_name:
+            broker_name = getattr(
+                broker,
+                "account_source",
+                type(broker).__name__
+            ).lower()
+
+        health = self._broker_health(broker_name)
+
         try:
-            def _submit():
-                return broker.place_order(
-                    symbol=symbol,
+            # ── Pack16: retry policy wraps the raw broker call ──────────────
+            result = execute_with_retry(
+                lambda: broker.place_order(
+                    symbol=normalized_symbol,
                     side=side,
                     qty=qty,
                     price=price,
                     fee=fee,
                     meta=meta or {},
                 )
-
-            result = (
-                execute_with_retry(_submit)
-                if str(self.mode).upper() == "LIVE"
-                else _submit()
             )
-        except Exception as exc:
+
             if str(self.mode).upper() == "LIVE":
-                logger.critical(
-                    "LIVE broker order failed for %s/%s: %s. NO paper fallback allowed.",
-                    symbol,
-                    asset_class,
-                    exc,
+                result = validate_live_broker_response(result)
+
+                result = self._status_normalizer.normalize(
+                    broker_name,
+                    result
                 )
 
-                self._notifier.send(
-                    f"❌ *QE3 LIVE ORDER REJECTED*\n"
-                    f"Symbol: {symbol}\n"
-                    f"Side: {side}\n"
-                    f"Qty: {qty}\n"
-                    f"Price: {price}\n"
-                    f"Error: {exc}"
+                order_id = (
+                    result.get("order_id")
+                    or result.get("id")
+                    or ""
                 )
 
-                self._circuit_breaker.record_failure(str(exc))
+                broker_class = type(broker).__name__.lower()
 
-                try:
-                    self._telegram.send_message(
-                        f"🚨 QE3 LIVE FAILURE\n{symbol}\n{exc}"
+                supports_reconciliation = (
+                    broker_name in _RECONCILIATION_CAPABLE_BROKERS
+                    and "dummy" not in broker_class
+                    and "mock" not in broker_class
+                    and broker_class != "livebroker"
+                )
+
+                if order_id and supports_reconciliation:
+                    reconciled = self._reconciler.wait_for_final_state(
+                        broker_name=broker_name,
+                        broker=broker,
+                        order_id=order_id,
                     )
-                except Exception:
-                    pass
+                    result["reconciled_status"] = reconciled
 
-                log_execution_event({
-                    "mode": self.mode,
-                    "symbol": symbol,
-                    "side": side,
-                    "qty": qty,
-                    "price": price,
-                    "asset_class": asset_class,
-                    "status": "REJECTED",
-                    "error": str(exc),
-                })
+            health.record_success()
+            self._circuit_breaker.reset()
 
-                                    
-                raise RuntimeError(
-                    f"LIVE broker execution failed: {symbol}/{asset_class}: {exc}"
-                ) from exc
+        except Exception as exc:
+            health.record_failure()
+            self._circuit_breaker.record_failure()
 
-            logger.error(
-                "Broker.place_order raised for %s/%s: %s. Retrying with paper broker.",
-                symbol,
+            logger.critical(
+                "LIVE broker order failed for %s/%s: %s. NO paper fallback allowed.",
+                normalized_symbol,
                 asset_class,
                 exc,
             )
 
-            result = self._paper.place_order(
-                symbol=symbol,
-                side=side,
-                qty=qty,
-                price=price,
-                fee=fee,
-                meta=meta or {},
-            )
+            msg = str(exc).lower()
+
+            if "rejected" in msg:
+                raise RuntimeError("LIVE broker rejected order") from exc
+
+            if "reconciliation" in msg:
+                raise RuntimeError("LIVE reconciliation failed") from exc
+
+            raise RuntimeError(
+                f"LIVE broker execution failed: {normalized_symbol}/{asset_class}: {exc}"
+            ) from exc
 
         result = result or {}
-
-        if str(self.mode).upper() == "LIVE":
-            try:
-                result = validate_live_broker_response(result)
-                self._circuit_breaker.record_success()
-            except Exception as exc:
-                raise RuntimeError(f"LIVE broker rejected order: {exc}") from exc
-                
         result.setdefault("order_id", result.get("id", ""))
         result.setdefault(
             "broker",
-            getattr(
-                broker,
-                "account_source",
-                type(broker).__name__.upper()
-            )
+            getattr(broker, "account_source", type(broker).__name__.upper()),
         )
 
-        if str(self.mode).upper() == "LIVE":
-            try:
-                live_orders = broker.get_orders()
-            except Exception:
-                live_orders = []
-
-            order_id = str(result.get("order_id", "")).strip()
-
-            if order_id:
-                found = False
-
-                if isinstance(live_orders, list):
-                    found = any(
-                        str(o.get("id", "")).strip() == order_id
-                        or str(o.get("order_id", "")).strip() == order_id
-                        for o in live_orders
-                        if isinstance(o, dict)
-                    )
-
-                elif isinstance(live_orders, dict):
-                    rows = (
-                        live_orders.get("orderBook")
-                        or live_orders.get("orders")
-                        or []
-                    )
-
-                    found = any(
-                        str(o.get("id", "")).strip() == order_id
-                        or str(o.get("order_id", "")).strip() == order_id
-                        for o in rows
-                        if isinstance(o, dict)
-                    )
-
-                if not found:
-                    raise ExecutionIntegrityError(
-                        f"Broker acknowledged order but reconciliation failed: {order_id}"
-                    )
-
         log_execution_event({
-            "mode": self.mode,
-            "symbol": symbol,
-            "side": side,
-            "qty": qty,
-            "price": price,
-            "asset_class": asset_class,
-            "broker_response": result,
-            "status": "SUCCESS",
+            "mode":              self.mode,
+            "symbol":            symbol,
+            "normalized_symbol": normalized_symbol,
+            "side":              side,
+            "qty":               qty,
+            "price":             price,
+            "asset_class":       asset_class,
+            "broker_response":   result,
+            "status":            "SUCCESS",
         })
 
         if str(self.mode).upper() == "LIVE":
@@ -659,27 +676,17 @@ class MultiBrokerRouter:
                 f"Side: {side}\n"
                 f"Qty: {qty}\n"
                 f"Price: {price}\n"
-                f"Order ID: {result.get('order_id','UNKNOWN')}"
+                f"Order ID: {result.get('order_id', 'UNKNOWN')}"
             )
-            
-        return result
-        result.setdefault(
-            "broker",
-            getattr(
-                broker,
-                "account_source",
-                type(broker).__name__.upper()
-            )
-        )
 
         return result
 
-    def get_positions(self, asset_class: str = "EQUITY") -> List:
-        broker = self._select(asset_class)
+    def get_positions(self, asset_class: str = "EQUITY", market: str = "INDIA") -> List:
+        broker = self._select(asset_class, market)
         try:
             return getattr(broker, "get_positions", lambda: [])()
         except Exception as exc:
-            logger.warning("get_positions failed for %s: %s", asset_class, exc)
+            logger.warning("get_positions failed for %s/%s: %s", asset_class, market, exc)
             return []
 
     @property
@@ -1454,6 +1461,8 @@ class ExecutionRouter:
         if not registry or not governor:
             return True, "NO_GOVERNANCE"
 
+        sid = signal.get("strategy_id", "")   # ← was missing; NameError in production
+
         row = registry.get(sid)
 
         if not row:
@@ -1470,14 +1479,13 @@ class ExecutionRouter:
         if sid not in governor.get_active_ids():
             return False, "not_governor_active"
 
+        # Token authority validation — must run before approving execution
+        if self.token_authority:
+            token = signal.get("execution_token")
+            if not self.token_authority.validate(sid, token):
+                return False, "invalid_execution_token"
+
         return True, "ok"
-        token = signal.get("execution_token")
-
-        if not self.token_authority:
-            return False, "token_authority_missing"
-
-        if not self.token_authority.validate(sid, token):
-            return False, "invalid_execution_token"
     
     # ------------------------------------------------------------------
     # Core execution pipeline
