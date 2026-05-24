@@ -139,6 +139,8 @@ from quant_ecosystem.events import (
     event_ingestion_engine,
 )
 
+from quant_ecosystem.instruments import instrument_resolver
+
 logger = logging.getLogger(__name__)
 
 
@@ -272,7 +274,7 @@ class _FyersBrokerAdapter:
     ) -> Dict:
         raw = self._broker.place_order(
             symbol=symbol, side=side, qty=qty, price=price,
-            fee=fee, meta=meta or {},
+            fee=fee, meta=enriched_meta,
         )
         if isinstance(raw, dict):
             raw.setdefault("order_id", raw.get("id", ""))
@@ -687,6 +689,7 @@ class MultiBrokerRouter:
                 )
 
         health = self._broker_health(broker_name)
+        enriched_meta = dict(meta or {})
              
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
@@ -698,7 +701,7 @@ class MultiBrokerRouter:
                         qty=qty,
                         price=price,
                         fee=fee,
-                        meta=meta or {},
+                        meta=enriched_meta,
                     )
                 )
             else:
@@ -708,7 +711,7 @@ class MultiBrokerRouter:
                     qty=qty,
                     price=price,
                     fee=fee,
-                    meta=meta or {},
+                    meta=enriched_meta,
                 )
 
             if (
@@ -1385,6 +1388,101 @@ class ExecutionRouter:
         except Exception:
             return payload
 
+    def _resolve_instrument(self, symbol: str):
+        """
+        Pack25 instrument resolution bridge.
+        Safe fallback for cash equities / unknown symbols.
+        """
+        try:
+            return instrument_resolver.resolve(symbol)
+        except Exception:
+            return None
+
+    def _instrument_multiplier(self, instrument) -> float:
+        if not instrument:
+            return 1.0
+
+        multiplier = getattr(instrument, "multiplier", None)
+        if multiplier is None:
+            multiplier = getattr(instrument, "contract_multiplier", None)
+
+        try:
+            return float(multiplier or 1.0)
+        except Exception:
+            return 1.0
+
+    def _instrument_asset_class(
+        self,
+        instrument,
+        fallback="EQUITY",
+    ):
+        if not instrument:
+            return fallback
+
+        asset_class = getattr(instrument, "asset_class", None)
+
+        if not asset_class:
+            asset_class = getattr(
+                instrument,
+                "instrument_type",
+                None,
+            )
+
+        if hasattr(asset_class, "value"):
+            asset_class = asset_class.value
+
+        return str(asset_class or fallback).upper()
+
+    def _normalize_execution_quantity(self, qty: int, instrument):
+        """
+        Qty semantics:
+        - equities => unit qty
+        - derivatives => preserve contract qty
+        """
+        if not instrument:
+            return qty
+
+        return int(qty)
+
+    def _build_instrument_meta(self, instrument):
+        if not instrument:
+            return {}
+
+        return {
+            "instrument_symbol": getattr(instrument, "symbol", None),
+            "asset_class": getattr(instrument, "asset_class", None),
+            "instrument_type": getattr(instrument, "instrument_type", None),
+            "lot_size": getattr(instrument, "lot_size", 1),
+            "tick_size": getattr(instrument, "tick_size", 0.01),
+            "multiplier": self._instrument_multiplier(instrument),
+            "expiry": getattr(instrument, "expiry", None),
+            "strike": getattr(instrument, "strike", None),
+            "option_type": getattr(instrument, "option_type", None),
+            "metadata": getattr(instrument, "metadata", {}),
+        }
+
+    def _validate_contract_quantity(self, qty: int, instrument):
+        """
+        Reject invalid derivative quantities.
+        """
+        if not instrument:
+            return
+
+        asset_class = self._instrument_asset_class(instrument)
+
+        if asset_class not in {"OPTIONS", "FUTURES", "OPTION", "FUTURE"}:
+            return
+
+        lot_size = int(getattr(instrument, "lot_size", 1) or 1)
+
+        if qty <= 0:
+            raise RuntimeError("INVALID_QTY")
+
+        if qty % lot_size != 0:
+            raise RuntimeError(
+                f"INVALID_DERIVATIVE_QTY: qty={qty}, lot_size={lot_size}"
+            )
+
     def canonical_order_payload(
         self,
         broker: str,
@@ -1404,7 +1502,7 @@ class ExecutionRouter:
             order_type=order_type,
             product=product,
             price=price,
-            meta=meta or {},
+            meta=enriched_meta,
         )
 
         return self._canonical_bridge.build_order_payload(
@@ -1474,16 +1572,27 @@ class ExecutionRouter:
             meta=meta,
         )
 
+        instrument = self._resolve_instrument(symbol)
+        resolved_asset = self._instrument_asset_class(instrument, "EQUITY")
+        normalized_qty = self._normalize_execution_quantity(qty, instrument)
+
+        self._validate_contract_quantity(normalized_qty, instrument)
+
+        enriched_meta = meta or {}
+        enriched_meta.update(
+            self._build_instrument_meta(instrument)
+        )
+        
         broker_key = str(broker).lower()
 
         if broker_key == "fyers":
             return self._multi_broker.place_order(
                 symbol=payload["symbol"],
                 side=side,
-                qty=payload["qty"],
+                qty=normalized_qty,
                 price=price,
-                asset_class="EQUITY",
-                meta=meta or {},
+                asset_class=resolved_asset,
+                meta=enriched_meta,
             )
 
         elif broker_key == "groww":
@@ -1492,8 +1601,8 @@ class ExecutionRouter:
                 side=payload["side"],
                 qty=payload["quantity"],
                 price=payload["price"],
-                asset_class="EQUITY",
-                meta=meta or {},
+                asset_class=resolved_asset,
+                meta=enriched_meta,
             )
 
         elif broker_key == "viewtrade":
@@ -1502,8 +1611,8 @@ class ExecutionRouter:
                 side=payload["action"],
                 qty=payload["quantity"],
                 price=payload["price"],
-                asset_class="EQUITY",
-                meta=meta or {},
+                asset_class=resolved_asset,
+                meta=enriched_meta,
             )
 
         elif broker_key == "coinswitch":
@@ -1513,7 +1622,7 @@ class ExecutionRouter:
                 qty=payload["quantity"],
                 price=payload["price"],
                 asset_class="CRYPTO",
-                meta=meta or {},
+                meta=enriched_meta,
             )
 
         raise ValueError(f"unsupported broker: {broker}")
@@ -2058,6 +2167,10 @@ class ExecutionRouter:
                
         # ---- Quantity allocation ----------------------------------------
         qty, size_reason = self._allocate_quantity(signal)
+        instrument = self._resolve_instrument(signal["symbol"])
+        qty = self._normalize_execution_quantity(qty, instrument)
+        self._validate_contract_quantity(qty, instrument)
+        
         if qty <= 0:
             return _skip(size_reason)
 
@@ -2075,23 +2188,28 @@ class ExecutionRouter:
         intended_price = signal["price"]
         slippage_bps   = self._compute_slippage_bps(signal)
         fill_price     = self._apply_slippage(intended_price, signal["side"], slippage_bps)
-        fill_notional  = _quantize(fill_price * qty, 4)
+        multiplier = self._instrument_multiplier(instrument)
+        fill_notional = _quantize(fill_price * qty * multiplier, 4)
         fee            = _quantize(fill_notional * (getattr(self.config, "broker_fee_bps", 3) / 10000.0), 4)
 
         # ---- Broker dispatch -------------------------------------------
-        asset_class = self._asset_class(signal["symbol"])
+        asset_class = self._instrument_asset_class(
+            instrument,
+            signal.get("asset_class", self._asset_class(signal["symbol"]))
+        )
         order = self._multi_broker.place_order(
             symbol=signal["symbol"],
             side=signal["side"],
             qty=qty,
             price=fill_price,
-            asset_class=signal.get("asset_class", "EQUITY"),
+            asset_class=asset_class,
             market=signal.get("market", "INDIA"),
             meta={
-                "strategy_id":      signal.get("strategy_id"),
-                "trade_type":       signal.get("trade_type") or self._trade_type(signal),
-                "regime":           regime,
+                "strategy_id": signal.get("strategy_id"),
+                "trade_type": signal.get("trade_type") or self._trade_type(signal),
+                "regime": regime,
                 "rebalance_assist": bool(signal.get("rebalance_assist", False)),
+                **self._build_instrument_meta(instrument),
             },
         )
 
@@ -2189,11 +2307,19 @@ class ExecutionRouter:
                 logger.debug("Reconciler error: %s", exc)
         elif self.portfolio_engine:
             try:
+                instrument = self._resolve_instrument(
+                    order.get("symbol", "")
+                )
+
+                multiplier = self._instrument_multiplier(instrument)
+
                 fill_result = self.portfolio_engine.apply_fill(
                     symbol=order.get("symbol", ""),
                     side=order.get("side", ""),
                     qty=order.get("qty", 0),
                     price=fill_price,
+                    multiplier=multiplier,
+                    asset_class=self._instrument_asset_class(instrument),
                 )
                 realized_pnl = float(fill_result.get("realized_pnl", 0.0))
                 self.state.apply_fill_accounting(
@@ -2233,7 +2359,7 @@ class ExecutionRouter:
         """Direct broker submission bypassing signal pipeline."""
         return self._multi_broker.place_order(
             symbol=symbol, side=side, qty=qty, price=price, fee=fee,
-            meta=meta or {}, asset_class=self._asset_class(symbol),
+            meta=enriched_meta, asset_class=self._asset_class(symbol),
         )
 
     def update_positions(self) -> Dict:
@@ -2942,10 +3068,11 @@ class ExecutionRouter:
             symbol=symbol, side=side, qty=qty, price=fill_price, fee=fee,
             asset_class=self._asset_class(symbol),
             meta={
-                "strategy_id":    "liquidation_assist_v1",
-                "trade_type":     "RISK_REDUCTION",
-                "regime":         regime,
-                "trigger_reason": trigger_reason,
+                "strategy_id": signal.get("strategy_id"),
+                "trade_type": signal.get("trade_type") or self._trade_type(signal),
+                "regime": regime,
+                "rebalance_assist": bool(signal.get("rebalance_assist", False)),
+                **self._build_instrument_meta(instrument),
             },
         )
 

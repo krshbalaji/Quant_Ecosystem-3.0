@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Callable, Dict, Optional, Tuple
+from quant_ecosystem.instruments import instrument_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,142 @@ class RiskEngine:
                 pass
         return float(getattr(self._get_state(), "equity", 100_000.0))
 
+    def _resolve_instrument(self, symbol):
+        """
+        Pack25 resolver bridge.
+        Fail-safe heuristic derivative detection fallback.
+        """
+        try:
+            resolved = instrument_resolver.resolve(symbol)
+
+            if resolved:
+                return resolved
+        except Exception:
+            pass
+
+        symbol_u = str(symbol).upper()
+
+        if (
+            "CE" in symbol_u
+            or "PE" in symbol_u
+            or "FUT" in symbol_u
+        ):
+            class _FallbackInstrument:
+                asset_class = "OPTIONS"
+                instrument_type = "OPTIONS"
+                lot_size = 75
+                multiplier = 1.0
+
+            return _FallbackInstrument()
+
+        return None
+
+    def _instrument_multiplier(self, instrument):
+        if not instrument:
+            return 1.0
+
+        multiplier = getattr(instrument, "multiplier", None)
+
+        if multiplier is None:
+            multiplier = getattr(
+                instrument,
+                "contract_multiplier",
+                1.0,
+            )
+
+        try:
+            return float(multiplier or 1.0)
+        except Exception:
+            return 1.0
+
+    def _instrument_asset_class(self, instrument):
+        if not instrument:
+            return "EQUITY"
+
+        asset_class = getattr(instrument, "asset_class", None)
+
+        if not asset_class:
+            asset_class = getattr(
+                instrument,
+                "instrument_type",
+                "EQUITY",
+            )
+
+        if hasattr(asset_class, "value"):
+            asset_class = asset_class.value
+
+        return str(asset_class).upper()
+
+    def _validate_contract_qty(
+        self,
+        qty,
+        instrument,
+    ):
+        if not instrument:
+            return True, "OK"
+
+        lot_size = int(
+            getattr(instrument, "lot_size", 1) or 1
+        )
+
+        expiry = getattr(instrument, "expiry", None)
+        strike = getattr(instrument, "strike", None)
+        option_type = getattr(instrument, "option_type", None)
+
+        asset = str(
+            getattr(instrument, "asset_class", "")
+        ).upper()
+
+        instrument_type = str(
+            getattr(instrument, "instrument_type", "")
+        ).upper()
+
+        is_derivative = (
+            lot_size > 1
+            or expiry is not None
+            or strike is not None
+            or option_type is not None
+            or asset in {
+                "OPTION",
+                "OPTIONS",
+                "FUTURE",
+                "FUTURES",
+                "DERIVATIVE",
+                "DERIVATIVES",
+            }
+            or instrument_type in {
+                "OPTION",
+                "OPTIONS",
+                "FUTURE",
+                "FUTURES",
+                "DERIVATIVE",
+                "DERIVATIVES",
+            }
+        )
+
+        if not is_derivative:
+            return True, "OK"
+
+        qty_int = int(qty)
+
+        if qty_int % lot_size != 0:
+            return False, "INVALID_DERIVATIVE_QTY"
+
+        return True, "OK"
+
+    def _effective_notional(
+        self,
+        qty,
+        price,
+        instrument,
+    ):
+        multiplier = self._instrument_multiplier(instrument)
+
+        return (
+            float(qty)
+            * float(price)
+            * multiplier
+        )
     # ------------------------------------------------------------------
     # NEW: check_order(order)
     # ------------------------------------------------------------------
@@ -231,6 +368,9 @@ class RiskEngine:
 
             symbol = str(order.get("symbol", ""))
             price  = float(order.get("price", 0.0))
+            
+            instrument = self._resolve_instrument(symbol)
+
             port_pct = self._compute_portfolio_exposure({symbol: price} if (symbol and price) else {})
             if port_pct >= self.max_portfolio_risk:
                 return False, "MAX_PORTFOLIO_EXPOSURE"
@@ -238,10 +378,38 @@ class RiskEngine:
             if sym_pct >= self.max_symbol_risk:
                 return False, "MAX_SYMBOL_EXPOSURE"
 
-        qty   = float(order.get("qty",   0))
+        qty = float(order.get("qty", 0))
         price = float(order.get("price", 0.0))
+        symbol = str(order.get("symbol", ""))
+
         if qty <= 0 or price <= 0:
             return False, "INVALID_QTY_OR_PRICE"
+
+        instrument = self._resolve_instrument(symbol)
+
+        valid_qty, qty_reason = self._validate_contract_qty(
+            qty,
+            instrument,
+        )
+
+        if not valid_qty:
+            return False, qty_reason
+
+        effective_notional = self._effective_notional(
+            qty,
+            price,
+            instrument,
+        )
+
+        equity = self._get_equity()
+
+        if equity > 0:
+            proposed_pct = (
+                effective_notional / equity
+            ) * 100.0
+
+            if proposed_pct > self.max_symbol_risk:
+                return False, "PROPOSED_SYMBOL_RISK_BREACH"
 
         return True, "OK"
 
@@ -359,16 +527,56 @@ class RiskEngine:
         equity: float,
         price: float,
         volatility: Optional[float] = None,
+        symbol: Optional[str] = None,
     ) -> int:
-        """Return integer qty for a trade given *equity* and *price*."""
         if price <= 0:
             return 0
+
+        instrument = None
+
+        if symbol:
+            instrument = self._resolve_instrument(symbol)
+
+        multiplier = self._instrument_multiplier(instrument)
+
         if volatility and volatility > 0:
             risk_budget = self.trade_risk(equity)
-            return max(int(risk_budget / float(volatility)), 0)
-        risk_budget = self.trade_risk(equity)
-        return max(int(risk_budget / float(price)), 0)
 
+            raw_qty = int(
+                risk_budget
+                / (float(volatility) * multiplier)
+            )
+        else:
+            risk_budget = self.trade_risk(equity)
+
+            raw_qty = int(
+                risk_budget
+                / (float(price) * multiplier)
+            )
+
+        if instrument:
+            asset = self._instrument_asset_class(instrument)
+
+            if asset in {
+                "OPTIONS",
+                "OPTION",
+                "FUTURES",
+                "FUTURE",
+            }:
+                lot_size = int(
+                    getattr(instrument, "lot_size", 1) or 1
+                )
+
+                if raw_qty <= 0:
+                    return 0
+
+                raw_qty = max(
+                    lot_size,
+                    (raw_qty // lot_size) * lot_size
+                )
+
+        return max(raw_qty, 0)
+        
     def update_risk(self, performance: Optional[Dict] = None) -> Dict:
         """Placeholder for dynamic risk adjustment; returns current limits."""
         return {
