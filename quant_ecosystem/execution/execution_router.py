@@ -82,6 +82,9 @@ from quant_ecosystem.market.session_guard import SessionGuard
 from quant_ecosystem.execution.retry_policy import execute_with_retry
 from quant_ecosystem.market.symbol_normalizer import SymbolNormalizer
 from quant_ecosystem.broker.broker_capabilities import BrokerCapabilities
+from quant_ecosystem.canonical.canonical_router import (
+    CanonicalRouter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -614,8 +617,10 @@ class MultiBrokerRouter:
         )
 
         broker = self._select(asset_class, market)
-
+        
         broker_name = self._get_broker_name(broker)
+        self._last_selected_broker_name = broker_name
+
         caps = self._get_capabilities(broker)
 
         if (
@@ -1265,6 +1270,7 @@ class ExecutionRouter:
 
         # Sub-systems
         self._multi_broker = MultiBrokerRouter(mode=self.mode)
+        self._canonical = CanonicalRouter()
 
         # Register legacy single-broker if provided
         if broker is not None:
@@ -1306,7 +1312,21 @@ class ExecutionRouter:
             return self.strategy_engine.run(market_data)
         except Exception as e:
             logger.warning("strategy_engine.run failed: %s", e)
-            return []    
+            return []
+
+    def _normalize_execution_result(
+        self,
+        provider,
+        payload,
+    ):
+        try:
+            return self._canonical.normalize_order(
+                provider=provider,
+                payload=payload,
+            )
+        except Exception:
+            return payload
+                        
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -1705,6 +1725,19 @@ class ExecutionRouter:
                 "rebalance_assist": bool(signal.get("rebalance_assist", False)),
             },
         )
+
+        provider_name = getattr(
+            self._multi_broker,
+            "_last_selected_broker_name",
+            None,
+        )
+
+        if provider_name:
+            order = self._normalize_execution_result(
+                provider=provider_name,
+                payload=order,
+            )
+
 
         # ---- Portfolio accounting --------------------------------------
         realized_pnl = self._apply_fill_accounting(
