@@ -119,6 +119,17 @@ from quant_ecosystem.canonical.broker_models import (
     CanonicalRiskSnapshot,
 )
 
+from quant_ecosystem.oms import (
+    CanonicalOrderLifecycle,
+    CanonicalExecutionEvent,
+    CanonicalEventType,
+    CanonicalOrderStatus,
+    order_registry,
+    execution_event_bus,
+    order_state_machine,
+    reconciliation_engine,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -1307,6 +1318,7 @@ class ExecutionRouter:
         self._canonical_bridge = CanonicalExecutionBridge()
         self._portfolio_bridge = CanonicalPortfolioBridge()
         self._risk_bridge = CanonicalRiskBridge()
+        self._oms_bridge = OMSBridge()
 
         # Register legacy single-broker if provided
         if broker is not None:
@@ -1577,7 +1589,84 @@ class ExecutionRouter:
 
         return exposure, risk
         
+    def execute_managed_order(
+        self,
+        broker: str,
+        symbol: str,
+        side: str,
+        qty: int,
+        order_type: str = "MARKET",
+        product: str = "CNC",
+        price: float = 0.0,
+        meta=None,
+    ):
+        """
+        Pack22 OMS-managed execution
+        """
 
+        order = self._oms_bridge.create_order(
+            broker=broker,
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            order_type=order_type,
+            price=price,
+            metadata=meta,
+        )
+
+        submit_evt = CanonicalExecutionEvent(
+            order_id=order.order_id,
+            event_type=CanonicalEventType.ORDER_SUBMITTED,
+            broker=broker,
+        )
+
+        order_state_machine.apply_event(order, submit_evt)
+        execution_event_bus.publish(submit_evt)
+
+        try:
+            result = self.execute_canonical_order(
+                broker=broker,
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                order_type=order_type,
+                product=product,
+                price=price,
+                meta=meta,
+            )
+
+            ack_evt = CanonicalExecutionEvent(
+                order_id=order.order_id,
+                event_type=CanonicalEventType.ORDER_ACK,
+                broker=broker,
+                payload=result if isinstance(result, dict) else {},
+            )
+
+            order_state_machine.apply_event(order, ack_evt)
+            execution_event_bus.publish(ack_evt)
+
+            return {
+                "oms_order_id": order.order_id,
+                "status": order.status.value,
+                "broker_result": result,
+            }
+
+        except Exception as exc:
+            err_evt = CanonicalExecutionEvent(
+                order_id=order.order_id,
+                event_type=CanonicalEventType.ERROR,
+                broker=broker,
+                payload={"error": str(exc)},
+            )
+
+            try:
+                order_state_machine.apply_event(order, err_evt)
+            except Exception:
+                pass
+
+            execution_event_bus.publish(err_evt)
+            raise
+        
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -3062,3 +3151,80 @@ class CanonicalRiskBridge:
             unrealized_pnl=unrealized_pnl,
         )
 
+import hashlib
+
+
+class OMSBridge:
+    """
+    Pack22 OMS execution bridge
+    """
+
+    def _fingerprint(
+        self,
+        broker,
+        symbol,
+        side,
+        qty,
+        order_type,
+        price,
+    ):
+        raw = f"{broker}|{symbol}|{side}|{qty}|{order_type}|{price}"
+        return hashlib.sha256(raw.encode()).hexdigest()
+
+    def create_order(
+        self,
+        broker,
+        symbol,
+        side,
+        qty,
+        order_type="MARKET",
+        price=0.0,
+        metadata=None,
+    ):
+        fp = self._fingerprint(
+            broker,
+            symbol,
+            side,
+            qty,
+            order_type,
+            price,
+        )
+
+        if order_registry.fingerprint_exists(fp):
+            raise ValueError("duplicate order request detected")
+
+        order_registry.add_fingerprint(fp)
+
+        order = CanonicalOrderLifecycle(
+            broker=broker,
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            metadata=metadata or {},
+        )
+
+        order_registry.register(order)
+
+        return order
+
+    def reconcile_order(
+        self,
+        oms_order_id: str,
+        broker_snapshot: dict,
+    ):
+        order = order_registry.get(oms_order_id)
+
+        if not order:
+            raise ValueError("unknown oms order")
+
+        updated = reconciliation_engine.reconcile(
+            order,
+            broker_snapshot,
+        )
+
+        return {
+            "oms_order_id": updated.order_id,
+            "status": updated.status.value,
+            "filled_qty": updated.filled_qty,
+            "remaining_qty": updated.remaining_qty(),
+        }        
