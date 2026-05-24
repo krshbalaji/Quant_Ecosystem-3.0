@@ -209,3 +209,83 @@ class CanonicalExecution(CanonicalBrokerBase):
         self.timestamp = normalize_timestamp(
             self.timestamp
         )
+
+from enum import Enum
+
+
+class OrderSide(str, Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+
+
+class OrderType(str, Enum):
+    MARKET = "MARKET"
+    LIMIT = "LIMIT"
+    STOP = "STOP"
+    STOP_LIMIT = "STOP_LIMIT"
+
+
+class ProductType(str, Enum):
+    CNC = "CNC"
+    MIS = "MIS"
+    NRML = "NRML"
+    DELIVERY = "DELIVERY"
+
+
+@dataclass
+class CanonicalOrderRequest:
+    provider: str
+    symbol: str
+    side: str
+    qty: int
+
+    order_type: str = "MARKET"
+    product: str = "CNC"
+    price: float = 0.0
+
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.provider = ensure_string(self.provider, "provider")
+        self.symbol = ensure_string(self.symbol, "symbol")
+        self.side = validate_side(self.side)
+        self.qty = int(self.qty)
+
+        if self.qty <= 0:
+            raise ValueError("qty must be > 0")
+
+        self.order_type = ensure_string(
+            self.order_type,
+            "order_type",
+        )
+
+        self.product = ensure_string(
+            self.product,
+            "product",
+        )
+
+        self.price = float(self.price)
+
+
+@dataclass
+class CanonicalModifyRequest:
+    provider: str
+    order_id: str
+    qty: int
+    price: float = 0.0
+
+    def __post_init__(self):
+        self.provider = ensure_string(self.provider, "provider")
+        self.order_id = ensure_string(self.order_id, "order_id")
+        self.qty = int(self.qty)
+        self.price = float(self.price)
+
+
+@dataclass
+class CanonicalCancelRequest:
+    provider: str
+    order_id: str
+
+    def __post_init__(self):
+        self.provider = ensure_string(self.provider, "provider")
+        self.order_id = ensure_string(self.order_id, "order_id")        

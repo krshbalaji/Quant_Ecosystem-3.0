@@ -86,6 +86,21 @@ from quant_ecosystem.canonical.canonical_router import (
     CanonicalRouter,
 )
 
+from quant_ecosystem.execution.adapter_registry import adapter_registry
+
+from quant_ecosystem.execution.adapters import (
+    FyersExecutionAdapter,
+    GrowwExecutionAdapter,
+    ViewTradeExecutionAdapter,
+    CoinSwitchExecutionAdapter,
+)
+
+from quant_ecosystem.canonical.broker_models import (
+    CanonicalOrderRequest,
+    CanonicalModifyRequest,
+    CanonicalCancelRequest,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -1271,6 +1286,7 @@ class ExecutionRouter:
         # Sub-systems
         self._multi_broker = MultiBrokerRouter(mode=self.mode)
         self._canonical = CanonicalRouter()
+        self._canonical_bridge = CanonicalExecutionBridge()
 
         # Register legacy single-broker if provided
         if broker is not None:
@@ -1326,7 +1342,164 @@ class ExecutionRouter:
             )
         except Exception:
             return payload
-                        
+
+    def canonical_order_payload(
+        self,
+        broker: str,
+        symbol: str,
+        side: str,
+        qty: int,
+        order_type: str = "MARKET",
+        product: str = "CNC",
+        price: float = 0.0,
+        meta=None,
+    ):
+        request = CanonicalOrderRequest(
+            provider=broker,
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            order_type=order_type,
+            product=product,
+            price=price,
+            meta=meta or {},
+        )
+
+        return self._canonical_bridge.build_order_payload(
+            broker,
+            request,
+        )
+
+
+    def canonical_modify_payload(
+        self,
+        broker: str,
+        order_id: str,
+        qty: int,
+        price: float = 0.0,
+    ):
+        request = CanonicalModifyRequest(
+            provider=broker,
+            order_id=order_id,
+            qty=qty,
+            price=price,
+        )
+
+        return self._canonical_bridge.build_modify_payload(
+            broker,
+            request,
+        )
+
+
+    def canonical_cancel_payload(
+        self,
+        broker: str,
+        order_id: str,
+    ):
+        request = CanonicalCancelRequest(
+            provider=broker,
+            order_id=order_id,
+        )
+
+        return self._canonical_bridge.build_cancel_payload(
+            broker,
+            request,
+        )
+    
+    def execute_canonical_order(
+        self,
+        broker: str,
+        symbol: str,
+        side: str,
+        qty: int,
+        order_type: str = "MARKET",
+        product: str = "CNC",
+        price: float = 0.0,
+        meta=None,
+    ):
+        """
+        Pack20 canonical execution entrypoint
+        """
+
+        payload = self.canonical_order_payload(
+            broker=broker,
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            order_type=order_type,
+            product=product,
+            price=price,
+            meta=meta,
+        )
+
+        broker_key = str(broker).lower()
+
+        if broker_key == "fyers":
+            return self._multi_broker.place_order(
+                symbol=payload["symbol"],
+                side=side,
+                qty=payload["qty"],
+                price=price,
+                asset_class="EQUITY",
+                meta=meta or {},
+            )
+
+        elif broker_key == "groww":
+            return self._multi_broker.place_order(
+                symbol=payload["instrument"],
+                side=payload["side"],
+                qty=payload["quantity"],
+                price=payload["price"],
+                asset_class="EQUITY",
+                meta=meta or {},
+            )
+
+        elif broker_key == "viewtrade":
+            return self._multi_broker.place_order(
+                symbol=payload["ticker"],
+                side=payload["action"],
+                qty=payload["quantity"],
+                price=payload["price"],
+                asset_class="EQUITY",
+                meta=meta or {},
+            )
+
+        elif broker_key == "coinswitch":
+            return self._multi_broker.place_order(
+                symbol=payload["symbol"],
+                side=payload["side"],
+                qty=payload["quantity"],
+                price=payload["price"],
+                asset_class="CRYPTO",
+                meta=meta or {},
+            )
+
+        raise ValueError(f"unsupported broker: {broker}")
+
+    def cancel_canonical_order(
+        self,
+        broker: str,
+        order_id: str,
+    ):
+        return self.canonical_cancel_payload(
+            broker=broker,
+            order_id=order_id,
+        )   
+
+    def modify_canonical_order(
+        self,
+        broker: str,
+        order_id: str,
+        qty: int,
+        price: float = 0.0,
+    ):
+        return self.canonical_modify_payload(
+            broker=broker,
+            order_id=order_id,
+            qty=qty,
+            price=price,
+        )
+                            
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -2642,3 +2815,52 @@ class ExecutionRouter:
             "rebalance_assist":   False,
             "broker":             order.get("broker", self._multi_broker.account_source),
         }
+class CanonicalExecutionBridge:
+    """
+    Pack20 bridge:
+    canonical request -> broker payload
+    """
+
+    def __init__(self):
+        self._initialized = False
+
+    def _ensure_registry(self):
+        if self._initialized:
+            return
+
+        try:
+            adapter_registry.register("fyers", FyersExecutionAdapter())
+        except Exception:
+            pass
+
+        try:
+            adapter_registry.register("groww", GrowwExecutionAdapter())
+        except Exception:
+            pass
+
+        try:
+            adapter_registry.register("viewtrade", ViewTradeExecutionAdapter())
+        except Exception:
+            pass
+
+        try:
+            adapter_registry.register("coinswitch", CoinSwitchExecutionAdapter())
+        except Exception:
+            pass
+
+        self._initialized = True
+
+    def build_order_payload(self, broker: str, request: CanonicalOrderRequest):
+        self._ensure_registry()
+        adapter = adapter_registry.get(broker)
+        return adapter.translate_order(request)
+
+    def build_modify_payload(self, broker: str, request: CanonicalModifyRequest):
+        self._ensure_registry()
+        adapter = adapter_registry.get(broker)
+        return adapter.translate_modify(request)
+
+    def build_cancel_payload(self, broker: str, request: CanonicalCancelRequest):
+        self._ensure_registry()
+        adapter = adapter_registry.get(broker)
+        return adapter.translate_cancel(request)

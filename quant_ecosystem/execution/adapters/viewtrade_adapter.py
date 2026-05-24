@@ -1,0 +1,29 @@
+"""
+ViewTrade execution adapter
+"""
+
+from quant_ecosystem.execution.adapters.base_adapter import BaseExecutionAdapter
+
+
+class ViewTradeExecutionAdapter(BaseExecutionAdapter):
+
+    def translate_order(self, request):
+        return {
+            "ticker": request.symbol,
+            "quantity": request.qty,
+            "action": request.side,
+            "type": request.order_type,
+            "price": request.price,
+        }
+
+    def translate_modify(self, request):
+        return {
+            "order_id": request.order_id,
+            "quantity": request.qty,
+            "price": request.price,
+        }
+
+    def translate_cancel(self, request):
+        return {
+            "order_id": request.order_id,
+        }
