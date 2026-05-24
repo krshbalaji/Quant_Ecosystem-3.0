@@ -288,4 +288,106 @@ class CanonicalCancelRequest:
 
     def __post_init__(self):
         self.provider = ensure_string(self.provider, "provider")
-        self.order_id = ensure_string(self.order_id, "order_id")        
+        self.order_id = ensure_string(self.order_id, "order_id")
+
+@dataclass
+class CanonicalMarginSnapshot(CanonicalBrokerBase):
+    available: float = 0.0
+    used: float = 0.0
+    collateral: float = 0.0
+    leverage: float = 1.0
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.available = float(self.available)
+        self.used = float(self.used)
+        self.collateral = float(self.collateral)
+        self.leverage = float(self.leverage)
+
+        if self.available < 0:
+            raise ValueError("available margin cannot be negative")
+
+        if self.used < 0:
+            raise ValueError("used margin cannot be negative")
+
+        if self.collateral < 0:
+            raise ValueError("collateral cannot be negative")
+
+        if self.leverage <= 0:
+            raise ValueError("leverage must be > 0")
+
+
+@dataclass
+class CanonicalExposureSnapshot(CanonicalBrokerBase):
+    portfolio_exposure_pct: float = 0.0
+    symbol_exposure_pct: Dict[str, float] = field(default_factory=dict)
+    sector_exposure_pct: Dict[str, float] = field(default_factory=dict)
+    asset_class_exposure_pct: Dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.portfolio_exposure_pct = float(self.portfolio_exposure_pct)
+        self.symbol_exposure_pct = dict(self.symbol_exposure_pct)
+        self.sector_exposure_pct = dict(self.sector_exposure_pct)
+        self.asset_class_exposure_pct = dict(self.asset_class_exposure_pct)
+
+
+@dataclass
+class CanonicalRiskSnapshot(CanonicalBrokerBase):
+    daily_loss_pct: float = 0.0
+    drawdown_pct: float = 0.0
+    margin_utilization_pct: float = 0.0
+    realized_pnl: float = 0.0
+    unrealized_pnl: float = 0.0
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.daily_loss_pct = float(self.daily_loss_pct)
+        self.drawdown_pct = float(self.drawdown_pct)
+        self.margin_utilization_pct = float(self.margin_utilization_pct)
+        self.realized_pnl = float(self.realized_pnl)
+        self.unrealized_pnl = float(self.unrealized_pnl)
+
+
+@dataclass
+class CanonicalPortfolioSnapshot(CanonicalBrokerBase):
+    positions: list = field(default_factory=list)
+    balance: Optional[CanonicalBalance] = None
+    margin: Optional[CanonicalMarginSnapshot] = None
+    exposure: Optional[CanonicalExposureSnapshot] = None
+    risk: Optional[CanonicalRiskSnapshot] = None
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.positions = list(self.positions)
+
+        if self.balance is not None and not isinstance(
+            self.balance,
+            CanonicalBalance,
+        ):
+            raise ValueError("balance must be CanonicalBalance")
+
+        if self.margin is not None and not isinstance(
+            self.margin,
+            CanonicalMarginSnapshot,
+        ):
+            raise ValueError("margin must be CanonicalMarginSnapshot")
+
+        if self.exposure is not None and not isinstance(
+            self.exposure,
+            CanonicalExposureSnapshot,
+        ):
+            raise ValueError("exposure must be CanonicalExposureSnapshot")
+
+        if self.risk is not None and not isinstance(
+            self.risk,
+            CanonicalRiskSnapshot,
+        ):
+            raise ValueError("risk must be CanonicalRiskSnapshot")
+
+        self.timestamp = normalize_timestamp(self.timestamp)                

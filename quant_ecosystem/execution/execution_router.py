@@ -101,6 +101,24 @@ from quant_ecosystem.canonical.broker_models import (
     CanonicalCancelRequest,
 )
 
+from quant_ecosystem.portfolio.portfolio_adapter_registry import (
+    portfolio_adapter_registry,
+)
+
+from quant_ecosystem.portfolio.adapters import (
+    FyersPortfolioAdapter,
+    GrowwPortfolioAdapter,
+    ViewTradePortfolioAdapter,
+    CoinSwitchPortfolioAdapter,
+)
+
+from quant_ecosystem.canonical.broker_models import (
+    CanonicalPortfolioSnapshot,
+    CanonicalMarginSnapshot,
+    CanonicalExposureSnapshot,
+    CanonicalRiskSnapshot,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -1287,6 +1305,8 @@ class ExecutionRouter:
         self._multi_broker = MultiBrokerRouter(mode=self.mode)
         self._canonical = CanonicalRouter()
         self._canonical_bridge = CanonicalExecutionBridge()
+        self._portfolio_bridge = CanonicalPortfolioBridge()
+        self._risk_bridge = CanonicalRiskBridge()
 
         # Register legacy single-broker if provided
         if broker is not None:
@@ -1499,7 +1519,65 @@ class ExecutionRouter:
             qty=qty,
             price=price,
         )
-                            
+
+    def canonical_portfolio_snapshot(
+        self,
+        broker: str,
+        raw_positions,
+        raw_balance,
+        raw_margin=None,
+    ):
+        return self._portfolio_bridge.build_snapshot(
+            broker=broker,
+            raw_positions=raw_positions,
+            raw_balance=raw_balance,
+            raw_margin=raw_margin,
+        )
+
+    def canonical_risk_snapshot(
+        self,
+        broker: str,
+    ):
+        margin_used = 0.0
+        margin_available = 0.0
+
+        try:
+            margin_used = float(getattr(self.state, "margin_used", 0.0))
+            margin_available = float(getattr(self.state, "margin_available", 0.0))
+        except Exception:
+            pass
+
+        denom = margin_used + margin_available
+
+        margin_utilization = (
+            (margin_used / denom) * 100.0
+            if denom > 0
+            else 0.0
+        )
+
+        exposure = self._risk_bridge.build_exposure_snapshot(
+            provider=broker,
+            portfolio_exposure_pct=self._portfolio_exposure_pct(),
+        )
+
+        risk = self._risk_bridge.build_risk_snapshot(
+            provider=broker,
+            daily_loss_pct=0.0,
+            drawdown_pct=float(
+                getattr(self.state, "total_drawdown_pct", 0.0)
+            ),
+            margin_utilization_pct=margin_utilization,
+            realized_pnl=float(
+                getattr(self.state, "realized_pnl", 0.0)
+            ),
+            unrealized_pnl=float(
+                getattr(self.state, "unrealized_pnl", 0.0)
+            ),
+        )
+
+        return exposure, risk
+        
+
     # ------------------------------------------------------------------
     # Lazy dependency loaders
     # ------------------------------------------------------------------
@@ -2864,3 +2942,123 @@ class CanonicalExecutionBridge:
         self._ensure_registry()
         adapter = adapter_registry.get(broker)
         return adapter.translate_cancel(request)
+
+class CanonicalPortfolioBridge:
+    """
+    Pack21 portfolio canonicalization bridge
+    """
+
+    def __init__(self):
+        self._initialized = False
+
+    def _ensure_registry(self):
+        if self._initialized:
+            return
+
+        try:
+            portfolio_adapter_registry.register(
+                "fyers",
+                FyersPortfolioAdapter(),
+            )
+        except Exception:
+            pass
+
+        try:
+            portfolio_adapter_registry.register(
+                "groww",
+                GrowwPortfolioAdapter(),
+            )
+        except Exception:
+            pass
+
+        try:
+            portfolio_adapter_registry.register(
+                "viewtrade",
+                ViewTradePortfolioAdapter(),
+            )
+        except Exception:
+            pass
+
+        try:
+            portfolio_adapter_registry.register(
+                "coinswitch",
+                CoinSwitchPortfolioAdapter(),
+            )
+        except Exception:
+            pass
+
+        self._initialized = True
+
+    def build_snapshot(
+        self,
+        broker: str,
+        raw_positions,
+        raw_balance,
+        raw_margin=None,
+    ):
+        self._ensure_registry()
+
+        adapter = portfolio_adapter_registry.get(broker)
+
+        positions = adapter.translate_positions(raw_positions)
+        balance = adapter.translate_balances(raw_balance)
+
+        if raw_margin is None:
+            raw_margin = {}
+
+        margin_data = adapter.translate_margin(raw_margin)
+
+        margin = CanonicalMarginSnapshot(
+            provider=broker,
+            available=margin_data.get("available", 0.0),
+            used=margin_data.get("used", 0.0),
+            collateral=margin_data.get("collateral", 0.0),
+            leverage=margin_data.get("leverage", 1.0),
+        )
+
+        return CanonicalPortfolioSnapshot(
+            provider=broker,
+            positions=positions,
+            balance=balance,
+            margin=margin,
+        )    
+
+class CanonicalRiskBridge:
+    """
+    Pack21 unified risk normalization
+    """
+
+    def build_exposure_snapshot(
+        self,
+        provider: str,
+        portfolio_exposure_pct: float = 0.0,
+        symbol_exposure_pct=None,
+        sector_exposure_pct=None,
+        asset_class_exposure_pct=None,
+    ):
+        return CanonicalExposureSnapshot(
+            provider=provider,
+            portfolio_exposure_pct=portfolio_exposure_pct,
+            symbol_exposure_pct=symbol_exposure_pct or {},
+            sector_exposure_pct=sector_exposure_pct or {},
+            asset_class_exposure_pct=asset_class_exposure_pct or {},
+        )
+
+    def build_risk_snapshot(
+        self,
+        provider: str,
+        daily_loss_pct: float = 0.0,
+        drawdown_pct: float = 0.0,
+        margin_utilization_pct: float = 0.0,
+        realized_pnl: float = 0.0,
+        unrealized_pnl: float = 0.0,
+    ):
+        return CanonicalRiskSnapshot(
+            provider=provider,
+            daily_loss_pct=daily_loss_pct,
+            drawdown_pct=drawdown_pct,
+            margin_utilization_pct=margin_utilization_pct,
+            realized_pnl=realized_pnl,
+            unrealized_pnl=unrealized_pnl,
+        )
+
