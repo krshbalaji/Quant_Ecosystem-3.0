@@ -130,6 +130,11 @@ from quant_ecosystem.oms import (
     reconciliation_engine,
 )
 
+from quant_ecosystem.accounting import (
+    CanonicalTradeFill,
+    accounting_engine,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -1319,6 +1324,7 @@ class ExecutionRouter:
         self._portfolio_bridge = CanonicalPortfolioBridge()
         self._risk_bridge = CanonicalRiskBridge()
         self._oms_bridge = OMSBridge()
+        self._oms_accounting_bridge = OMSAccountingBridge()
 
         # Register legacy single-broker if provided
         if broker is not None:
@@ -1645,10 +1651,60 @@ class ExecutionRouter:
             order_state_machine.apply_event(order, ack_evt)
             execution_event_bus.publish(ack_evt)
 
+            #
+            # Simulated accounting hook
+            # Real broker partial/full fills will later arrive
+            # through Pack24 async event ingestion
+            #
+
+            if isinstance(result, dict):
+                simulated_fill_qty = int(
+                    result.get("filled_qty", 0)
+                )
+
+                simulated_fill_price = float(
+                    result.get("avg_fill_price", price)
+                )
+
+                if simulated_fill_qty > 0:
+                    evt_type = (
+                        CanonicalEventType.FULL_FILL
+                        if simulated_fill_qty >= qty
+                        else CanonicalEventType.PARTIAL_FILL
+                    )
+
+                    fill_evt = CanonicalExecutionEvent(
+                        order_id=order.order_id,
+                        event_type=evt_type,
+                        qty=simulated_fill_qty,
+                        price=simulated_fill_price,
+                        broker=broker,
+                        payload=result,
+                    )
+
+                    order_state_machine.apply_event(
+                        order,
+                        fill_evt,
+                    )
+
+                    execution_event_bus.publish(fill_evt)
+
+                    accounting_snapshot = (
+                        self._oms_accounting_bridge.process_fill_event(
+                            order,
+                            fill_evt,
+                        )
+                    )
+                else:
+                    accounting_snapshot = None
+            else:
+                accounting_snapshot = None
+
             return {
                 "oms_order_id": order.order_id,
                 "status": order.status.value,
                 "broker_result": result,
+                "accounting": accounting_snapshot,
             }
 
         except Exception as exc:
@@ -3228,3 +3284,43 @@ class OMSBridge:
             "filled_qty": updated.filled_qty,
             "remaining_qty": updated.remaining_qty(),
         }        
+
+class OMSAccountingBridge:
+    """
+    Pack23 OMS/accounting integration bridge
+    """
+
+    def process_fill_event(
+        self,
+        order,
+        event,
+    ):
+        if event.qty <= 0:
+            return None
+
+        fill = CanonicalTradeFill(
+            broker=order.broker,
+            symbol=order.symbol,
+            side=order.side,
+            qty=event.qty,
+            price=event.price,
+            order_id=order.order_id,
+            fees=float(
+                order.metadata.get("fees", 0.0)
+            ),
+            slippage=float(
+                order.metadata.get("slippage", 0.0)
+            ),
+            metadata=event.payload or {},
+        )
+
+        snapshot = accounting_engine.process_fill(fill)
+
+        return {
+            "symbol": order.symbol,
+            "fills_processed": snapshot.fills_processed,
+            "realized_pnl": snapshot.realized_pnl,
+            "unrealized_pnl": snapshot.unrealized_pnl,
+            "gross_pnl": snapshot.gross_pnl,
+            "net_pnl": snapshot.net_pnl,
+        }
