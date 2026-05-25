@@ -144,7 +144,10 @@ from quant_ecosystem.instruments import instrument_resolver
 from quant_ecosystem.strategy_execution import (
     StrategyExecutionIntent,
     strategy_execution_context,
+    strategy_risk_controller,
 )
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -1655,7 +1658,41 @@ class ExecutionRouter:
         strategy_meta = {}
 
         if isinstance(meta, dict):
-            strategy_meta = self._extract_strategy_meta(meta)
+            strategy_meta = dict(meta)
+
+            extracted = self._extract_strategy_meta(
+                meta
+            )
+
+            if extracted:
+                strategy_meta.update(
+                    extracted
+                )
+
+        strategy_id = strategy_meta.get(
+            "strategy_id"
+        )
+
+        if strategy_id:
+            proposed_notional = (
+                float(qty)
+                * float(price or 0.0)
+            )
+
+            allowed, reason = (
+                strategy_risk_controller.validate(
+                    strategy_id=strategy_id,
+                    proposed_notional=proposed_notional,
+                )
+            )
+
+            if not allowed:
+                return {
+                    "success": False,
+                    "rejected": True,
+                    "reason": reason,
+                    "strategy_id": strategy_id,
+                }    
 
         payload = self.canonical_order_payload(
             broker=broker,
@@ -1725,8 +1762,14 @@ class ExecutionRouter:
         else:
             raise ValueError(f"unsupported broker: {broker}")
 
+        order_id = (
+            result.get("order_id")
+            or result.get("id")
+            or result.get("broker_order_id")
+        )
+
         self._attach_strategy_context(
-            result.get("order_id"),
+            order_id,
             strategy_meta,
         )
 
