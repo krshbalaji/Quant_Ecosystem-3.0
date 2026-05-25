@@ -141,6 +141,11 @@ from quant_ecosystem.events import (
 
 from quant_ecosystem.instruments import instrument_resolver
 
+from quant_ecosystem.strategy_execution import (
+    StrategyExecutionIntent,
+    strategy_execution_context,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -690,7 +695,6 @@ class MultiBrokerRouter:
 
         health = self._broker_health(broker_name)
         enriched_meta = dict(meta or {})
-             
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
             if caps.supports_retry:
@@ -739,7 +743,7 @@ class MultiBrokerRouter:
                     or result.get("id")
                     or ""
                 )
-                
+                                
                 broker_class = type(broker).__name__.lower()
 
                 skip_reconciliation = (
@@ -1375,6 +1379,93 @@ class ExecutionRouter:
             logger.warning("strategy_engine.run failed: %s", e)
             return []
 
+        def _extract_strategy_meta(
+            self,
+            order,
+        ):
+            if isinstance(order, StrategyExecutionIntent):
+                return {
+                    "strategy_id": order.strategy_id,
+                    "confidence": order.confidence,
+                    "priority": order.priority,
+                    "trade_type": order.trade_type,
+                }
+
+            if isinstance(order, dict):
+                strategy_id = order.get("strategy_id")
+                if strategy_id:
+                    return {
+                        "strategy_id": strategy_id,
+                        "confidence": order.get("confidence"),
+                        "priority": order.get("priority"),
+                        "trade_type": order.get("trade_type"),
+                    }
+
+            return {}
+
+        def _attach_strategy_context(
+            self,
+            order_id,
+            strategy_meta,
+        ):
+            if not order_id:
+                return
+
+            strategy_id = strategy_meta.get("strategy_id")
+
+            if not strategy_id:
+                return
+
+            strategy_execution_context.attach(
+                order_id=order_id,
+                strategy_id=strategy_id,
+                metadata=strategy_meta,
+            )
+    
+    def _extract_strategy_meta(
+        self,
+        order,
+    ):
+        if isinstance(order, StrategyExecutionIntent):
+            return {
+                "strategy_id": order.strategy_id,
+                "confidence": order.confidence,
+                "priority": order.priority,
+                "trade_type": order.trade_type,
+            }
+
+        if isinstance(order, dict):
+            strategy_id = order.get("strategy_id")
+
+            if strategy_id:
+                return {
+                    "strategy_id": strategy_id,
+                    "confidence": order.get("confidence"),
+                    "priority": order.get("priority"),
+                    "trade_type": order.get("trade_type"),
+                }
+
+        return {}
+
+    def _attach_strategy_context(
+        self,
+        order_id,
+        strategy_meta,
+    ):
+        if not order_id:
+            return
+
+        strategy_id = strategy_meta.get("strategy_id")
+
+        if not strategy_id:
+            return
+
+        strategy_execution_context.attach(
+            order_id=order_id,
+            strategy_id=strategy_id,
+            metadata=strategy_meta,
+        )
+
     def _normalize_execution_result(
         self,
         provider,
@@ -1502,7 +1593,7 @@ class ExecutionRouter:
             order_type=order_type,
             product=product,
             price=price,
-            meta=enriched_meta,
+            meta=meta,
         )
 
         return self._canonical_bridge.build_order_payload(
@@ -1561,6 +1652,11 @@ class ExecutionRouter:
         Pack20 canonical execution entrypoint
         """
 
+        strategy_meta = {}
+
+        if isinstance(meta, dict):
+            strategy_meta = self._extract_strategy_meta(meta)
+
         payload = self.canonical_order_payload(
             broker=broker,
             symbol=symbol,
@@ -1578,7 +1674,8 @@ class ExecutionRouter:
 
         self._validate_contract_quantity(normalized_qty, instrument)
 
-        enriched_meta = meta or {}
+        enriched_meta = dict(meta or {})
+        enriched_meta.update(strategy_meta)
         enriched_meta.update(
             self._build_instrument_meta(instrument)
         )
@@ -1586,7 +1683,7 @@ class ExecutionRouter:
         broker_key = str(broker).lower()
 
         if broker_key == "fyers":
-            return self._multi_broker.place_order(
+            result = self._multi_broker.place_order(
                 symbol=payload["symbol"],
                 side=side,
                 qty=normalized_qty,
@@ -1596,7 +1693,7 @@ class ExecutionRouter:
             )
 
         elif broker_key == "groww":
-            return self._multi_broker.place_order(
+            result = self._multi_broker.place_order(
                 symbol=payload["instrument"],
                 side=payload["side"],
                 qty=payload["quantity"],
@@ -1606,7 +1703,7 @@ class ExecutionRouter:
             )
 
         elif broker_key == "viewtrade":
-            return self._multi_broker.place_order(
+            result = self._multi_broker.place_order(
                 symbol=payload["ticker"],
                 side=payload["action"],
                 qty=payload["quantity"],
@@ -1616,7 +1713,7 @@ class ExecutionRouter:
             )
 
         elif broker_key == "coinswitch":
-            return self._multi_broker.place_order(
+            result = self._multi_broker.place_order(
                 symbol=payload["symbol"],
                 side=payload["side"],
                 qty=payload["quantity"],
@@ -1625,7 +1722,15 @@ class ExecutionRouter:
                 meta=enriched_meta,
             )
 
-        raise ValueError(f"unsupported broker: {broker}")
+        else:
+            raise ValueError(f"unsupported broker: {broker}")
+
+        self._attach_strategy_context(
+            result.get("order_id"),
+            strategy_meta,
+        )
+
+        return result
 
     def cancel_canonical_order(
         self,
@@ -2357,10 +2462,17 @@ class ExecutionRouter:
         meta: Optional[Dict] = None,
     ) -> Dict:
         """Direct broker submission bypassing signal pipeline."""
-        return self._multi_broker.place_order(
+        result = self._multi_broker.place_order(
             symbol=symbol, side=side, qty=qty, price=price, fee=fee,
             meta=enriched_meta, asset_class=self._asset_class(symbol),
         )
+
+        self._attach_strategy_context(
+            result.get("order_id"),
+            strategy_meta,
+        )
+
+        return result
 
     def update_positions(self) -> Dict:
         if not self.portfolio_engine:
@@ -2408,6 +2520,10 @@ class ExecutionRouter:
             return "Invalid profile. Use Alpha, Beta, or Gamma."
         self.state.strategy_profile = normalized
         return f"Strategy profile set to {normalized}."
+
+        strategy_meta = self._extract_strategy_meta(
+            order
+        )
 
     # ------------------------------------------------------------------
     # Status / reporting
@@ -3152,27 +3268,39 @@ class CanonicalExecutionBridge:
             return
 
         try:
-            adapter_registry.register("fyers", FyersExecutionAdapter())
+            adapter_registry.register(
+                "fyers",
+                FyersExecutionAdapter(),
+            )
         except Exception:
             pass
 
         try:
-            adapter_registry.register("groww", GrowwExecutionAdapter())
+            adapter_registry.register(
+                "groww",
+                GrowwExecutionAdapter(),
+            )
         except Exception:
             pass
 
         try:
-            adapter_registry.register("viewtrade", ViewTradeExecutionAdapter())
+            adapter_registry.register(
+                "viewtrade",
+                ViewTradeExecutionAdapter(),
+            )
         except Exception:
             pass
 
         try:
-            adapter_registry.register("coinswitch", CoinSwitchExecutionAdapter())
+            adapter_registry.register(
+                "coinswitch",
+                CoinSwitchExecutionAdapter(),
+            )
         except Exception:
             pass
 
         self._initialized = True
-
+            
     def build_order_payload(self, broker: str, request: CanonicalOrderRequest):
         self._ensure_registry()
         adapter = adapter_registry.get(broker)
@@ -3424,3 +3552,51 @@ class OMSAccountingBridge:
             "gross_pnl": snapshot.gross_pnl,
             "net_pnl": snapshot.net_pnl,
         }
+
+    def _extract_strategy_meta(
+        self,
+        order,
+    ):
+        if isinstance(
+            order,
+            StrategyExecutionIntent,
+        ):
+            return {
+                "strategy_id": order.strategy_id,
+                "confidence": order.confidence,
+                "priority": order.priority,
+                "trade_type": order.trade_type,
+            }
+
+        strategy_id = None
+
+        if isinstance(order, dict):
+            strategy_id = order.get("strategy_id")
+
+        if strategy_id:
+            return {
+                "strategy_id": strategy_id,
+            }
+
+        return {}
+
+    def _attach_strategy_context(
+        self,
+        order_id,
+        strategy_meta,
+    ):
+        if not order_id:
+            return
+
+        strategy_id = strategy_meta.get(
+            "strategy_id"
+        )
+
+        if not strategy_id:
+            return
+
+        strategy_execution_context.attach(
+            order_id=order_id,
+            strategy_id=strategy_id,
+            metadata=strategy_meta,
+        )    

@@ -33,7 +33,6 @@ from quant_ecosystem.strategy.attribution_engine import (
 )
 
 
-
 __all__ = [
     "StrategyDefinition",
     "StrategyHealth",
