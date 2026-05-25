@@ -31,6 +31,31 @@ from quant_ecosystem.research.alpha_scoring_engine import (
     alpha_scoring_engine,
 )
 
+from quant_ecosystem.research.research_pipeline import (
+    ResearchPipeline,
+    research_pipeline,
+)
+
+from quant_ecosystem.research.strategy_factory import (
+    StrategyFactory,
+    strategy_factory,
+)
+
+from quant_ecosystem.research.research_backtest_harness import (
+    ResearchBacktestHarness,
+    research_backtest_harness,
+)
+
+from quant_ecosystem.research.signal_persistence import (
+    SignalPersistenceLayer,
+    signal_persistence_layer,
+)
+
+from quant_ecosystem.research.opportunity_dispatch_engine import (
+    OpportunityDispatchEngine,
+    opportunity_dispatch_engine,
+)
+
 
 __all__ = [
     "ResearchHypothesis",
@@ -48,4 +73,14 @@ __all__ = [
     "regime_detection_engine",
     "AlphaScoringEngine",
     "alpha_scoring_engine",
+    "ResearchPipeline",
+    "research_pipeline",
+    "StrategyFactory",
+    "strategy_factory",
+    "ResearchBacktestHarness",
+    "research_backtest_harness",
+    "SignalPersistenceLayer",
+    "signal_persistence_layer",
+    "OpportunityDispatchEngine",
+    "opportunity_dispatch_engine",
 ]
