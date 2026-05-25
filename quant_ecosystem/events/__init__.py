@@ -24,6 +24,24 @@ from quant_ecosystem.events.stream_dispatcher import (
     stream_dispatcher,
 )
 
+from quant_ecosystem.events.domain_event import (
+    DomainEvent,
+)
+
+from quant_ecosystem.events.subscriber_registry import (
+    SubscriberRegistry,
+    subscriber_registry,
+)
+
+from quant_ecosystem.events.event_dispatch_router import (
+    EventDispatchRouter,
+    event_dispatch_router,
+)
+
+from quant_ecosystem.events.event_bus import (
+    EventBus,
+    event_bus,
+)
 
 __all__ = [
     "CanonicalBrokerEvent",
@@ -37,4 +55,11 @@ __all__ = [
     "CoinSwitchWebhookNormalizer",
     "event_ingestion_engine",
     "stream_dispatcher",
+    "DomainEvent",
+    "SubscriberRegistry",
+    "subscriber_registry",
+    "EventDispatchRouter",
+    "event_dispatch_router",
+    "EventBus",
+    "event_bus",
 ]

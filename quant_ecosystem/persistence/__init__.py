@@ -22,6 +22,41 @@ from quant_ecosystem.persistence.replay_recovery_engine import (
     replay_recovery_engine,
 )
 
+from quant_ecosystem.persistence.sqlite_repository import (
+    SQLiteRepository,
+    sqlite_repository,
+)
+
+from quant_ecosystem.persistence.file_repository import (
+    FileRepository,
+    file_repository,
+)
+
+from quant_ecosystem.persistence.persistence_factory import (
+    PersistenceFactory,
+    persistence_factory,
+)
+
+from quant_ecosystem.persistence.transaction_coordinator import (
+    TransactionCoordinator,
+    transaction_coordinator,
+)
+
+from quant_ecosystem.persistence.durable_snapshot_repository import (
+    DurableSnapshotRepository,
+    durable_snapshot_repository,
+)
+
+from quant_ecosystem.persistence.persistence_recovery_manager import (
+    PersistenceRecoveryManager,
+    persistence_recovery_manager,
+)
+
+from quant_ecosystem.persistence.backend_governance import (
+    BackendGovernance,
+    backend_governance,
+)
+
 __all__ = [
     "RepositoryContract",
     "InMemoryEventStore",
@@ -32,4 +67,18 @@ __all__ = [
     "audit_repo",
     "ReplayRecoveryEngine",
     "replay_recovery_engine",
+    "SQLiteRepository",
+    "sqlite_repository",
+    "FileRepository",
+    "file_repository",
+    "PersistenceFactory",
+    "persistence_factory",
+    "TransactionCoordinator",
+    "transaction_coordinator",
+    "DurableSnapshotRepository",
+    "durable_snapshot_repository",
+    "PersistenceRecoveryManager",
+    "persistence_recovery_manager",
+    "BackendGovernance",
+    "backend_governance",
 ]
