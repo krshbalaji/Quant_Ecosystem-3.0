@@ -653,6 +653,7 @@ class MultiBrokerRouter:
             qty=qty,
             price=price,
         )
+
     def place_order(
         self,
         symbol: str,
@@ -679,6 +680,7 @@ class MultiBrokerRouter:
             getattr(self, "_strict_market_hours", False)
         )
 
+            
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
