@@ -13,6 +13,10 @@ from quant_ecosystem.strategy_execution.strategy_risk_controller import (
     strategy_risk_controller,
 )
 
+from quant_ecosystem.strategy_execution.strategy_attribution_bridge import (
+    StrategyAttributionBridge,
+    strategy_attribution_bridge,
+)
 
 __all__ = [
     "StrategyExecutionIntent",
@@ -21,4 +25,6 @@ __all__ = [
     "strategy_execution_context",
     "StrategyRiskController",
     "strategy_risk_controller",
+    "StrategyAttributionBridge",
+    "strategy_attribution_bridge",
 ]
