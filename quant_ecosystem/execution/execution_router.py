@@ -2464,9 +2464,31 @@ class ExecutionRouter:
         meta: Optional[Dict] = None,
     ) -> Dict:
         """Direct broker submission bypassing signal pipeline."""
+        enriched_meta = dict(meta or {})
+        strategy_meta = self._extract_strategy_meta(
+            enriched_meta
+        )
+
+        if getattr(self.state, "trading_halted", False):
+            return {
+                "status": "SKIPPED",
+                "reason": "TRADING_HALTED",
+            }
+
+        if not getattr(self.state, "trading_enabled", True):
+            return {
+                "status": "SKIPPED",
+                "reason": "TRADING_DISABLED",
+            }
+            
         result = self._multi_broker.place_order(
-            symbol=symbol, side=side, qty=qty, price=price, fee=fee,
-            meta=enriched_meta, asset_class=self._asset_class(symbol),
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price=price,
+            fee=fee,
+            meta=enriched_meta,
+            asset_class=self._asset_class(symbol),
         )
 
         self._attach_strategy_context(
@@ -2523,10 +2545,7 @@ class ExecutionRouter:
         self.state.strategy_profile = normalized
         return f"Strategy profile set to {normalized}."
 
-        strategy_meta = self._extract_strategy_meta(
-            order
-        )
-
+        
     # ------------------------------------------------------------------
     # Status / reporting
     # ------------------------------------------------------------------

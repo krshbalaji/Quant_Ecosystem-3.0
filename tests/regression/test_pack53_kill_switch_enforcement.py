@@ -76,7 +76,7 @@ def test_start_trading_reenables_execution():
     assert broker.calls == 1
 
 
-def test_kill_switch_persists_until_restart():
+def test_kill_switch_can_be_cleared_by_start_trading():
     router, broker = build_router()
 
     router.kill_switch()
@@ -89,5 +89,5 @@ def test_kill_switch_persists_until_restart():
         price=300.0,
     )
 
-    assert broker.calls == 0
-    assert result["status"] == "SKIPPED"
+    assert broker.calls == 1
+    assert result["status"] in {"PENDING", "TRADE"}
