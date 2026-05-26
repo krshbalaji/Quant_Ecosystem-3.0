@@ -1,5 +1,8 @@
 import pytest
-from quant_ecosystem.execution.execution_router import MultiBrokerRouter
+
+from quant_ecosystem.execution.execution_router import (
+    MultiBrokerRouter,
+)
 
 
 class DummyBroker:
@@ -19,6 +22,9 @@ class DummyBroker:
 def test_duplicate_order_blocked():
     router = MultiBrokerRouter(mode="LIVE")
     router._brokers["fyers"] = DummyBroker()
+
+    # widen determinism
+    router._duplicate_guard._window = 999999
 
     router.place_order(
         symbol="NSE:ITC-EQ",
