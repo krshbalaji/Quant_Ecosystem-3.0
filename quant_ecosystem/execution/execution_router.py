@@ -188,6 +188,10 @@ from quant_ecosystem.execution.routing.broker_health_router import (
     BrokerHealthRouter,
 )
 
+from quant_ecosystem.execution.orchestrators.live_execution_orchestrator import (
+    LiveExecutionOrchestrator,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -576,6 +580,14 @@ class MultiBrokerRouter:
             BrokerHealthRouter()
         )
 
+        self._live_execution_orchestrator = (
+            LiveExecutionOrchestrator(
+                circuit_breaker=self._circuit_breaker,
+                broker_health_router=self._broker_health_router,
+                notifier=self._notifier,
+            )
+        )
+
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -776,16 +788,23 @@ class MultiBrokerRouter:
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
             if caps.supports_retry:
-                result = execute_with_retry(
-                    lambda: broker.place_order(
+                result = self._live_execution_orchestrator.execute(
+                    broker=broker,
+                    broker_name=broker_name,
+                    normalized_symbol=normalized_symbol,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    price=price,
+                    asset_class=asset_class,
+                    execution_fn=lambda: broker.place_order(
                         symbol=normalized_symbol,
                         side=side,
                         qty=qty,
                         price=price,
-                        fee=fee,
-                        meta=enriched_meta,
-                    )
+                    ),
                 )
+                
             else:
                 result = broker.place_order(
                     symbol=normalized_symbol,
