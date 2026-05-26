@@ -43,7 +43,10 @@ def test_false_success_chaos():
         failure_injector=injector,
     )
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(
+        RuntimeError, 
+        match="Injected disconnect failure"
+    ):
         orch.execute(
             broker=object(),
             broker_name="x",
@@ -86,3 +89,21 @@ def test_false_success_chaos():
             asset_class="EQUITY",
             execution_fn=lambda: {},
         )
+
+    def test_live_partial_fill_valid():
+        router = build_router()
+
+        router._failure_injector.enable(
+            ChaosProfile.PARTIAL_FILL
+        )
+
+        result = router.place_order(
+            symbol="NSE:ITC-EQ",
+            side="BUY",
+            qty=1,
+            price=300.0,
+            asset_class="EQUITY",
+        )
+
+        assert result["status"] == "PARTIAL"
+        assert result["filled_qty"] == 1

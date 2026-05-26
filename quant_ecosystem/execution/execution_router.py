@@ -621,10 +621,7 @@ class MultiBrokerRouter:
             )
         )
 
-        self._failure_injector = (
-            FailureInjector()
-        )
-
+       
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
