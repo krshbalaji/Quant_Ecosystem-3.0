@@ -3,21 +3,13 @@ import time
 
 class DuplicateOrderGuard:
 
-    def __init__(
-        self,
-        window=10,
-    ):
+    def __init__(self, window=10):
         self._window = window
         self._recent = {}
 
-    def check(
-        self,
-        symbol,
-        side,
-        qty,
-    ):
+    def check(self, symbol, side, qty):
         key = f"{symbol}:{side}:{qty}"
-        now = time.time()
+        now = time.monotonic()
 
         last = self._recent.get(key)
 

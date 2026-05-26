@@ -192,6 +192,11 @@ from quant_ecosystem.execution.orchestrators.live_execution_orchestrator import 
     LiveExecutionOrchestrator,
 )
 
+from quant_ecosystem.execution.orchestrators.paper_execution_orchestrator import (
+    PaperExecutionOrchestrator,
+)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -588,6 +593,10 @@ class MultiBrokerRouter:
             )
         )
 
+        self._paper_execution_orchestrator = (
+            PaperExecutionOrchestrator()
+        )
+
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -804,7 +813,7 @@ class MultiBrokerRouter:
                         price=price,
                     ),
                 )
-                
+
             else:
                 result = broker.place_order(
                     symbol=normalized_symbol,
