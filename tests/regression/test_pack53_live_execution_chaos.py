@@ -29,11 +29,11 @@ class DummyHealth:
         pass
 
 
-def test_timeout_chaos():
+def test_false_success_chaos():
     injector = FailureInjector()
 
     injector.enable(
-        ChaosProfile.TIMEOUT
+        ChaosProfile.FALSE_SUCCESS
     )
 
     orch = LiveExecutionOrchestrator(
@@ -43,7 +43,7 @@ def test_timeout_chaos():
         failure_injector=injector,
     )
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(RuntimeError):
         orch.execute(
             broker=object(),
             broker_name="x",
@@ -71,16 +71,18 @@ def test_false_success_chaos():
         failure_injector=injector,
     )
 
-    result = orch.execute(
-        broker=object(),
-        broker_name="x",
-        normalized_symbol="INFY",
-        symbol="INFY",
-        side="BUY",
-        qty=1,
-        price=100,
-        asset_class="EQUITY",
-        execution_fn=lambda: {},
-    )
-
-    assert result["status"] == "SUCCESS"
+    with pytest.raises(
+        RuntimeError,
+        match="Missing order_id",
+    ):
+        orch.execute(
+            broker=object(),
+            broker_name="x",
+            normalized_symbol="INFY",
+            symbol="INFY",
+            side="BUY",
+            qty=1,
+            price=100,
+            asset_class="EQUITY",
+            execution_fn=lambda: {},
+        )

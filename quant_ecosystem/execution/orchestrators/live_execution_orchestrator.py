@@ -1,3 +1,7 @@
+from quant_ecosystem.execution.contracts.broker_response_validator import (
+    BrokerResponseValidator,
+)
+
 class LiveExecutionOrchestrator:
 
     def __init__(
@@ -6,12 +10,15 @@ class LiveExecutionOrchestrator:
         broker_health_router,
         notifier,
         failure_injector=None,
+        response_validator=None,
     ):
         self._circuit_breaker = circuit_breaker
         self._broker_health_router = broker_health_router
         self._notifier = notifier
-        self._failure_injector = (
-            failure_injector
+        self._failure_injector = failure_injector
+        self._response_validator = (
+            response_validator
+            or BrokerResponseValidator()
         )
 
     def execute(
@@ -38,6 +45,10 @@ class LiveExecutionOrchestrator:
                     result = execution_fn()
             else:
                 result = execution_fn()
+
+            result = self._response_validator.validate(
+                result
+            )
 
             self._broker_health_router.mark_healthy(
                 broker_name

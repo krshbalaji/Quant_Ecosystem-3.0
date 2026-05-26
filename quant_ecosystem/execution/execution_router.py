@@ -62,10 +62,10 @@ from datetime import datetime, time as dtime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 from quant_ecosystem.execution.execution_audit import log_execution_event
-from quant_ecosystem.execution.broker_response_validator import (
-    validate_live_broker_response,
-    BrokerResponseError,
+from quant_ecosystem.execution.contracts.broker_response_validator import (
+    BrokerResponseValidator,
 )
+
 from quant_ecosystem.execution.execution_exceptions import (
     ExecutionIntegrityError,
 )
@@ -203,6 +203,11 @@ from quant_ecosystem.execution.dispatch.execution_dispatcher import (
 from quant_ecosystem.execution.chaos.failure_injector import (
     FailureInjector,
 )
+
+from quant_ecosystem.execution.contracts.broker_response_validator import (
+    BrokerResponseValidator,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -601,6 +606,7 @@ class MultiBrokerRouter:
                 broker_health_router=self._broker_health_router,
                 notifier=self._notifier,
                 failure_injector=self._failure_injector,
+                response_validator=BrokerResponseValidator(),
             )
         )
 
@@ -845,8 +851,6 @@ class MultiBrokerRouter:
                     )
                     
             if str(self.mode).upper() == "LIVE":
-                result = validate_live_broker_response(result)
-
                 result = self._status_normalizer.normalize(
                     broker_name,
                     result
