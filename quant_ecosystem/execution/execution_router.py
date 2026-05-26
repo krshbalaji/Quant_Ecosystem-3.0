@@ -176,6 +176,14 @@ from quant_ecosystem.execution.pipeline.risk_gate_pipeline import (
     RiskGatePipeline,
 )
 
+from quant_ecosystem.execution.telemetry.execution_audit import (
+    ExecutionAudit,
+)
+
+from quant_ecosystem.execution.telemetry.execution_metrics import (
+    ExecutionMetrics,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -552,6 +560,13 @@ class MultiBrokerRouter:
         self._duplicate_guard = DuplicateOrderGuard()
         self._market_hours_guard = (
             MarketHoursGuard()
+        )
+        self._execution_audit = (
+            ExecutionAudit()
+        )
+
+        self._execution_metrics = (
+            ExecutionMetrics()
         )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
