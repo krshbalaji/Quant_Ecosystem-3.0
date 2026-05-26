@@ -1,0 +1,10 @@
+from enum import Enum
+
+
+class ChaosProfile(str, Enum):
+    TIMEOUT = "TIMEOUT"
+    MALFORMED_RESPONSE = "MALFORMED_RESPONSE"
+    FALSE_SUCCESS = "FALSE_SUCCESS"
+    DISCONNECT = "DISCONNECT"
+    PARTIAL_FILL = "PARTIAL_FILL"
+    REJECT = "REJECT"
