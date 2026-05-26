@@ -5,10 +5,14 @@ class LiveExecutionOrchestrator:
         circuit_breaker,
         broker_health_router,
         notifier,
+        failure_injector=None,
     ):
         self._circuit_breaker = circuit_breaker
         self._broker_health_router = broker_health_router
         self._notifier = notifier
+        self._failure_injector = (
+            failure_injector
+        )
 
     def execute(
         self,
@@ -23,7 +27,17 @@ class LiveExecutionOrchestrator:
         execution_fn,
     ):
         try:
-            result = execution_fn()
+            if self._failure_injector:
+                injected = (
+                    self._failure_injector.inject()
+                )
+
+                if injected is not None:
+                    result = injected
+                else:
+                    result = execution_fn()
+            else:
+                result = execution_fn()
 
             self._broker_health_router.mark_healthy(
                 broker_name

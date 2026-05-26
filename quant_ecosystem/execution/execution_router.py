@@ -200,7 +200,9 @@ from quant_ecosystem.execution.dispatch.execution_dispatcher import (
     ExecutionDispatcher,
 )
 
-
+from quant_ecosystem.execution.chaos.failure_injector import (
+    FailureInjector,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -589,12 +591,16 @@ class MultiBrokerRouter:
         self._broker_health_router = (
             BrokerHealthRouter()
         )
+        self._failure_injector = (
+            FailureInjector()
+        )
 
         self._live_execution_orchestrator = (
             LiveExecutionOrchestrator(
                 circuit_breaker=self._circuit_breaker,
                 broker_health_router=self._broker_health_router,
                 notifier=self._notifier,
+                failure_injector=self._failure_injector,
             )
         )
 
@@ -607,6 +613,10 @@ class MultiBrokerRouter:
                 live_execution_orchestrator=self._live_execution_orchestrator,
                 paper_execution_orchestrator=self._paper_execution_orchestrator,
             )
+        )
+
+        self._failure_injector = (
+            FailureInjector()
         )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
