@@ -56,6 +56,8 @@ from __future__ import annotations
 import asyncio
 import heapq
 import logging
+import time
+from types import SimpleNamespace
 import random
 from dataclasses import dataclass, field
 from datetime import datetime, time as dtime, timedelta, timezone
@@ -1258,7 +1260,11 @@ class ExecutionRouter:
         # Injected dependencies
         self.broker               = broker
         self.risk_engine          = risk_engine
-        self.state                = state
+        self.state = state or SimpleNamespace(
+            trading_enabled=True,
+            trading_halted=False,
+            auto_mode=False,
+        )
         self.market_data          = market_data
         self.strategy_engine      = strategy_engine
         self.portfolio_engine     = portfolio_engine
