@@ -196,6 +196,11 @@ from quant_ecosystem.execution.orchestrators.paper_execution_orchestrator import
     PaperExecutionOrchestrator,
 )
 
+from quant_ecosystem.execution.dispatch.execution_dispatcher import (
+    ExecutionDispatcher,
+)
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -597,6 +602,13 @@ class MultiBrokerRouter:
             PaperExecutionOrchestrator()
         )
 
+        self._execution_dispatcher = (
+            ExecutionDispatcher(
+                live_execution_orchestrator=self._live_execution_orchestrator,
+                paper_execution_orchestrator=self._paper_execution_orchestrator,
+            )
+        )
+
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -796,33 +808,20 @@ class MultiBrokerRouter:
         enriched_meta = dict(meta or {})
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
-            if caps.supports_retry:
-                result = self._live_execution_orchestrator.execute(
-                    broker=broker,
-                    broker_name=broker_name,
-                    normalized_symbol=normalized_symbol,
-                    symbol=symbol,
-                    side=side,
-                    qty=qty,
-                    price=price,
-                    asset_class=asset_class,
-                    execution_fn=lambda: broker.place_order(
-                        symbol=normalized_symbol,
-                        side=side,
-                        qty=qty,
-                        price=price,
-                    ),
-                )
-
-            else:
-                result = broker.place_order(
-                    symbol=normalized_symbol,
-                    side=side,
-                    qty=qty,
-                    price=price,
-                    fee=fee,
-                    meta=enriched_meta,
-                )
+            result = self._execution_dispatcher.dispatch(
+                mode=self.mode,
+                broker=broker,
+                broker_name=broker_name,
+                normalized_symbol=normalized_symbol,
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                price=price,
+                fee=fee,
+                meta=enriched_meta,
+                asset_class=asset_class,
+                caps=caps,
+            )
 
             if (
                 caps.supports_health_check
