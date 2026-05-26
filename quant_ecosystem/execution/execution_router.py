@@ -184,6 +184,10 @@ from quant_ecosystem.execution.telemetry.execution_metrics import (
     ExecutionMetrics,
 )
 
+from quant_ecosystem.execution.routing.broker_health_router import (
+    BrokerHealthRouter,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -568,6 +572,9 @@ class MultiBrokerRouter:
         self._execution_metrics = (
             ExecutionMetrics()
         )
+        self._broker_health_router = (
+            BrokerHealthRouter()
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -596,16 +603,15 @@ class MultiBrokerRouter:
 
         return self._health[broker_name]
 
-    def _get_broker_name(self, broker) -> str:
+    def _get_broker_name(
+        self,
+        broker,
+    ) -> str:
         for name, instance in self._broker_registry.all().items():
             if instance is broker:
                 return name
 
-        return getattr(
-            broker,
-            "account_source",
-            type(broker).__name__,
-        ).lower()
+        return "paper"
 
     def _get_capabilities(self, broker):
         """
@@ -667,15 +673,7 @@ class MultiBrokerRouter:
             if broker is None:
                 continue
 
-            health = self._broker_health(broker_name)
-
-            if not health.is_healthy():
-                logger.warning(
-                    "Broker '%s' unhealthy; skipping.",
-                    broker_name,
-                )
-                continue
-
+            
             logger.debug(
                 "Selected broker '%s' for market=%s asset=%s",
                 broker_name,
@@ -771,7 +769,9 @@ class MultiBrokerRouter:
                     f"MARKET CLOSED: market={market}, asset={asset_class}"
                 )
 
-        health = self._broker_health(broker_name)
+        broker_is_healthy = self._broker_health_router.is_healthy(
+            broker_name
+        )
         enriched_meta = dict(meta or {})
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
@@ -843,11 +843,15 @@ class MultiBrokerRouter:
 
                     result["reconciled_status"] = reconciled
 
-            health.record_success()
+            self._broker_health_router.mark_healthy(
+                broker_name
+            )
             self._circuit_breaker.reset()
 
         except Exception as exc:
-            health.record_failure()
+            self._broker_health_router.mark_unhealthy(
+                broker_name
+            )
             self._circuit_breaker.record_failure()
 
             logger.critical(
