@@ -147,7 +147,34 @@ from quant_ecosystem.strategy_execution import (
     strategy_risk_controller,
 )
 
+from quant_ecosystem.execution.guards.duplicate_guard import (
+    DuplicateOrderGuard,
+)
 
+from quant_ecosystem.execution.guards.market_hours_guard import (
+    MarketHoursGuard,
+)
+
+from quant_ecosystem.execution.guards.circuit_breaker_guard import (
+    CircuitBreakerGuard,
+)
+
+from quant_ecosystem.execution.broker_registry import (
+    BrokerRegistry,
+)
+
+from quant_ecosystem.execution.broker_selector import (
+    BrokerSelector,
+)
+
+from quant_ecosystem.execution.broker_failover import (
+    BrokerFailover,
+)
+
+from quant_ecosystem.execution.pipeline.risk_gate_pipeline import (
+    GateResult,
+    RiskGatePipeline,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -502,17 +529,30 @@ class MultiBrokerRouter:
 
     def __init__(self, mode: str = "PAPER") -> None:
         self.mode = str(mode).upper()
-        self._brokers: Dict[str, Any] = {}
+        self._broker_registry = BrokerRegistry()
+        self._brokers = self._broker_registry._brokers
         self._paper = _PaperBroker()
         self._notifier = TelegramNotifier()
-        self._circuit_breaker = CircuitBreaker()
+        self._circuit_breaker = (
+            CircuitBreaker()
+        )
+        self._circuit_breaker_guard = (
+            CircuitBreakerGuard(
+                self._circuit_breaker
+            )
+        )
         self._health = {}
         self._reconciler = OrderReconciler()
         self._session_guard = SessionGuard()
         self._symbol_normalizer = SymbolNormalizer()
         self._status_normalizer = OrderStatusNormalizer()   # Pack16
-        self._recent_orders = {}
+        self._broker_selector = BrokerSelector()
+        self._broker_failover = BrokerFailover()
         self._telegram = TelegramNotifier()
+        self._duplicate_guard = DuplicateOrderGuard()
+        self._market_hours_guard = (
+            MarketHoursGuard()
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -527,7 +567,10 @@ class MultiBrokerRouter:
         'binance', 'coinswitch').
         """
         key = name.lower().strip()
-        self._brokers[key] = broker
+        self._broker_registry.register(
+            key,
+            broker,
+        )
         logger.info("Broker registered: %s (mode=%s)", name, self.mode)
 
     def _broker_health(self, broker_name):
@@ -539,7 +582,7 @@ class MultiBrokerRouter:
         return self._health[broker_name]
 
     def _get_broker_name(self, broker) -> str:
-        for name, instance in self._brokers.items():
+        for name, instance in self._broker_registry.all().items():
             if instance is broker:
                 return name
 
@@ -604,7 +647,7 @@ class MultiBrokerRouter:
             )
 
         for broker_name in broker_chain:
-            broker = self._brokers.get(broker_name)
+            broker = self._broker_registry.get(broker_name)
 
             if broker is None:
                 continue
@@ -640,7 +683,9 @@ class MultiBrokerRouter:
         qty: int = None,
         price: float = None,
     ):
-        broker = self._brokers[broker_name]
+        broker = self._broker_registry.get(
+            broker_name
+        )
         caps = self._get_capabilities(broker)
 
         if not caps.supports_modify_order:
@@ -666,9 +711,13 @@ class MultiBrokerRouter:
         market: str = "INDIA",
     ) -> Dict:
         # ── Pack16: duplicate-order guard (must run before any broker call) ──
-        self._duplicate_guard(symbol, side, qty)
+        self._duplicate_guard.check(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+        )
 
-        self._circuit_breaker.check()
+        self._circuit_breaker_guard.check()
 
         normalized_symbol = self._symbol_normalizer.normalize(
             symbol=symbol,
@@ -677,7 +726,16 @@ class MultiBrokerRouter:
         )
 
         strict_market_hours = bool(
-            getattr(self, "_strict_market_hours", False)
+            getattr(
+                self,
+                "_strict_market_hours",
+                False,
+            )
+        )
+
+        self._market_hours_guard.check(
+            strict_market_hours=strict_market_hours,
+            market_open=True,
         )
 
             
@@ -831,7 +889,9 @@ class MultiBrokerRouter:
         broker_name: str,
         order_id: str,
     ):
-        broker = self._brokers[broker_name]
+        broker = self._broker_registry.get(
+            broker_name
+        )
         caps = self._get_capabilities(broker)
 
         if not caps.supports_cancel_order:
@@ -854,178 +914,12 @@ class MultiBrokerRouter:
         if self.mode != "LIVE":
             return "PAPER"
         sources = [
-            getattr(b, "account_source", "UNKNOWN") for b in self._brokers.values()
+            getattr(b, "account_source", "UNKNOWN") for b in self._broker_registry.all().values()
         ]
         return ",".join(s for s in sources if s) or "UNKNOWN"
 
 
-    def _duplicate_guard(self, symbol, side, qty, window=10):
-        import time
-
-        key = f"{symbol}:{side}:{qty}"
-        now = time.time()
-
-        last = self._recent_orders.get(key)
-        if last and (now - last) < window:
-            raise RuntimeError(
-                f"DUPLICATE ORDER BLOCKED: {symbol} {side} {qty}"
-            )
-
-        self._recent_orders[key] = now
-        
-# ──────────────────────────────────────────────────────────────────────────────
-# 2. RiskGatePipeline
-# ──────────────────────────────────────────────────────────────────────────────
-
-@dataclass
-class GateResult:
-    allowed: bool
-    reason:  str
-    gate:    str
-
-
-class RiskGatePipeline:
-    """
-    Sequential named risk gate.  Built-in gates evaluated in order:
-      1. trading_halted      — hard kill-switch
-      2. drawdown_guard      — total drawdown vs. max allowed
-      3. daily_loss_guard    — per-symbol daily loss ceiling
-      4. portfolio_exposure  — portfolio-level notional cap
-      5. symbol_exposure     — per-symbol notional cap
-      6. strategy_cooldown   — minimum cycles between strategy re-entries
-      7. position_limits     — max simultaneous open positions
-
-    Additional gates can be injected via register().
-    """
-
-    def __init__(self) -> None:
-        self._gates: List[Tuple[str, Any]] = []
-        self._register_defaults()
-
-    def register(self, name: str, fn: Any) -> None:
-        """Append a custom gate (name, callable(state, signal, ctx) → GateResult)."""
-        self._gates.append((name, fn))
-
-    def _register_defaults(self) -> None:
-        for name, fn in [
-            ("trading_halted",     self._gate_trading_halted),
-            ("drawdown_guard",     self._gate_drawdown),
-            ("daily_loss_guard",   self._gate_daily_loss),
-            ("portfolio_exposure", self._gate_portfolio_exposure),
-            ("symbol_exposure",    self._gate_symbol_exposure),
-            ("strategy_cooldown",  self._gate_strategy_cooldown),
-            ("position_limits",    self._gate_position_limits),
-        ]:
-            self._gates.append((name, fn))
-
-    def check(self, state: Any, signal: Dict, context: Dict) -> GateResult:
-        """
-        Run all gates in order; return on first failure.
-
-        Required context keys:
-          risk_engine, portfolio_engine, cycle_no,
-          symbol_cooldown, strategy_cooldown, max_open_positions
-        """
-        for name, fn in self._gates:
-            result: GateResult = fn(state, signal, context)
-            if not result.allowed:
-                return result
-        return GateResult(allowed=True, reason="OK", gate="none")
-
-    # ---- gate implementations ------------------------------------------------
-
-    @staticmethod
-    def _gate_trading_halted(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        if getattr(state, "trading_halted", False):
-            return GateResult(False, "TRADING_HALTED", "trading_halted")
-        if not getattr(state, "trading_enabled", True):
-            return GateResult(False, "TRADING_DISABLED", "trading_halted")
-        return GateResult(True, "OK", "trading_halted")
-
-    @staticmethod
-    def _gate_drawdown(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        risk = ctx.get("risk_engine")
-        if risk is None:
-            return GateResult(True, "OK", "drawdown_guard")
-        if float(getattr(state, "total_drawdown_pct", 0)) >= float(
-            getattr(risk, "max_drawdown_pct", getattr(risk, "hard_drawdown_limit", 20))
-        ):
-            return GateResult(False, "MAX_DRAWDOWN_BREACH", "drawdown_guard")
-        return GateResult(True, "OK", "drawdown_guard")
-
-    @staticmethod
-    def _gate_daily_loss(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        risk = ctx.get("risk_engine")
-        if risk is None:
-            return GateResult(True, "OK", "daily_loss_guard")
-        symbol = signal.get("symbol", "")
-        equity = float(getattr(state, "equity", 1)) or 1
-        max_pct = float(getattr(risk, "max_symbol_daily_loss_pct", 3))
-        losses = sum(
-            abs(float(t.get("cycle_pnl", 0)))
-            for t in getattr(state, "trade_history", [])
-            if t.get("symbol") == symbol and float(t.get("cycle_pnl", 0)) < 0
-        )
-        if (losses / equity) * 100 >= max_pct:
-            return GateResult(False, "SYMBOL_DAILY_LOSS_LIMIT", "daily_loss_guard")
-        return GateResult(True, "OK", "daily_loss_guard")
-
-    @staticmethod
-    def _gate_portfolio_exposure(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        risk = ctx.get("risk_engine")
-        pe   = ctx.get("portfolio_engine")
-        if not risk or not pe:
-            return GateResult(True, "OK", "portfolio_exposure")
-        equity = float(getattr(state, "equity", 1)) or 1
-        prices = getattr(state, "latest_prices", {})
-        fn     = getattr(pe, "net_exposure_notional", None)
-        notional = fn(prices) if fn else 0.0
-        pct    = (notional / equity) * 100
-        if pct >= float(getattr(risk, "max_portfolio_risk", 80)):
-            return GateResult(False, "MAX_PORTFOLIO_EXPOSURE", "portfolio_exposure")
-        return GateResult(True, "OK", "portfolio_exposure")
-
-    @staticmethod
-    def _gate_symbol_exposure(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        risk = ctx.get("risk_engine")
-        pe   = ctx.get("portfolio_engine")
-        if not risk or not pe:
-            return GateResult(True, "OK", "symbol_exposure")
-        symbol = signal.get("symbol", "")
-        equity = float(getattr(state, "equity", 1)) or 1
-        prices = getattr(state, "latest_prices", {})
-        fn     = getattr(pe, "symbol_exposure_notional", None)
-        notional = fn(symbol, prices) if fn else 0.0
-        pct    = (notional / equity) * 100
-        if pct >= float(getattr(risk, "max_symbol_risk", 20)):
-            return GateResult(False, "MAX_SYMBOL_EXPOSURE", "symbol_exposure")
-        return GateResult(True, "OK", "symbol_exposure")
-
-    @staticmethod
-    def _gate_strategy_cooldown(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        cycle_no  = int(ctx.get("cycle_no", 0))
-        sid       = signal.get("strategy_id", "")
-        cooldown  = ctx.get("strategy_cooldown", {})
-        if cycle_no < int(cooldown.get(sid, 0)):
-            return GateResult(False, "STRATEGY_COOLDOWN", "strategy_cooldown")
-        return GateResult(True, "OK", "strategy_cooldown")
-
-    @staticmethod
-    def _gate_position_limits(state: Any, signal: Dict, ctx: Dict) -> GateResult:
-        pe = ctx.get("portfolio_engine")
-        if not pe:
-            return GateResult(True, "OK", "position_limits")
-        max_pos   = int(ctx.get("max_open_positions", 20))
-        open_count = sum(
-            1 for pos in getattr(pe, "positions", {}).values()
-            if abs(float(pos.get("net_qty", 0))) > 0
-        )
-        symbol = signal.get("symbol", "")
-        is_new = abs(float(getattr(pe, "positions", {}).get(symbol, {}).get("net_qty", 0))) == 0
-        if is_new and open_count >= max_pos:
-            return GateResult(False, "MAX_OPEN_POSITIONS", "position_limits")
-        return GateResult(True, "OK", "position_limits")
-
+          
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 3. AsyncOrderQueue
