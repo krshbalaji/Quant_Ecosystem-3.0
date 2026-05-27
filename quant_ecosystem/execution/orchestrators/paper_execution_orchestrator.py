@@ -31,4 +31,14 @@ class PaperExecutionOrchestrator:
             ),
         )
 
+        result.setdefault(
+            "execution_state",
+            "CONFIRMED",
+        )
+
+        result.setdefault(
+            "lifecycle_state",
+            "FILLED",
+        )
+
         return result

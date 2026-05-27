@@ -115,9 +115,7 @@ class LiveExecutionOrchestrator:
 
                         if recovered:
                             result = recovered[-1]
-                            result[
-                                "execution_state"
-                            ] = "RECOVERED"
+                            result["lifecycle_state"] = "FILLED"
                             return result
 
                 raise RuntimeError(
@@ -145,6 +143,11 @@ class LiveExecutionOrchestrator:
         result.setdefault(
             "execution_state",
             "CONFIRMED",
+        )
+
+        result.setdefault(
+            "lifecycle_state",
+            "FILLED",
         )
 
         return result

@@ -1,0 +1,17 @@
+ACTIVE_STATES = {
+    "CREATED",
+    "SUBMITTING",
+    "ACKNOWLEDGED",
+    "PARTIAL",
+    "RECONCILING",
+    "UNCERTAIN",
+    "CANCEL_PENDING",
+}
+
+TERMINAL_STATES = {
+    "FILLED",
+    "REJECTED",
+    "CANCELLED",
+    "EXPIRED",
+    "DEADLETTER",
+}
