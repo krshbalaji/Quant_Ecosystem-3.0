@@ -81,7 +81,7 @@ from quant_ecosystem.execution.retry_policy import (
 from quant_ecosystem.execution.order_status_normalizer import OrderStatusNormalizer
 from quant_ecosystem.execution.order_reconciler import OrderReconciler
 from quant_ecosystem.execution.broker_health import BrokerHealth
-from quant_ecosystem.market.session_guard import SessionGuard
+from quant_ecosystem.execution.guards.session_guard import SessionGuard
 from quant_ecosystem.execution.retry_policy import execute_with_retry
 from quant_ecosystem.market.symbol_normalizer import SymbolNormalizer
 from quant_ecosystem.broker.broker_capabilities import BrokerCapabilities
@@ -600,7 +600,9 @@ class MultiBrokerRouter:
         self._reconciler = OrderReconciler(
             execution_metrics=self._execution_metrics
         )
-        self._session_guard = SessionGuard()
+        self._session_guard = SessionGuard(
+            execution_metrics=self._execution_metrics
+        )
         self._symbol_normalizer = SymbolNormalizer()
         self._status_normalizer = OrderStatusNormalizer()   # Pack16
         self._broker_selector = BrokerSelector()
