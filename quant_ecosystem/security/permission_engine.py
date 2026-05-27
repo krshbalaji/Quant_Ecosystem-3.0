@@ -1,16 +1,48 @@
 class PermissionEngine:
 
+    MATRIX = {
+        "admin": {
+            "trade",
+            "config",
+            "risk",
+            "audit",
+            "kill",
+            "override",
+            "view",
+        },
+        "trader": {
+            "trade",
+            "view",
+        },
+        "risk_officer": {
+            "risk",
+            "kill",
+            "view",
+            "audit",
+        },
+        "auditor": {
+            "audit",
+            "view",
+        },
+        "viewer": {
+            "view",
+        },
+        "emergency": {
+            "kill",
+            "override",
+            "view",
+        },
+    }
+
     def allowed(
         self,
         role,
         action,
     ):
-        matrix = {
-            "admin": {"trade", "config", "risk"},
-            "viewer": {"view"},
-        }
+        role = str(role).lower().strip()
+        action = str(action).lower().strip()
 
-        return action in matrix.get(
+        return action in self.MATRIX.get(
             role,
             set(),
         )
