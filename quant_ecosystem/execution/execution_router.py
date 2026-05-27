@@ -227,6 +227,10 @@ from quant_ecosystem.execution.governance.sovereign_watchdog import (
     SovereignWatchdog,
 )
 
+from quant_ecosystem.execution.governance.deadletter_recovery import (
+    DeadLetterRecovery,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -609,6 +613,11 @@ class MultiBrokerRouter:
         self._session_guard = SessionGuard(
             execution_metrics=self._execution_metrics
         )
+        self._deadletter_recovery = (
+            DeadLetterRecovery(
+                execution_metrics=self._execution_metrics
+            )
+        )
         self._symbol_normalizer = SymbolNormalizer()
         self._status_normalizer = OrderStatusNormalizer()   # Pack16
         self._broker_selector = BrokerSelector()
@@ -627,11 +636,21 @@ class MultiBrokerRouter:
                 order_reconciler=self._reconciler,
             )
         )
-        self._sovereign_recovery_enabled = False
+        self._sovereign_recovery_enabled = True
+
         if self._sovereign_recovery_enabled:
-            self._recovery_reconciler.recover(
-                self._brokers
-            )
+            try:
+                self._recovery_reconciler.recover(
+                    self._brokers
+                )
+            except Exception:
+                pass
+
+            try:
+                self._deadletter_recovery.recover_deadletters()
+            except Exception:
+                pass
+            
         self._broker_health_router = (
             BrokerHealthRouter()
         )
@@ -649,6 +668,7 @@ class MultiBrokerRouter:
                 intent_journal=self._intent_journal,
                 recovery_reconciler=self._recovery_reconciler,
                 broker_registry=self._brokers,
+                execution_metrics=self._execution_metrics,
             )
         )
 
