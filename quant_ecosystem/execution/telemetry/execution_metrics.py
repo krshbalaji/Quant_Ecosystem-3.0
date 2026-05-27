@@ -14,6 +14,9 @@ class ExecutionMetrics:
 
         self.sla_breaches = 0
 
+        self.watchdog_incidents = 0
+        self.quarantine_incidents = 0
+
     def record_attempt(self):
         self.orders_attempted += 1
 
@@ -41,6 +44,12 @@ class ExecutionMetrics:
     def record_sla_breach(self):
         self.sla_breaches += 1
 
+    def record_watchdog_incident(self):
+        self.watchdog_incidents += 1
+
+    def record_quarantine_incident(self):
+        self.quarantine_incidents += 1
+        
     def snapshot(self):
         return {
             "orders_attempted": self.orders_attempted,
@@ -52,4 +61,8 @@ class ExecutionMetrics:
             "cancel_requests": self.cancel_requests,
             "modify_requests": self.modify_requests,
             "sla_breaches": self.sla_breaches,
+            "watchdog_incidents": self.watchdog_incidents,
+            "quarantine_incidents": self.quarantine_incidents,
         }
+
+        

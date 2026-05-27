@@ -1,3 +1,8 @@
+from quant_ecosystem.execution.execution_audit import (
+    log_execution_event,
+)
+
+
 class PaperExecutionOrchestrator:
 
     def execute(
@@ -40,5 +45,7 @@ class PaperExecutionOrchestrator:
             "lifecycle_state",
             "FILLED",
         )
+
+        log_execution_event(result)
 
         return result

@@ -223,6 +223,9 @@ from quant_ecosystem.execution.governance.mutation_guard import (
     MutationGuard,
 )
 
+from quant_ecosystem.execution.governance.sovereign_watchdog import (
+    SovereignWatchdog,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -596,6 +599,9 @@ class MultiBrokerRouter:
 
         self._execution_metrics = (
             ExecutionMetrics()
+        )
+        self._sovereign_watchdog = SovereignWatchdog(
+            execution_metrics=self._execution_metrics
         )    
         self._reconciler = OrderReconciler(
             execution_metrics=self._execution_metrics
