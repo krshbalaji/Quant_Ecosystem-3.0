@@ -3,7 +3,9 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
-
+from quant_ecosystem.execution.sovereignty.state_store import (
+    sovereign_state_store,
+)
 
 INTENT_LOG = Path("logs/execution_intents.jsonl")
 
@@ -137,43 +139,32 @@ class ExecutionIntentJournal:
         return latest_state
 
     def load_events(self):
-        if not self._path.exists():
-            return []
-
-        rows = []
-
-        with self._path.open(
-            "r",
-            encoding="utf-8",
-        ) as handle:
-            for line in handle:
-                line = line.strip()
-
-                if not line:
-                    continue
-
-                try:
-                    rows.append(
-                        json.loads(line)
-                    )
-                except Exception:
-                    continue
-
-        return rows
+        return sovereign_state_store.load_events()
 
     def _append(
         self,
         payload: Dict,
     ) -> None:
-        enriched = {
-            "timestamp": datetime.utcnow().isoformat(),
-            **payload,
-        }
-
-        with self._path.open(
-            "a",
-            encoding="utf-8",
-        ) as handle:
-            handle.write(
-                json.dumps(enriched) + "\n"
-            )
+        sovereign_state_store.append_event(
+            intent_id=payload.get(
+                "intent_id",
+                "",
+            ),
+            event=payload.get(
+                "event",
+                "",
+            ),
+            fingerprint=payload.get(
+                "fingerprint",
+                "",
+            ),
+            broker_name=payload.get(
+                "broker_name",
+                "",
+            ),
+            broker_order_id=payload.get(
+                "broker_order_id",
+                "",
+            ),
+            payload=payload,
+        )
