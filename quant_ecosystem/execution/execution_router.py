@@ -215,6 +215,11 @@ from quant_ecosystem.execution.sovereignty import (
     ExecutionIntentJournal,
 )
 
+from quant_ecosystem.execution.sovereignty import (
+    ExecutionIntentJournal,
+    SovereignRecoveryReconciler,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -601,6 +606,17 @@ class MultiBrokerRouter:
         )
         self._intent_journal = ExecutionIntentJournal()
         self._sovereign_duplicate_enforcement = False
+        self._recovery_reconciler = (
+            SovereignRecoveryReconciler(
+                journal=self._intent_journal,
+                order_reconciler=self._reconciler,
+            )
+        )
+        self._sovereign_recovery_enabled = False
+        if self._sovereign_recovery_enabled:
+            self._recovery_reconciler.recover(
+                self._brokers
+            )
         self._broker_health_router = (
             BrokerHealthRouter()
         )
