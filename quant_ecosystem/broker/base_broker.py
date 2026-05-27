@@ -18,6 +18,18 @@ class BaseBroker(ABC):
     @property
     def broker_name(self) -> str:
         return self.capabilities.broker_name
+    
+    @property
+    def account_id(self) -> str:
+        return getattr(
+            self,
+            "_account_id",
+            self.broker_name,
+        )
+
+    @property
+    def broker_family(self) -> str:
+        return self.broker_name.lower()
 
     def validate_route(self, market: str, asset: str) -> None:
         self.capabilities.validate_route(market, asset)
@@ -180,3 +192,5 @@ class BaseBroker(ABC):
                 f"{self.broker_name} does not support orderbook"
             )
         raise NotImplementedError
+
+        

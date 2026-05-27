@@ -838,9 +838,16 @@ class MultiBrokerRouter:
                 )
                 continue
 
-            broker = self._broker_registry.get(
+            identity = self._broker_registry.select_identity(
                 broker_name
             )
+
+            if identity:
+                broker = identity["broker"]
+            else:
+                broker = self._broker_registry.get(
+                    broker_name
+                )
 
             if broker is None:
                 continue
