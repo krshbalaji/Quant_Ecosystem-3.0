@@ -631,6 +631,9 @@ class MultiBrokerRouter:
                 notifier=self._notifier,
                 failure_injector=self._failure_injector,
                 response_validator=BrokerResponseValidator(),
+                intent_journal=self._intent_journal,
+                recovery_reconciler=self._recovery_reconciler,
+                broker_registry=self._brokers,
             )
         )
 

@@ -15,6 +15,9 @@ class LiveExecutionOrchestrator:
         notifier,
         failure_injector=None,
         response_validator=None,
+        intent_journal=None,
+        recovery_reconciler=None,
+        broker_registry=None,
     ):
         self._circuit_breaker = circuit_breaker
         self._broker_health_router = broker_health_router
@@ -27,6 +30,9 @@ class LiveExecutionOrchestrator:
         self._timeout_governor = (
             ExecutionTimeoutGovernor()
         )
+        self._intent_journal = intent_journal
+        self._recovery_reconciler = recovery_reconciler
+        self._broker_registry = broker_registry
 
     def execute(
         self,
@@ -77,8 +83,45 @@ class LiveExecutionOrchestrator:
             if self._timeout_governor.expired(
                 started_at
             ):
+                if self._intent_journal:
+                    intent_id = self._intent_journal.create_intent(
+                        symbol=symbol,
+                        side=side,
+                        qty=qty,
+                        price=price,
+                        asset_class=asset_class,
+                        broker_name=broker_name,
+                        meta={
+                            "reason": "timeout_uncertainty"
+                        },
+                        fingerprint="",
+                    )
+
+                    self._intent_journal.record_event(
+                        intent_id=intent_id,
+                        event="UNCERTAIN",
+                    )
+
+                    if (
+                        self._recovery_reconciler
+                        and
+                        self._broker_registry
+                    ):
+                        recovered = (
+                            self._recovery_reconciler.recover(
+                                self._broker_registry
+                            )
+                        )
+
+                        if recovered:
+                            result = recovered[-1]
+                            result[
+                                "execution_state"
+                            ] = "RECOVERED"
+                            return result
+
                 raise RuntimeError(
-                    f"UNCERTAIN EXECUTION STATE: {broker_name}"
+                    f"STILL UNCERTAIN EXECUTION STATE: {broker_name}"
                 ) from exc
 
             raise
