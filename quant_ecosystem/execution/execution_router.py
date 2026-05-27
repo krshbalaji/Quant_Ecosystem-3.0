@@ -57,6 +57,7 @@ import asyncio
 import heapq
 import logging
 import time
+import hashlib
 from types import SimpleNamespace
 import random
 from dataclasses import dataclass, field
@@ -210,6 +211,9 @@ from quant_ecosystem.execution.contracts.broker_response_validator import (
     BrokerResponseValidator,
 )
 
+from quant_ecosystem.execution.sovereignty import (
+    ExecutionIntentJournal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -595,6 +599,7 @@ class MultiBrokerRouter:
         self._execution_metrics = (
             ExecutionMetrics()
         )
+        self._intent_journal = ExecutionIntentJournal()
         self._broker_health_router = (
             BrokerHealthRouter()
         )
@@ -693,7 +698,31 @@ class MultiBrokerRouter:
                 )
 
         return _LegacyCaps()
-               
+    def _build_execution_fingerprint(
+        self,
+        symbol,
+        side,
+        qty,
+        price,
+        asset_class,
+        broker_name,
+    ):
+        raw = "|".join(
+            [
+                str(self.mode).upper(),
+                str(symbol).upper(),
+                str(side).upper(),
+                str(qty),
+                str(price),
+                str(asset_class).upper(),
+                str(broker_name).upper(),
+            ]
+        )
+
+        return hashlib.sha256(
+            raw.encode("utf-8")
+        ).hexdigest()
+                
     # ------------------------------------------------------------------
     # Internal selection
     # ------------------------------------------------------------------
@@ -805,6 +834,28 @@ class MultiBrokerRouter:
         broker_name = self._get_broker_name(broker)
         self._last_selected_broker_name = broker_name
 
+        fingerprint = self._build_execution_fingerprint(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price=price,
+            asset_class=asset_class,
+            broker_name=broker_name,
+        )
+
+        enriched_meta = dict(meta or {})
+
+        intent_id = self._intent_journal.create_intent(
+            symbol=symbol,
+            side=side,
+            qty=qty,
+            price=price,
+            asset_class=asset_class,
+            broker_name=broker_name,
+            meta=enriched_meta,
+            fingerprint=fingerprint,
+        )
+
         caps = self._get_capabilities(broker)
 
         if (
@@ -820,9 +871,14 @@ class MultiBrokerRouter:
         broker_is_healthy = self._broker_health_router.is_healthy(
             broker_name
         )
-        enriched_meta = dict(meta or {})
+        
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
+            self._intent_journal.record_event(
+                intent_id=intent_id,
+                event="SUBMITTING",
+            )
+
             result = self._execution_dispatcher.dispatch(
                 mode=self.mode,
                 broker=broker,
@@ -875,6 +931,12 @@ class MultiBrokerRouter:
                     and caps.supports_reconciliation
                     and not skip_reconciliation
                 ):
+                    self._intent_journal.record_event(
+                        intent_id=intent_id,
+                        event="RECONCILING",
+                        broker_order_id=order_id,
+                    )
+                    
                     reconciled = self._reconciler.wait_for_final_state(
                         broker_name=broker_name,
                         broker=broker,
@@ -882,6 +944,24 @@ class MultiBrokerRouter:
                     )
 
                     result["reconciled_status"] = reconciled
+                    
+                    terminal_status = (
+                        reconciled.get("status", "")
+                        .upper()
+                        .strip()
+                    )
+
+                    if terminal_status in {
+                        "FILLED",
+                        "PARTIAL",
+                        "REJECTED",
+                    }:
+                        self._intent_journal.record_event(
+                            intent_id=intent_id,
+                            event=terminal_status,
+                            broker_order_id=order_id,
+                            payload=reconciled,
+                        )
 
             self._broker_health_router.mark_healthy(
                 broker_name
@@ -891,6 +971,13 @@ class MultiBrokerRouter:
         except Exception as exc:
             self._broker_health_router.mark_unhealthy(
                 broker_name
+            )
+            self._intent_journal.record_event(
+                intent_id=intent_id,
+                event="UNCERTAIN",
+                payload={
+                    "error": str(exc),
+                },
             )
             self._circuit_breaker.record_failure()
 
@@ -1727,6 +1814,7 @@ class ExecutionRouter:
             or result.get("broker_order_id")
         )
 
+        
         self._attach_strategy_context(
             order_id,
             strategy_meta,
