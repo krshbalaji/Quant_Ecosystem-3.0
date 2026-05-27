@@ -600,6 +600,7 @@ class MultiBrokerRouter:
             ExecutionMetrics()
         )
         self._intent_journal = ExecutionIntentJournal()
+        self._sovereign_duplicate_enforcement = False
         self._broker_health_router = (
             BrokerHealthRouter()
         )
@@ -628,6 +629,7 @@ class MultiBrokerRouter:
             )
         )
 
+        
        
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -843,6 +845,36 @@ class MultiBrokerRouter:
             broker_name=broker_name,
         )
 
+        sovereign_duplicate_enforcement = bool(
+            getattr(
+                self,
+                "_sovereign_duplicate_enforcement",
+                False,
+            )
+        )
+
+        if sovereign_duplicate_enforcement:
+            if self._intent_journal.has_inflight_fingerprint(
+                fingerprint
+            ):
+                raise RuntimeError(
+                    "SOVEREIGN DUPLICATE BLOCKED: inflight execution exists"
+                )
+
+            if self._intent_journal.has_terminal_fingerprint(
+                fingerprint
+            ):
+                raise RuntimeError(
+                    "SOVEREIGN DUPLICATE BLOCKED: terminal execution exists"
+                )
+
+        if self._intent_journal.has_terminal_fingerprint(
+            fingerprint
+        ):
+            raise RuntimeError(
+                "SOVEREIGN DUPLICATE BLOCKED: terminal execution exists"
+            )
+            
         enriched_meta = dict(meta or {})
 
         intent_id = self._intent_journal.create_intent(
