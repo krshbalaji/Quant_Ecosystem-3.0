@@ -159,3 +159,50 @@ class SessionGuard:
             return False
 
         return True
+
+    def session_health(
+        self,
+        broker_name,
+    ):
+        return {
+            "broker": broker_name,
+            "failures": self._failures.get(
+                broker_name,
+                0,
+            ),
+            "quarantined": self._in_cooldown(
+                broker_name
+            ),
+            "cooldown_remaining": self._cooldown_remaining(
+                broker_name,
+            ),
+        }
+
+    def is_quarantined(
+        self,
+        broker_name,
+    ):
+        return self._in_cooldown(
+            broker_name
+        )
+
+    def _cooldown_remaining(
+        self,
+        broker_name,
+    ):
+        ts = self._cooldowns.get(
+            broker_name
+        )
+
+        if not ts:
+            return 0
+
+        remaining = (
+            self.COOLDOWN_SECONDS
+            - (time.time() - ts)
+        )
+
+        return max(
+            0,
+            int(remaining),
+        )

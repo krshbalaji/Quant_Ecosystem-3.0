@@ -762,13 +762,24 @@ class MultiBrokerRouter:
                 f"No broker routing defined for market={market}, asset={asset_class}"
             )
 
+        quarantined = []
+
         for broker_name in broker_chain:
-            broker = self._broker_registry.get(broker_name)
+            if self._execution_dispatcher._session_guard.is_quarantined(
+                broker_name
+            ):
+                quarantined.append(
+                    broker_name
+                )
+                continue
+
+            broker = self._broker_registry.get(
+                broker_name
+            )
 
             if broker is None:
                 continue
 
-            
             logger.debug(
                 "Selected broker '%s' for market=%s asset=%s",
                 broker_name,
@@ -776,6 +787,11 @@ class MultiBrokerRouter:
                 asset_class,
             )
             return broker
+
+        if quarantined:
+            raise RuntimeError(
+                f"All eligible brokers quarantined for market={market}, asset={asset_class}: {quarantined}"
+            )
 
         raise RuntimeError(
             f"No live broker available for market={market}, asset={asset_class}"
