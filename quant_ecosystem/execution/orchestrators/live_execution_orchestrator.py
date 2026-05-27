@@ -1,6 +1,10 @@
 from quant_ecosystem.execution.contracts.broker_response_validator import (
     BrokerResponseValidator,
 )
+from quant_ecosystem.execution.governance.execution_timeout_governor import (
+    ExecutionTimeoutGovernor,
+)
+
 
 class LiveExecutionOrchestrator:
 
@@ -20,6 +24,9 @@ class LiveExecutionOrchestrator:
             response_validator
             or BrokerResponseValidator()
         )
+        self._timeout_governor = (
+            ExecutionTimeoutGovernor()
+        )
 
     def execute(
         self,
@@ -33,6 +40,10 @@ class LiveExecutionOrchestrator:
         asset_class,
         execution_fn,
     ):
+        started_at = (
+            self._timeout_governor.start_deadline()
+        )
+
         try:
             if self._failure_injector:
                 injected = (
@@ -63,6 +74,13 @@ class LiveExecutionOrchestrator:
 
             self._circuit_breaker.record_failure()
 
+            if self._timeout_governor.expired(
+                started_at
+            ):
+                raise RuntimeError(
+                    f"UNCERTAIN EXECUTION STATE: {broker_name}"
+                ) from exc
+
             raise
 
         result = result or {}
@@ -79,6 +97,11 @@ class LiveExecutionOrchestrator:
                 "account_source",
                 type(broker).__name__.upper(),
             ),
+        )
+
+        result.setdefault(
+            "execution_state",
+            "CONFIRMED",
         )
 
         return result
