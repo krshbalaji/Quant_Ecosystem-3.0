@@ -56,6 +56,47 @@ class BaseBroker(ABC):
             "healthy": True,
             "details": "default health check",
         }
+    def connect(self) -> None:
+        """
+        Establish broker connectivity/session.
+        Override in live brokers.
+        """
+        return None
+
+    def is_authenticated(self) -> bool:
+        """
+        Canonical broker auth state.
+        """
+        return True
+
+    def authenticate(self) -> None:
+        """
+        Force authentication.
+        """
+        self.connect()
+
+    def refresh_session(self) -> None:
+        """
+        Refresh broker auth/session.
+        Override in token-based brokers.
+        """
+        self.authenticate()
+
+    def invalidate_session(self) -> None:
+        """
+        Mark session invalid.
+        """
+        return None
+
+    def session_health(self) -> Dict[str, Any]:
+        """
+        Canonical session health contract.
+        """
+        return {
+            "broker": self.broker_name,
+            "authenticated": self.is_authenticated(),
+            "details": "default session state",
+        }
 
     @abstractmethod
     def place_order(

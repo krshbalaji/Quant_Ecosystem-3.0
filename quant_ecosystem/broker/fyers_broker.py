@@ -593,3 +593,32 @@ class FyersBroker(BaseBroker):
             }
 
         return realized_pnl
+    
+    def is_authenticated(self) -> bool:
+        if not self.connected:
+            return False
+
+        if self.account_source == "SIMULATED":
+            return True
+
+        return self.live_client is not None
+
+    def authenticate(self) -> None:
+        self.connect()    
+
+    def refresh_session(self) -> None:
+        mgr = FyersTokenManager()
+        mgr.generate_token()
+        self.connect()    
+
+    def invalidate_session(self) -> None:
+        self.connected = False
+        self.live_client = None    
+
+    def session_health(self):
+        return {
+            "broker": "fyers",
+            "authenticated": self.is_authenticated(),
+            "connected": self.connected,
+            "account_source": self.account_source,
+        }    

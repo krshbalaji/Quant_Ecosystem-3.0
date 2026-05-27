@@ -1,3 +1,5 @@
+from quant_ecosystem.execution.guards.session_guard import SessionGuard
+
 class ExecutionDispatcher:
 
     def __init__(
@@ -7,6 +9,7 @@ class ExecutionDispatcher:
     ):
         self._live = live_execution_orchestrator
         self._paper = paper_execution_orchestrator
+        self._session_guard = SessionGuard()
 
     def dispatch(
         self,
@@ -23,6 +26,12 @@ class ExecutionDispatcher:
         asset_class,
         caps,
     ):
+        if caps.supports_retry:
+            self._session_guard.ensure_live_session(
+                broker=broker,
+                broker_name=broker_name,
+            )
+
         if str(mode).upper() != "LIVE":
             return self._paper.execute(
                 paper_broker=broker,
@@ -31,6 +40,11 @@ class ExecutionDispatcher:
                 qty=qty,
                 price=price,
             )
+
+        self._session_guard.ensure_live_session(
+            broker=broker,
+            broker_name=broker_name,
+        )
 
         if caps.supports_retry:
             return self._live.execute(
