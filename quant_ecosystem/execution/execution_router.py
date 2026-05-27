@@ -590,7 +590,16 @@ class MultiBrokerRouter:
             )
         )
         self._health = {}
-        self._reconciler = OrderReconciler()
+        self._execution_audit = (
+            ExecutionAudit()
+        )
+
+        self._execution_metrics = (
+            ExecutionMetrics()
+        )    
+        self._reconciler = OrderReconciler(
+            execution_metrics=self._execution_metrics
+        )
         self._session_guard = SessionGuard()
         self._symbol_normalizer = SymbolNormalizer()
         self._status_normalizer = OrderStatusNormalizer()   # Pack16
@@ -601,13 +610,7 @@ class MultiBrokerRouter:
         self._market_hours_guard = (
             MarketHoursGuard()
         )
-        self._execution_audit = (
-            ExecutionAudit()
-        )
-
-        self._execution_metrics = (
-            ExecutionMetrics()
-        )
+        
         self._intent_journal = ExecutionIntentJournal()
         self._sovereign_duplicate_enforcement = False
         self._recovery_reconciler = (
@@ -815,6 +818,7 @@ class MultiBrokerRouter:
         price: float = None,
         lifecycle_state: str = "",
     ):
+        self._execution_metrics.record_modify()
         self._mutation_guard.ensure_mutable(
             lifecycle_state,
             "MODIFY",
@@ -1116,6 +1120,7 @@ class MultiBrokerRouter:
         order_id: str,
         lifecycle_state: str = "",
     ) -> Dict:
+        self._execution_metrics.record_cancel()
         self._mutation_guard.ensure_mutable(
             lifecycle_state,
             "CANCEL",

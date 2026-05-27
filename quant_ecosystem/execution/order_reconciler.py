@@ -24,12 +24,14 @@ class OrderReconciler:
         self,
         poll_interval=2,
         timeout=20,
+        execution_metrics=None,
     ):
         self.poll_interval = poll_interval
         self.timeout = timeout
         self.normalizer = (
             OrderStatusNormalizer()
         )
+        self._metrics = execution_metrics
 
     def wait_for_final_state(
         self,
@@ -45,6 +47,10 @@ class OrderReconciler:
             )
 
             if elapsed > self.STALE_TIMEOUT:
+                if self._metrics:
+                    self._metrics.record_deadletter()
+                    self._metrics.record_sla_breach()
+                    
                 return {
                     "status": "DEADLETTER",
                     "order_id": order_id,

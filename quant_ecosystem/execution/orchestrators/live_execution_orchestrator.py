@@ -18,6 +18,7 @@ class LiveExecutionOrchestrator:
         intent_journal=None,
         recovery_reconciler=None,
         broker_registry=None,
+        execution_metrics=None
     ):
         self._circuit_breaker = circuit_breaker
         self._broker_health_router = broker_health_router
@@ -33,7 +34,8 @@ class LiveExecutionOrchestrator:
         self._intent_journal = intent_journal
         self._recovery_reconciler = recovery_reconciler
         self._broker_registry = broker_registry
-
+        self._execution_metrics = execution_metrics
+        
     def execute(
         self,
         broker,
