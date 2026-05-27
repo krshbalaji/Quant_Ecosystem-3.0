@@ -230,6 +230,9 @@ from quant_ecosystem.execution.governance.sovereign_watchdog import (
 from quant_ecosystem.execution.governance.deadletter_recovery import (
     DeadLetterRecovery,
 )
+from quant_ecosystem.execution.governance.broker_resilience import (
+    BrokerResilience,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -618,6 +621,9 @@ class MultiBrokerRouter:
                 execution_metrics=self._execution_metrics
             )
         )
+        self._broker_resilience = (
+            BrokerResilience()
+        )
         self._symbol_normalizer = SymbolNormalizer()
         self._status_normalizer = OrderStatusNormalizer()   # Pack16
         self._broker_selector = BrokerSelector()
@@ -669,6 +675,7 @@ class MultiBrokerRouter:
                 recovery_reconciler=self._recovery_reconciler,
                 broker_registry=self._brokers,
                 execution_metrics=self._execution_metrics,
+                broker_resilience=self._broker_resilience,
             )
         )
 
@@ -803,6 +810,11 @@ class MultiBrokerRouter:
         quarantined = []
 
         for broker_name in broker_chain:
+            if self._broker_resilience.is_degraded(
+                broker_name
+            ):
+                continue
+
             if self._execution_dispatcher._session_guard.is_quarantined(
                 broker_name
             ):

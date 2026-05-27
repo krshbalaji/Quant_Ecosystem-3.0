@@ -18,7 +18,8 @@ class LiveExecutionOrchestrator:
         intent_journal=None,
         recovery_reconciler=None,
         broker_registry=None,
-        execution_metrics=None
+        execution_metrics=None,
+        broker_resilience=None,
     ):
         self._circuit_breaker = circuit_breaker
         self._broker_health_router = broker_health_router
@@ -35,7 +36,8 @@ class LiveExecutionOrchestrator:
         self._recovery_reconciler = recovery_reconciler
         self._broker_registry = broker_registry
         self._execution_metrics = execution_metrics
-        
+        self._broker_resilience = broker_resilience
+
     def execute(
         self,
         broker,
@@ -73,6 +75,11 @@ class LiveExecutionOrchestrator:
                 broker_name
             )
 
+            if self._broker_resilience:
+                self._broker_resilience.mark_healthy(
+                    broker_name
+                )
+                
             self._circuit_breaker.reset()
 
         except Exception as exc:
@@ -80,6 +87,18 @@ class LiveExecutionOrchestrator:
                 broker_name
             )
 
+            if self._broker_resilience:
+                if self._timeout_governor.expired(
+                    started_at
+                ):
+                    self._broker_resilience.mark_timeout(
+                        broker_name
+                    )
+                else:
+                    self._broker_resilience.mark_failure(
+                        broker_name
+                    )
+                    
             self._circuit_breaker.record_failure()
 
             if self._timeout_governor.expired(
