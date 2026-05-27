@@ -219,6 +219,10 @@ from quant_ecosystem.execution.sovereignty import (
     ExecutionIntentJournal,
     SovereignRecoveryReconciler,
 )
+from quant_ecosystem.execution.governance.mutation_guard import (
+    MutationGuard,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -647,7 +651,7 @@ class MultiBrokerRouter:
                 paper_execution_orchestrator=self._paper_execution_orchestrator,
             )
         )
-
+        self._mutation_guard = MutationGuard()
         
        
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
@@ -809,11 +813,20 @@ class MultiBrokerRouter:
         order_id: str,
         qty: int = None,
         price: float = None,
+        lifecycle_state: str = "",
     ):
+        self._mutation_guard.ensure_mutable(
+            lifecycle_state,
+            "MODIFY",
+        )
+
         broker = self._broker_registry.get(
             broker_name
         )
-        caps = self._get_capabilities(broker)
+
+        caps = self._get_capabilities(
+            broker
+        )
 
         if not caps.supports_modify_order:
             raise RuntimeError(
@@ -1101,18 +1114,39 @@ class MultiBrokerRouter:
         self,
         broker_name: str,
         order_id: str,
-    ):
+        lifecycle_state: str = "",
+    ) -> Dict:
+        self._mutation_guard.ensure_mutable(
+            lifecycle_state,
+            "CANCEL",
+        )
+
         broker = self._broker_registry.get(
             broker_name
         )
-        caps = self._get_capabilities(broker)
 
-        if not caps.supports_cancel_order:
+        if broker is None:
             raise RuntimeError(
-                f"{broker_name} does not support cancel_order"
+                f"Unknown broker: {broker_name}"
             )
 
-        return broker.cancel_order(order_id)
+        result = broker.cancel_order(
+            order_id=order_id
+        )
+
+        result = result or {}
+
+        result.setdefault(
+            "order_id",
+            order_id,
+        )
+
+        result.setdefault(
+            "lifecycle_state",
+            "CANCEL_PENDING",
+        )
+
+        return result
 
     def get_positions(self, asset_class: str = "EQUITY", market: str = "INDIA") -> List:
         broker = self._select(asset_class, market)
