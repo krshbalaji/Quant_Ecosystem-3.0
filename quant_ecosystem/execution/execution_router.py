@@ -233,7 +233,15 @@ from quant_ecosystem.execution.governance.deadletter_recovery import (
 from quant_ecosystem.execution.governance.broker_resilience import (
     BrokerResilience,
 )
-
+from quant_ecosystem.execution.governance.liquidity_guard import (
+    LiquidityGuard,
+)
+from quant_ecosystem.execution.governance.execution_strategy import (
+    AdaptiveExecutionStrategy,
+)
+from quant_ecosystem.execution.governance.fragmentation_engine import (
+    FragmentationEngine,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -624,6 +632,13 @@ class MultiBrokerRouter:
         self._broker_resilience = (
             BrokerResilience()
         )
+        self._liquidity_guard = LiquidityGuard()
+        self._execution_strategy = (
+            AdaptiveExecutionStrategy()
+        )
+        self._fragmentation_engine = (
+            FragmentationEngine()
+        )
         self._symbol_normalizer = SymbolNormalizer()
         self._status_normalizer = OrderStatusNormalizer()   # Pack16
         self._broker_selector = BrokerSelector()
@@ -928,6 +943,19 @@ class MultiBrokerRouter:
         broker_name = self._get_broker_name(broker)
         self._last_selected_broker_name = broker_name
 
+        self._liquidity_guard.ensure_liquid(
+            broker=broker,
+            symbol=normalized_symbol,
+            qty=qty,
+        )
+
+        strategy = self._execution_strategy.choose(
+            broker=broker,
+            symbol=normalized_symbol,
+            qty=qty,
+            price=price,
+        )
+
         fingerprint = self._build_execution_fingerprint(
             symbol=symbol,
             side=side,
@@ -995,7 +1023,18 @@ class MultiBrokerRouter:
         broker_is_healthy = self._broker_health_router.is_healthy(
             broker_name
         )
-        
+        if strategy == "SPLIT":
+            fragments = (
+                self._fragmentation_engine.fragment(
+                    qty=qty,
+                    brokers=self._broker_registry.all().keys(),
+                )
+            )
+
+            enriched_meta[
+                "execution_fragments"
+            ] = fragments
+            
         try:
             # ── Pack16: retry policy wraps the raw broker call ──────────────
             self._intent_journal.record_event(
@@ -3445,6 +3484,19 @@ class ExecutionRouter:
                 "rebalance_assist": bool(signal.get("rebalance_assist", False)),
                 **self._build_instrument_meta(instrument),
             },
+        )
+
+        self._liquidity_guard.ensure_liquid(
+            broker=broker,
+            symbol=normalized_symbol,
+            qty=qty,
+        )
+
+        strategy = self._execution_strategy.choose(
+            broker=broker,
+            symbol=normalized_symbol,
+            qty=qty,
+            price=price,
         )
 
         realized_pnl = self._apply_fill_accounting(
