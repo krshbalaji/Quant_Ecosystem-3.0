@@ -248,6 +248,9 @@ from quant_ecosystem.execution.governance.exact_once_lock import (
 from quant_ecosystem.execution.governance.position_truth_monitor import (
     PositionTruthMonitor,
 )
+from quant_ecosystem.execution.governance.kill_hierarchy import (
+    KillHierarchy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -717,6 +720,9 @@ class MultiBrokerRouter:
             PositionTruthMonitor()
         )
         self._internal_positions = {}
+        self._kill_hierarchy = (
+            KillHierarchy()
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -955,11 +961,36 @@ class MultiBrokerRouter:
             market_open=True,
         )
 
-            
+        meta = meta or {}
+                       
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
         self._last_selected_broker_name = broker_name
+
+        strategy_name = str(
+            meta.get(
+                "strategy",
+                ""
+            )
+        )
+
+        account_id = str(
+            meta.get(
+                "account_id",
+                ""
+            )
+        )
+
+        if self._kill_hierarchy.blocked(
+            broker_name=broker_name,
+            strategy=strategy_name,
+            symbol=normalized_symbol,
+            account_id=account_id,
+        ):
+            raise RuntimeError(
+                "HIERARCHICAL KILL ACTIVE"
+            )
 
         self._liquidity_guard.ensure_liquid(
             broker=broker,
@@ -1774,6 +1805,76 @@ class ExecutionRouter:
             order_id=order_id,
             strategy_id=strategy_id,
             metadata=strategy_meta,
+        )
+
+    def activate_global_kill(self):
+        self._kill_hierarchy.activate_global()
+
+    def clear_global_kill(self):
+        self._kill_hierarchy.clear_global()
+
+    def kill_broker(
+        self,
+        broker_name,
+    ):
+        self._kill_hierarchy.kill_broker(
+            broker_name
+        )
+
+    def clear_broker_kill(
+        self,
+        broker_name,
+    ):
+        self._kill_hierarchy.clear_broker(
+            broker_name
+        )
+
+    def kill_strategy(
+        self,
+        strategy,
+    ):
+        self._kill_hierarchy.kill_strategy(
+            strategy
+        )
+
+    def clear_strategy_kill(
+        self,
+        strategy,
+    ):
+        self._kill_hierarchy.clear_strategy(
+            strategy
+        )
+
+    def kill_symbol(
+        self,
+        symbol,
+    ):
+        self._kill_hierarchy.kill_symbol(
+            symbol
+        )
+
+    def clear_symbol_kill(
+        self,
+        symbol,
+    ):
+        self._kill_hierarchy.clear_symbol(
+            symbol
+        )
+
+    def kill_account(
+        self,
+        account_id,
+    ):
+        self._kill_hierarchy.kill_account(
+            account_id
+        )
+
+    def clear_account_kill(
+        self,
+        account_id,
+    ):
+        self._kill_hierarchy.clear_account(
+            account_id
         )
 
     def _normalize_execution_result(
