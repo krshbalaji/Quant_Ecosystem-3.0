@@ -273,6 +273,9 @@ from quant_ecosystem.regime.regime_state import (
 from quant_ecosystem.regime.adaptive_governor import (
     adaptive_governor,
 )
+from quant_ecosystem.telemetry.health_engine import (
+    health_engine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -766,6 +769,9 @@ class MultiBrokerRouter:
         self._adaptive_governor = (
             adaptive_governor
         )
+        self._health_engine = (
+            health_engine
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1058,7 +1064,20 @@ class MultiBrokerRouter:
             broker=broker_name,
             capital=projected_exposure,
         )
-        
+        self._health_engine.capture(
+            execution_latency_ms=10.0,
+            broker_health_score=1.0,
+            retry_pressure=0.0,
+            queue_depth=0,
+            capital_utilization=(
+                projected_exposure
+                / 100_000_000
+            ),
+            risk_utilization=(
+                projected_exposure
+                / 25_000_000
+            ),
+        )
         strategy_name = str(
             meta.get(
                 "strategy",
