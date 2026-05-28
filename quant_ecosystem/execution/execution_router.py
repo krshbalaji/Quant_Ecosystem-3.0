@@ -257,6 +257,9 @@ from quant_ecosystem.execution.mesh.mesh_coordinator import (
 from quant_ecosystem.execution.scheduler.retry_governor import (
     retry_governor,
 )
+from quant_ecosystem.risk.risk_netting_engine import (
+    risk_netting_engine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -734,6 +737,9 @@ class MultiBrokerRouter:
         self._retry_governor = (
             retry_governor
         )
+        self._risk_netting_engine = (
+            risk_netting_engine
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -973,11 +979,30 @@ class MultiBrokerRouter:
         )
 
         meta = meta or {}
-                       
+
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
         self._last_selected_broker_name = broker_name
+
+        strategy_name = str(
+            meta.get(
+                "strategy",
+                "DEFAULT",
+            )
+        )
+
+        projected_exposure = (
+            float(qty)
+            * float(price)
+        )
+
+        self._risk_netting_engine.validate(
+            symbol=normalized_symbol,
+            broker=broker_name,
+            strategy=strategy_name,
+            exposure=projected_exposure,
+        )
 
         strategy_name = str(
             meta.get(
@@ -1338,6 +1363,13 @@ class MultiBrokerRouter:
             )
 
             return result
+
+            self._risk_netting_engine.register(
+                symbol=normalized_symbol,
+                broker=broker_name,
+                strategy=strategy_name,
+                exposure=projected_exposure,
+            )
 
         finally:
 
