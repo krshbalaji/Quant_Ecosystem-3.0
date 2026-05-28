@@ -313,6 +313,13 @@ from quant_ecosystem.consensus.governance_council import (
 from quant_ecosystem.metacognition.meta_cognition_engine import (
     meta_cognition_engine,
 )
+from quant_ecosystem.evolution.evolution_engine import (
+    evolution_engine,
+)
+
+from quant_ecosystem.evolution.doctrine_engine import (
+    doctrine_engine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -839,7 +846,13 @@ class MultiBrokerRouter:
         self._meta_cognition_engine = (
             meta_cognition_engine
         )
+        self._evolution_engine = (
+            evolution_engine
+        )
 
+        self._doctrine_engine = (
+            doctrine_engine
+        )
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1141,9 +1154,18 @@ class MultiBrokerRouter:
             )
         )
 
+        doctrine_bias = (
+            self._doctrine_engine
+            .aggression_bias()
+        )
+
         qty = max(
             1,
-            int(qty * aggression),
+            int(
+                qty
+                * aggression
+                * doctrine_bias
+            ),
         )
 
         current_regime = (
@@ -1155,6 +1177,10 @@ class MultiBrokerRouter:
             .exposure_multiplier(
                 current_regime
             )
+        )
+        self._evolution_engine.evolve_policy(
+            success_rate=0.95,
+            stress_level=0.20,
         )
 
         self._risk_netting_engine.validate(
@@ -1522,6 +1548,11 @@ class MultiBrokerRouter:
                     latency_ms=1000.0,
                     retry_count=1,
                     success=False,
+                )
+
+                self._evolution_engine.evolve_policy(
+                    success_rate=0.30,
+                    stress_level=0.90,
                 )
 
                 logger.critical(
