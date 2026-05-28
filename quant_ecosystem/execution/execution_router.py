@@ -370,6 +370,17 @@ from quant_ecosystem.existential.continuity_guardian import (
 from quant_ecosystem.existential.extinction_prevention_engine import (
     extinction_prevention_engine,
 )
+from quant_ecosystem.metareality.metareality_analyzer import (
+    metareality_analyzer,
+)
+
+from quant_ecosystem.metareality.epistemic_validator import (
+    epistemic_validator,
+)
+
+from quant_ecosystem.metareality.uncertainty_governor import (
+    uncertainty_governor,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -943,6 +954,17 @@ class MultiBrokerRouter:
         self._extinction_prevention_engine = (
             extinction_prevention_engine
         )
+        self._metareality_analyzer = (
+            metareality_analyzer
+        )
+
+        self._epistemic_validator = (
+            epistemic_validator
+        )
+
+        self._uncertainty_governor = (
+            uncertainty_governor
+        )
         
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1344,7 +1366,65 @@ class MultiBrokerRouter:
                 1,
                 int(qty * 0.50),
             )
-                
+
+        cognition_state = (
+            self._metareality_analyzer
+            .analyze(
+                survivability=(
+                    simulation[
+                        "survivability"
+                    ]
+                ),
+                anomaly_score=(
+                    reality.anomaly_score
+                ),
+                extinction_probability=(
+                    existential_threat
+                    .extinction_probability
+                ),
+            )
+        )
+
+        epistemically_safe = (
+            self._epistemic_validator
+            .trustworthy(
+                confidence_score=(
+                    cognition_state
+                    .confidence_score
+                ),
+                blindspot_risk=(
+                    cognition_state
+                    .blindspot_risk
+                ),
+            )
+        )
+
+        if not epistemically_safe:
+
+            raise RuntimeError(
+                "Meta-reality cognition rejection"
+            )
+        uncertainty_posture = (
+            self._uncertainty_governor
+            .posture(
+                uncertainty_score=(
+                    cognition_state
+                    .uncertainty_score
+                )
+            )
+        )
+
+        if uncertainty_posture == "MINIMAL":
+
+            qty = 1
+
+        elif uncertainty_posture == "REDUCED":
+
+            qty = max(
+                1,
+                int(qty * 0.60),
+            )
+                        
         execution_posture = (
             self._diplomatic_council
             .deliberate(
