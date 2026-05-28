@@ -307,6 +307,9 @@ from quant_ecosystem.regime.execution_personality import (
 from quant_ecosystem.swarm.workload_balancer import (
     workload_balancer,
 )
+from quant_ecosystem.consensus.governance_council import (
+    governance_council,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -827,6 +830,9 @@ class MultiBrokerRouter:
         self._workload_balancer = (
             workload_balancer
         )
+        self._governance_council = (
+            governance_council
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1080,7 +1086,22 @@ class MultiBrokerRouter:
                 "fyers",
             )
         )
+        
+        consensus_approved = (
+            self._governance_council
+            .evaluate(
+                regime_ok=True,
+                risk_ok=True,
+                broker_ok=True,
+            )
+        )
 
+        if not consensus_approved:
+
+            raise RuntimeError(
+                "Execution consensus rejected"
+            )
+            
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
