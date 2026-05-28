@@ -334,6 +334,13 @@ from quant_ecosystem.temporal.temporal_cognition_engine import (
 from quant_ecosystem.evolution.policy_registry import (
     policy_registry,
 )
+from quant_ecosystem.strategy.strategic_alignment_engine import (
+    strategic_alignment_engine,
+)
+
+from quant_ecosystem.strategy.strategic_consciousness_engine import (
+    strategic_consciousness_engine,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -876,6 +883,13 @@ class MultiBrokerRouter:
         self._temporal_cognition_engine = (
             temporal_cognition_engine
         )
+        self._strategic_alignment_engine = (
+            strategic_alignment_engine
+        )
+
+        self._strategic_consciousness_engine = (
+            strategic_consciousness_engine
+        )
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1173,7 +1187,28 @@ class MultiBrokerRouter:
             raise RuntimeError(
                 "Execution consensus rejected"
             )
-            
+        strategically_aligned = (
+            self._strategic_alignment_engine
+            .aligned(
+                survivability=(
+                    simulation[
+                        "survivability"
+                    ]
+                ),
+                stress_level=(
+                    simulation[
+                        "stress_level"
+                    ]
+                ),
+            )
+        )
+
+        if not strategically_aligned:
+
+            raise RuntimeError(
+                "Strategic consciousness rejection"
+            )
+                
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
@@ -1611,6 +1646,11 @@ class MultiBrokerRouter:
                         .current()
                         .mutation_generation
                     ),
+                )
+                
+                mission = (
+                    self._strategic_consciousness_engine
+                    .mission()
                 )
 
             except Exception as exc:
