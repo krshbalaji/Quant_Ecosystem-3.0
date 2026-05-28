@@ -260,6 +260,12 @@ from quant_ecosystem.execution.scheduler.retry_governor import (
 from quant_ecosystem.risk.risk_netting_engine import (
     risk_netting_engine,
 )
+from quant_ecosystem.risk.correlation_risk_engine import (
+    correlation_risk_engine,
+)
+from quant_ecosystem.capital.capital_governor import (
+    capital_governor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -740,6 +746,12 @@ class MultiBrokerRouter:
         self._risk_netting_engine = (
             risk_netting_engine
         )
+        self._correlation_risk_engine = (
+            correlation_risk_engine
+        )
+        self._capital_governor = (
+            capital_governor
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1003,7 +1015,25 @@ class MultiBrokerRouter:
             strategy=strategy_name,
             exposure=projected_exposure,
         )
+        
+        self._correlation_risk_engine.validate(
+            symbol=normalized_symbol,
+            exposure=projected_exposure,
+        )
+        
+        
+        self._capital_governor.validate(
+            strategy=strategy_name,
+            broker=broker_name,
+            capital=projected_exposure,
+        )
 
+        self._capital_governor.register(
+            strategy=strategy_name,
+            broker=broker_name,
+            capital=projected_exposure,
+        )
+        
         strategy_name = str(
             meta.get(
                 "strategy",
@@ -2171,7 +2201,6 @@ class ExecutionRouter:
                     proposed_notional=proposed_notional,
                 )
             )
-
             if not allowed:
                 return {
                     "success": False,
