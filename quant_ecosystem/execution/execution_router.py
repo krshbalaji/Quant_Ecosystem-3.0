@@ -348,6 +348,10 @@ from quant_ecosystem.reality.reality_engine import (
 from quant_ecosystem.reality.reality_validator import (
     reality_validator,
 )
+
+from quant_ecosystem.diplomacy.diplomatic_council import (
+    diplomatic_council,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -904,6 +908,10 @@ class MultiBrokerRouter:
         self._reality_validator = (
             reality_validator
         )
+        self._diplomatic_council = (
+            diplomatic_council
+        )
+       
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1246,7 +1254,36 @@ class MultiBrokerRouter:
             raise RuntimeError(
                 "Reality distortion detected"
             )
-                    
+
+        execution_posture = (
+            self._diplomatic_council
+            .deliberate(
+                survivability=(
+                    simulation[
+                        "survivability"
+                    ]
+                ),
+                stress_level=(
+                    simulation[
+                        "stress_level"
+                    ]
+                ),
+            )
+        )
+        if execution_posture == "DEFENSIVE":
+
+            qty = max(
+                1,
+                int(qty * 0.75),
+            )
+
+        elif execution_posture == "AGGRESSIVE":
+
+            qty = max(
+                1,
+                int(qty * 1.10),
+            )
+            
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
