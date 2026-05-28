@@ -381,6 +381,13 @@ from quant_ecosystem.metareality.epistemic_validator import (
 from quant_ecosystem.metareality.uncertainty_governor import (
     uncertainty_governor,
 )
+from quant_ecosystem.constitution.constitution_engine import (
+    constitution_engine,
+)
+
+from quant_ecosystem.constitution.constitutional_guardian import (
+    constitutional_guardian,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -965,6 +972,13 @@ class MultiBrokerRouter:
         self._uncertainty_governor = (
             uncertainty_governor
         )
+        self._constitution_engine = (
+            constitution_engine
+        )
+
+        self._constitutional_guardian = (
+            constitutional_guardian
+        )
         
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1424,7 +1438,22 @@ class MultiBrokerRouter:
                 1,
                 int(qty * 0.60),
             )
-                        
+        constitutional = (
+            self._constitution_engine
+            .compliant(
+                existential_probability=(
+                    existential_threat
+                    .extinction_probability
+                ),
+                anomaly_score=(
+                    reality.anomaly_score
+                ),
+            )
+        )
+
+        self._constitutional_guardian.enforce(
+            constitutional=constitutional
+        )                
         execution_posture = (
             self._diplomatic_council
             .deliberate(
