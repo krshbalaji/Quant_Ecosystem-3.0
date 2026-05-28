@@ -310,6 +310,9 @@ from quant_ecosystem.swarm.workload_balancer import (
 from quant_ecosystem.consensus.governance_council import (
     governance_council,
 )
+from quant_ecosystem.metacognition.meta_cognition_engine import (
+    meta_cognition_engine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -832,6 +835,9 @@ class MultiBrokerRouter:
         )
         self._governance_council = (
             governance_council
+        )
+        self._meta_cognition_engine = (
+            meta_cognition_engine
         )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
@@ -1483,6 +1489,19 @@ class MultiBrokerRouter:
                 self._circuit_breaker.reset()
                 self._workload_balancer.complete(
                     allocated_shard
+                )
+                self._meta_cognition_engine.reflect(
+                    broker=broker_name,
+                    regime=str(
+                        dominant_regime.value
+                    ),
+                    aggression=aggression,
+                    consensus_approved=(
+                        consensus_approved
+                    ),
+                    shard_id=(
+                        allocated_shard.shard_id
+                    ),
                 )
 
             except Exception as exc:
