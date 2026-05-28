@@ -388,6 +388,13 @@ from quant_ecosystem.constitution.constitution_engine import (
 from quant_ecosystem.constitution.constitutional_guardian import (
     constitutional_guardian,
 )
+from quant_ecosystem.sentience.self_reflection_engine import (
+    self_reflection_engine,
+)
+
+from quant_ecosystem.sentience.identity_guardian import (
+    identity_guardian,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -979,6 +986,13 @@ class MultiBrokerRouter:
         self._constitutional_guardian = (
             constitutional_guardian
         )
+        self._self_reflection_engine = (
+            self_reflection_engine
+        )
+
+        self._identity_guardian = (
+            identity_guardian
+        )
         
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1219,6 +1233,13 @@ class MultiBrokerRouter:
 
         meta = meta or {}
 
+        mission = str(
+            meta.get(
+                "mission",
+                "SOVEREIGN_EXECUTION",
+            )
+        )
+                    
         allocated_shard = (
             self._workload_balancer
             .allocate()
@@ -1453,7 +1474,37 @@ class MultiBrokerRouter:
 
         self._constitutional_guardian.enforce(
             constitutional=constitutional
-        )                
+        )
+
+        reflection = (
+            self._self_reflection_engine
+            .reflect(
+                mission=mission,
+                constitutional=constitutional,
+                survivability=(
+                    simulation[
+                        "survivability"
+                    ]
+                ),
+            )
+        )
+
+        identity_stable = (
+            self._identity_guardian
+            .stable(
+                consistency_score=(
+                    reflection
+                    .consistency_score
+                )
+            )
+        )
+
+        if not identity_stable:
+
+            raise RuntimeError(
+                "Sovereign identity instability detected"
+            )
+                            
         execution_posture = (
             self._diplomatic_council
             .deliberate(
