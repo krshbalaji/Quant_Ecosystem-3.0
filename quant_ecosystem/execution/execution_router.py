@@ -245,6 +245,10 @@ from quant_ecosystem.execution.governance.fragmentation_engine import (
 from quant_ecosystem.execution.governance.exact_once_lock import (
     ExactOnceLock,
 )
+from quant_ecosystem.execution.governance.position_truth_monitor import (
+    PositionTruthMonitor,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -709,7 +713,11 @@ class MultiBrokerRouter:
         )
         self._mutation_guard = MutationGuard()
         self._exact_once_lock = ExactOnceLock()
-       
+        self._position_truth_monitor = (
+            PositionTruthMonitor()
+        )
+        self._internal_positions = {}
+
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1141,7 +1149,37 @@ class MultiBrokerRouter:
                     )
 
                     result["reconciled_status"] = reconciled
-                    
+                    filled_qty = int(
+                        result.get(
+                            "filled_qty",
+                            qty,
+                        )
+                    )
+
+                    direction = (
+                        1
+                        if side.upper() == "BUY"
+                        else -1
+                    )
+
+                    self._internal_positions[
+                        normalized_symbol
+                    ] = (
+                        self._internal_positions.get(
+                            normalized_symbol,
+                            0,
+                        )
+                        + (filled_qty * direction)
+                    )
+
+                    self._position_truth_monitor.verify(
+                        broker_name=broker_name,
+                        broker=broker,
+                        internal_positions=(
+                            self._internal_positions
+                        ),
+                    )
+
                     terminal_status = (
                         reconciled.get("status", "")
                         .upper()
