@@ -327,6 +327,13 @@ from quant_ecosystem.simulation.future_state_predictor import (
 from quant_ecosystem.simulation.survivability_engine import (
     survivability_engine,
 )
+from quant_ecosystem.temporal.temporal_cognition_engine import (
+    temporal_cognition_engine,
+)
+
+from quant_ecosystem.evolution.policy_registry import (
+    policy_registry,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -865,6 +872,9 @@ class MultiBrokerRouter:
 
         self._survivability_engine = (
             survivability_engine
+        )
+        self._temporal_cognition_engine = (
+            temporal_cognition_engine
         )
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1570,6 +1580,36 @@ class MultiBrokerRouter:
                     ),
                     shard_id=(
                         allocated_shard.shard_id
+                    ),
+                )
+
+                simulation = (
+                    self._future_state_predictor
+                    .predict(
+                        volatility=0.30,
+                        liquidity=0.80,
+                        broker_health=0.90,
+                    )
+                )
+
+                self._temporal_cognition_engine.remember(
+                    regime=str(
+                        dominant_regime.value
+                    ),
+                    survivability=(
+                        simulation[
+                            "survivability"
+                        ]
+                    ),
+                    stress_level=(
+                        simulation[
+                            "stress_level"
+                        ]
+                    ),
+                    policy_generation=(
+                        policy_registry
+                        .current()
+                        .mutation_generation
                     ),
                 )
 
