@@ -276,6 +276,13 @@ from quant_ecosystem.regime.adaptive_governor import (
 from quant_ecosystem.telemetry.health_engine import (
     health_engine,
 )
+from quant_ecosystem.protection.self_protection_engine import (
+    self_protection_engine,
+)
+
+from quant_ecosystem.protection.throttle_governor import (
+    throttle_governor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -772,6 +779,13 @@ class MultiBrokerRouter:
         self._health_engine = (
             health_engine
         )
+        self._self_protection_engine = (
+            self_protection_engine
+        )
+
+        self._throttle_governor = (
+            throttle_governor
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -990,7 +1004,7 @@ class MultiBrokerRouter:
         )
 
         self._circuit_breaker_guard.check()
-
+        
         normalized_symbol = self._symbol_normalizer.normalize(
             symbol=symbol,
             market=market,
@@ -1011,6 +1025,7 @@ class MultiBrokerRouter:
         )
 
         meta = meta or {}
+        self._self_protection_engine.evaluate()
 
         broker = self._select(asset_class, market)
         
@@ -1028,7 +1043,10 @@ class MultiBrokerRouter:
             float(qty)
             * float(price)
         )
-
+        qty = (
+            self._throttle_governor
+            .scale_quantity(qty)
+        )
         current_regime = (
             self._regime_state.current()
         )
