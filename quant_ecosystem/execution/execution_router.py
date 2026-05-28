@@ -251,6 +251,9 @@ from quant_ecosystem.execution.governance.position_truth_monitor import (
 from quant_ecosystem.execution.governance.kill_hierarchy import (
     KillHierarchy,
 )
+from quant_ecosystem.execution.mesh.mesh_coordinator import (
+    mesh_coordinator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -723,6 +726,8 @@ class MultiBrokerRouter:
         self._kill_hierarchy = (
             KillHierarchy()
         )
+        self._mesh = mesh_coordinator
+        self._mesh.heartbeat()
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1067,239 +1072,274 @@ class MultiBrokerRouter:
             raise RuntimeError(
                 "SOVEREIGN DUPLICATE BLOCKED: terminal execution exists"
             )
-            
-        enriched_meta = dict(meta or {})
+        lease_active = False
+        execution_key = None
 
-        intent_id = self._intent_journal.create_intent(
-            symbol=symbol,
-            side=side,
-            qty=qty,
-            price=price,
-            asset_class=asset_class,
-            broker_name=broker_name,
-            meta=enriched_meta,
-            fingerprint=fingerprint,
+        execution_key = (
+            f"{broker_name}:"
+            f"{normalized_symbol}:"
+            f"{side}"
         )
 
-        caps = self._get_capabilities(broker)
-
-        if (
-            str(self.mode).upper() == "LIVE"
-            and strict_market_hours
-            and getattr(caps, "requires_market_session", False)
-        ):
-            if not self._session_guard.is_market_open(market, asset_class):
-                raise RuntimeError(
-                    f"MARKET CLOSED: market={market}, asset={asset_class}"
-                )
-
-        broker_is_healthy = self._broker_health_router.is_healthy(
-            broker_name
-        )
-        if strategy == "SPLIT":
-            fragments = (
-                self._fragmentation_engine.fragment(
-                    qty=qty,
-                    brokers=self._broker_registry.all().keys(),
-                )
+        lease_acquired = (
+            self._mesh.acquire_execution(
+                execution_key
             )
+        )
 
-            enriched_meta[
-                "execution_fragments"
-            ] = fragments
-            
+        if not lease_acquired:
+            raise RuntimeError(
+                "EXECUTION LEASE ACTIVE"
+            )
+        
+        lease_active = True
+
         try:
-            # ── Pack16: retry policy wraps the raw broker call ──────────────
-            self._intent_journal.record_event(
-                intent_id=intent_id,
-                event="SUBMITTING",
-            )
 
-            result = self._execution_dispatcher.dispatch(
-                mode=self.mode,
-                broker=broker,
-                broker_name=broker_name,
-                normalized_symbol=normalized_symbol,
+            enriched_meta = dict(meta or {})
+
+            intent_id = self._intent_journal.create_intent(
                 symbol=symbol,
                 side=side,
                 qty=qty,
                 price=price,
-                fee=fee,
-                meta=enriched_meta,
                 asset_class=asset_class,
-                caps=caps,
+                broker_name=broker_name,
+                meta=enriched_meta,
+                fingerprint=fingerprint,
             )
 
+            caps = self._get_capabilities(broker)
+
             if (
-                caps.supports_health_check
-                and hasattr(broker, "health_check")
+                str(self.mode).upper() == "LIVE"
+                and strict_market_hours
+                and getattr(caps, "requires_market_session", False)
             ):
-                broker_health = broker.health_check()
-
-                if not broker_health.get("healthy", False):
+                if not self._session_guard.is_market_open(market, asset_class):
                     raise RuntimeError(
-                        f"BROKER UNHEALTHY: {broker_name}"
+                        f"MARKET CLOSED: market={market}, asset={asset_class}"
                     )
-                    
-            if str(self.mode).upper() == "LIVE":
-                result = self._status_normalizer.normalize(
-                    broker_name,
-                    result
+
+            broker_is_healthy = self._broker_health_router.is_healthy(
+                broker_name
+            )
+            if strategy == "SPLIT":
+                fragments = (
+                    self._fragmentation_engine.fragment(
+                        qty=qty,
+                        brokers=self._broker_registry.all().keys(),
+                    )
                 )
 
-                order_id = (
-                    result.get("broker_order_id")
-                    or result.get("order_id")
-                    or result.get("id")
-                    or ""
+                enriched_meta[
+                    "execution_fragments"
+                ] = fragments
+                
+            try:
+                # ── Pack16: retry policy wraps the raw broker call ──────────────
+                self._intent_journal.record_event(
+                    intent_id=intent_id,
+                    event="SUBMITTING",
                 )
-                                
-                broker_class = type(broker).__name__.lower()
 
-                skip_reconciliation = (
-                    "dummy" in broker_class
-                    or "mock" in broker_class
+                result = self._execution_dispatcher.dispatch(
+                    mode=self.mode,
+                    broker=broker,
+                    broker_name=broker_name,
+                    normalized_symbol=normalized_symbol,
+                    symbol=symbol,
+                    side=side,
+                    qty=qty,
+                    price=price,
+                    fee=fee,
+                    meta=enriched_meta,
+                    asset_class=asset_class,
+                    caps=caps,
                 )
 
                 if (
-                    str(self.mode).upper() == "LIVE"
-                    and order_id
-                    and caps.supports_reconciliation
-                    and not skip_reconciliation
+                    caps.supports_health_check
+                    and hasattr(broker, "health_check")
                 ):
-                    self._intent_journal.record_event(
-                        intent_id=intent_id,
-                        event="RECONCILING",
-                        broker_order_id=order_id,
-                    )
-                    
-                    reconciled = self._reconciler.wait_for_final_state(
-                        broker_name=broker_name,
-                        broker=broker,
-                        order_id=order_id,
-                    )
+                    broker_health = broker.health_check()
 
-                    result["reconciled_status"] = reconciled
-                    filled_qty = int(
-                        result.get(
-                            "filled_qty",
-                            qty,
+                    if not broker_health.get("healthy", False):
+                        raise RuntimeError(
+                            f"BROKER UNHEALTHY: {broker_name}"
                         )
+                        
+                if str(self.mode).upper() == "LIVE":
+                    result = self._status_normalizer.normalize(
+                        broker_name,
+                        result
                     )
 
-                    direction = (
-                        1
-                        if side.upper() == "BUY"
-                        else -1
+                    order_id = (
+                        result.get("broker_order_id")
+                        or result.get("order_id")
+                        or result.get("id")
+                        or ""
+                    )
+                                    
+                    broker_class = type(broker).__name__.lower()
+
+                    skip_reconciliation = (
+                        "dummy" in broker_class
+                        or "mock" in broker_class
                     )
 
-                    self._internal_positions[
-                        normalized_symbol
-                    ] = (
-                        self._internal_positions.get(
-                            normalized_symbol,
-                            0,
-                        )
-                        + (filled_qty * direction)
-                    )
-
-                    self._position_truth_monitor.verify(
-                        broker_name=broker_name,
-                        broker=broker,
-                        internal_positions=(
-                            self._internal_positions
-                        ),
-                    )
-
-                    terminal_status = (
-                        reconciled.get("status", "")
-                        .upper()
-                        .strip()
-                    )
-
-                    if terminal_status in {
-                        "FILLED",
-                        "PARTIAL",
-                        "REJECTED",
-                    }:
+                    if (
+                        str(self.mode).upper() == "LIVE"
+                        and order_id
+                        and caps.supports_reconciliation
+                        and not skip_reconciliation
+                    ):
                         self._intent_journal.record_event(
                             intent_id=intent_id,
-                            event=terminal_status,
+                            event="RECONCILING",
                             broker_order_id=order_id,
-                            payload=reconciled,
+                        )
+                        
+                        reconciled = self._reconciler.wait_for_final_state(
+                            broker_name=broker_name,
+                            broker=broker,
+                            order_id=order_id,
                         )
 
-            self._broker_health_router.mark_healthy(
-                broker_name
+                        result["reconciled_status"] = reconciled
+                        filled_qty = int(
+                            result.get(
+                                "filled_qty",
+                                qty,
+                            )
+                        )
+
+                        direction = (
+                            1
+                            if side.upper() == "BUY"
+                            else -1
+                        )
+
+                        self._internal_positions[
+                            normalized_symbol
+                        ] = (
+                            self._internal_positions.get(
+                                normalized_symbol,
+                                0,
+                            )
+                            + (filled_qty * direction)
+                        )
+
+                        self._position_truth_monitor.verify(
+                            broker_name=broker_name,
+                            broker=broker,
+                            internal_positions=(
+                                self._internal_positions
+                            ),
+                        )
+
+                        self._mesh.release_execution(
+                            execution_key
+                        )
+
+                        terminal_status = (
+                            reconciled.get("status", "")
+                            .upper()
+                            .strip()
+                        )
+
+                        if terminal_status in {
+                            "FILLED",
+                            "PARTIAL",
+                            "REJECTED",
+                        }:
+                            self._intent_journal.record_event(
+                                intent_id=intent_id,
+                                event=terminal_status,
+                                broker_order_id=order_id,
+                                payload=reconciled,
+                            )
+
+                self._broker_health_router.mark_healthy(
+                    broker_name
+                )
+                self._circuit_breaker.reset()
+
+            except Exception as exc:
+                self._broker_health_router.mark_unhealthy(
+                    broker_name
+                )
+                self._intent_journal.record_event(
+                    intent_id=intent_id,
+                    event="UNCERTAIN",
+                    payload={
+                        "error": str(exc),
+                    },
+                )
+                self._circuit_breaker.record_failure()
+
+                logger.critical(
+                    "LIVE broker order failed for %s/%s: %s. NO paper fallback allowed.",
+                    normalized_symbol,
+                    asset_class,
+                    exc,
+                )
+
+                msg = str(exc).lower()
+
+                if "rejected" in msg:
+                    raise RuntimeError("LIVE broker rejected order") from exc
+
+                if "reconciliation" in msg:
+                    raise RuntimeError("LIVE reconciliation failed") from exc
+
+                raise RuntimeError(
+                    f"LIVE broker execution failed: {normalized_symbol}/{asset_class}: {exc}"
+                ) from exc
+                                       
+            result = result or {}
+            result.setdefault("order_id", result.get("id", ""))
+            result.setdefault(
+                "broker",
+                getattr(broker, "account_source", type(broker).__name__.upper()),
             )
-            self._circuit_breaker.reset()
 
-        except Exception as exc:
-            self._broker_health_router.mark_unhealthy(
-                broker_name
-            )
-            self._intent_journal.record_event(
-                intent_id=intent_id,
-                event="UNCERTAIN",
-                payload={
-                    "error": str(exc),
-                },
-            )
-            self._circuit_breaker.record_failure()
+            log_execution_event({
+                "mode":              self.mode,
+                "symbol":            symbol,
+                "normalized_symbol": normalized_symbol,
+                "side":              side,
+                "qty":               qty,
+                "price":             price,
+                "asset_class":       asset_class,
+                "broker_response":   result,
+                "status":            "SUCCESS",
+            })
 
-            logger.critical(
-                "LIVE broker order failed for %s/%s: %s. NO paper fallback allowed.",
-                normalized_symbol,
-                asset_class,
-                exc,
-            )
+            if str(self.mode).upper() == "LIVE":
+                self._notifier.send(
+                    f"✅ *QE3 LIVE ORDER ACCEPTED*\n"
+                    f"Symbol: {symbol}\n"
+                    f"Side: {side}\n"
+                    f"Qty: {qty}\n"
+                    f"Price: {price}\n"
+                    f"Order ID: {result.get('order_id', 'UNKNOWN')}"
+                )
 
-            msg = str(exc).lower()
-
-            if "rejected" in msg:
-                raise RuntimeError("LIVE broker rejected order") from exc
-
-            if "reconciliation" in msg:
-                raise RuntimeError("LIVE reconciliation failed") from exc
-
-            raise RuntimeError(
-                f"LIVE broker execution failed: {normalized_symbol}/{asset_class}: {exc}"
-            ) from exc
-
-        result = result or {}
-        result.setdefault("order_id", result.get("id", ""))
-        result.setdefault(
-            "broker",
-            getattr(broker, "account_source", type(broker).__name__.upper()),
-        )
-
-        log_execution_event({
-            "mode":              self.mode,
-            "symbol":            symbol,
-            "normalized_symbol": normalized_symbol,
-            "side":              side,
-            "qty":               qty,
-            "price":             price,
-            "asset_class":       asset_class,
-            "broker_response":   result,
-            "status":            "SUCCESS",
-        })
-
-        if str(self.mode).upper() == "LIVE":
-            self._notifier.send(
-                f"✅ *QE3 LIVE ORDER ACCEPTED*\n"
-                f"Symbol: {symbol}\n"
-                f"Side: {side}\n"
-                f"Qty: {qty}\n"
-                f"Price: {price}\n"
-                f"Order ID: {result.get('order_id', 'UNKNOWN')}"
+            self._exact_once_lock.release(
+                lock_key
             )
 
-        self._exact_once_lock.release(
-            lock_key
-        )
+            return result
 
-        return result
+        finally:
+
+            if lease_active:
+                self._mesh.release_execution(
+                    execution_key
+                )
+                
     def cancel_order(
         self,
         broker_name: str,
