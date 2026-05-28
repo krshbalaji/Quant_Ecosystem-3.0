@@ -290,6 +290,20 @@ from quant_ecosystem.learning.learning_engine import (
 from quant_ecosystem.learning.adaptive_broker_selector import (
     adaptive_broker_selector,
 )
+from quant_ecosystem.regime.regime_snapshot import (
+    RegimeSnapshot,
+)
+
+from quant_ecosystem.regime.regime_memory import (
+    regime_memory,
+)
+from quant_ecosystem.regime.regime_intelligence import (
+    regime_intelligence,
+)
+
+from quant_ecosystem.regime.execution_personality import (
+    execution_personality,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -800,6 +814,13 @@ class MultiBrokerRouter:
         self._adaptive_broker_selector = (
             adaptive_broker_selector
         )
+        self._regime_intelligence = (
+            regime_intelligence
+        )
+
+        self._execution_personality = (
+            execution_personality
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1068,6 +1089,24 @@ class MultiBrokerRouter:
             self._throttle_governor
             .scale_quantity(qty)
         )
+        
+        dominant_regime = (
+            self._regime_intelligence
+            .dominant_regime()
+        )
+
+        aggression = (
+            self._execution_personality
+            .aggression(
+                dominant_regime
+            )
+        )
+
+        qty = max(
+            1,
+            int(qty * aggression),
+        )
+
         current_regime = (
             self._regime_state.current()
         )
@@ -2608,8 +2647,63 @@ class ExecutionRouter:
             return CandlePatternEngine()
         except Exception:
             class _NullPattern:
-                def detect(self, candle):
-                    return []
+                def detect(
+                    self,
+                    *,
+                    volatility,
+                    liquidity,
+                    trend_strength,
+                ):
+
+                    regime = (
+                        MarketRegime.NORMAL
+                    )
+
+                    if volatility >= 0.9:
+
+                        regime = (
+                            MarketRegime.CRISIS
+                        )
+
+                    elif volatility >= 0.7:
+
+                        regime = (
+                            MarketRegime.VOLATILE
+                        )
+
+                    elif liquidity <= 0.2:
+
+                        regime = (
+                            MarketRegime
+                            .LOW_LIQUIDITY
+                        )
+
+                    elif trend_strength >= 0.8:
+
+                        regime = (
+                            MarketRegime
+                            .TRENDING
+                        )
+
+                    snapshot = (
+                        RegimeSnapshot(
+                            volatility=volatility,
+                            liquidity=liquidity,
+                            trend_strength=(
+                                trend_strength
+                            ),
+                            detected_regime=(
+                                regime.value
+                            ),
+                        )
+                    )
+
+                    regime_memory.record(
+                        snapshot
+                    )
+
+                    return regime
+                    
             return _NullPattern()
 
     @staticmethod
