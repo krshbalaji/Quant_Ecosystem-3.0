@@ -266,6 +266,13 @@ from quant_ecosystem.risk.correlation_risk_engine import (
 from quant_ecosystem.capital.capital_governor import (
     capital_governor,
 )
+from quant_ecosystem.regime.regime_state import (
+    regime_state,
+)
+
+from quant_ecosystem.regime.adaptive_governor import (
+    adaptive_governor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -752,6 +759,13 @@ class MultiBrokerRouter:
         self._capital_governor = (
             capital_governor
         )
+        self._regime_state = (
+            regime_state
+        )
+
+        self._adaptive_governor = (
+            adaptive_governor
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1007,6 +1021,17 @@ class MultiBrokerRouter:
         projected_exposure = (
             float(qty)
             * float(price)
+        )
+
+        current_regime = (
+            self._regime_state.current()
+        )
+
+        projected_exposure *= (
+            self._adaptive_governor
+            .exposure_multiplier(
+                current_regime
+            )
         )
 
         self._risk_netting_engine.validate(
