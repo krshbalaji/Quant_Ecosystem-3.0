@@ -283,6 +283,13 @@ from quant_ecosystem.protection.self_protection_engine import (
 from quant_ecosystem.protection.throttle_governor import (
     throttle_governor,
 )
+from quant_ecosystem.learning.learning_engine import (
+    learning_engine,
+)
+
+from quant_ecosystem.learning.adaptive_broker_selector import (
+    adaptive_broker_selector,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -786,6 +793,13 @@ class MultiBrokerRouter:
         self._throttle_governor = (
             throttle_governor
         )
+        self._learning_engine = (
+            learning_engine
+        )
+
+        self._adaptive_broker_selector = (
+            adaptive_broker_selector
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1026,6 +1040,13 @@ class MultiBrokerRouter:
 
         meta = meta or {}
         self._self_protection_engine.evaluate()
+        
+        broker_name = str(
+            meta.get(
+                "broker",
+                "fyers",
+            )
+        )
 
         broker = self._select(asset_class, market)
         
@@ -1402,6 +1423,13 @@ class MultiBrokerRouter:
                 )
                 self._circuit_breaker.record_failure()
 
+                self._learning_engine.learn(
+                    broker=broker_name,
+                    latency_ms=1000.0,
+                    retry_count=1,
+                    success=False,
+                )
+
                 logger.critical(
                     "LIVE broker order failed for %s/%s: %s. NO paper fallback allowed.",
                     normalized_symbol,
@@ -1452,6 +1480,13 @@ class MultiBrokerRouter:
 
             self._exact_once_lock.release(
                 lock_key
+            )
+
+            self._learning_engine.learn(
+                broker=broker_name,
+                latency_ms=10.0,
+                retry_count=0,
+                success=True,
             )
 
             return result
