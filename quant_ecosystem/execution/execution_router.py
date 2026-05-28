@@ -341,6 +341,13 @@ from quant_ecosystem.strategy.strategic_alignment_engine import (
 from quant_ecosystem.strategy.strategic_consciousness_engine import (
     strategic_consciousness_engine,
 )
+from quant_ecosystem.reality.reality_engine import (
+    reality_engine,
+)
+
+from quant_ecosystem.reality.reality_validator import (
+    reality_validator,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -890,6 +897,13 @@ class MultiBrokerRouter:
         self._strategic_consciousness_engine = (
             strategic_consciousness_engine
         )
+        self._reality_engine = (
+            reality_engine
+        )
+
+        self._reality_validator = (
+            reality_validator
+        )
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1208,7 +1222,31 @@ class MultiBrokerRouter:
             raise RuntimeError(
                 "Strategic consciousness rejection"
             )
-                
+
+        reality = (
+            self._reality_engine
+            .snapshot(
+                broker_health=0.90,
+                liquidity=0.80,
+                volatility=0.30,
+            )
+        )
+
+        reality_ok = (
+            self._reality_validator
+            .trustworthy(
+                anomaly_score=(
+                    reality.anomaly_score
+                )
+            )
+        )
+
+        if not reality_ok:
+
+            raise RuntimeError(
+                "Reality distortion detected"
+            )
+                    
         broker = self._select(asset_class, market)
         
         broker_name = self._get_broker_name(broker)
