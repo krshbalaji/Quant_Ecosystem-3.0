@@ -304,6 +304,9 @@ from quant_ecosystem.regime.regime_intelligence import (
 from quant_ecosystem.regime.execution_personality import (
     execution_personality,
 )
+from quant_ecosystem.swarm.workload_balancer import (
+    workload_balancer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -821,6 +824,9 @@ class MultiBrokerRouter:
         self._execution_personality = (
             execution_personality
         )
+        self._workload_balancer = (
+            workload_balancer
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -1060,6 +1066,12 @@ class MultiBrokerRouter:
         )
 
         meta = meta or {}
+
+        allocated_shard = (
+            self._workload_balancer
+            .allocate()
+        )
+
         self._self_protection_engine.evaluate()
         
         broker_name = str(
@@ -1448,6 +1460,9 @@ class MultiBrokerRouter:
                     broker_name
                 )
                 self._circuit_breaker.reset()
+                self._workload_balancer.complete(
+                    allocated_shard
+                )
 
             except Exception as exc:
                 self._broker_health_router.mark_unhealthy(
@@ -1526,6 +1541,10 @@ class MultiBrokerRouter:
                 latency_ms=10.0,
                 retry_count=0,
                 success=True,
+            )
+
+            self._workload_balancer.complete(
+                allocated_shard
             )
 
             return result
