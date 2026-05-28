@@ -74,6 +74,18 @@ class SovereignStateStore:
                 """
             )
 
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_chain (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_hash TEXT,
+                    prev_hash TEXT,
+                    payload TEXT,
+                    ts DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
             conn.commit()
 
     def append_event(
@@ -245,6 +257,107 @@ class SovereignStateStore:
                 )
 
                 conn.commit()
+
+    def append_audit_event(
+        self,
+        payload,
+    ):
+        import hashlib
+
+        payload_json = json.dumps(
+            payload,
+            sort_keys=True,
+        )
+
+        with self._lock:
+            with self._connect() as conn:
+
+                prev = conn.execute(
+                    """
+                    SELECT event_hash
+                    FROM audit_chain
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
+
+                prev_hash = (
+                    prev[0]
+                    if prev
+                    else "GENESIS"
+                )
+
+                raw = (
+                    prev_hash
+                    + payload_json
+                )
+
+                event_hash = hashlib.sha256(
+                    raw.encode("utf-8")
+                ).hexdigest()
+
+                conn.execute(
+                    """
+                    INSERT INTO audit_chain (
+                        event_hash,
+                        prev_hash,
+                        payload
+                    )
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        event_hash,
+                        prev_hash,
+                        payload_json,
+                    ),
+                )
+
+                conn.commit()
+
+                return event_hash
+
+    def verify_audit_chain(self):
+
+        import hashlib
+
+        with self._lock:
+            with self._connect() as conn:
+
+                rows = conn.execute(
+                    """
+                    SELECT
+                        event_hash,
+                        prev_hash,
+                        payload
+                    FROM audit_chain
+                    ORDER BY id ASC
+                    """
+                ).fetchall()
+
+        previous = "GENESIS"
+
+        for row in rows:
+
+            event_hash = row[0]
+            prev_hash = row[1]
+            payload_json = row[2]
+
+            if prev_hash != previous:
+                return False
+
+            expected = hashlib.sha256(
+                (
+                    prev_hash
+                    + payload_json
+                ).encode("utf-8")
+            ).hexdigest()
+
+            if expected != event_hash:
+                return False
+
+            previous = event_hash
+
+        return True
 
 
 sovereign_state_store = (

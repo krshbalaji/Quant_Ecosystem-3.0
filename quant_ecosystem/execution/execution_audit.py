@@ -1,7 +1,9 @@
 import json
 from datetime import datetime
 from pathlib import Path
-
+from quant_ecosystem.execution.governance.audit_chain import (
+    audit_chain,
+)
 
 AUDIT_LOG = Path("logs/execution_audit.jsonl")
 
@@ -11,6 +13,16 @@ def log_execution_event(payload: dict):
         AUDIT_LOG.parent.mkdir(
             parents=True,
             exist_ok=True,
+        )
+
+        audit_hash = (
+            audit_chain.append(
+                payload
+            )
+        )
+
+        payload["audit_hash"] = (
+            audit_hash
         )
 
         enriched = {
