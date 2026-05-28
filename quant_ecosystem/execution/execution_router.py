@@ -242,6 +242,9 @@ from quant_ecosystem.execution.governance.execution_strategy import (
 from quant_ecosystem.execution.governance.fragmentation_engine import (
     FragmentationEngine,
 )
+from quant_ecosystem.execution.governance.exact_once_lock import (
+    ExactOnceLock,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -705,7 +708,7 @@ class MultiBrokerRouter:
             )
         )
         self._mutation_guard = MutationGuard()
-        
+        self._exact_once_lock = ExactOnceLock()
        
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -972,6 +975,30 @@ class MultiBrokerRouter:
             broker_name=broker_name,
         )
 
+        lock_key = f"EXEC:{fingerprint}"
+
+        lock_acquired = False
+
+        try:
+            lock_acquired = (
+                self._exact_once_lock.acquire(
+                    lock_key
+                )
+            )
+
+            if not lock_acquired:
+                raise RuntimeError(
+                    "EXACT ONCE LOCK ACTIVE"
+                )
+
+            # existing execution logic continues here
+
+        finally:
+            if lock_acquired:
+                self._exact_once_lock.release(
+                    lock_key
+                )
+            
         sovereign_duplicate_enforcement = bool(
             getattr(
                 self,
@@ -1198,6 +1225,10 @@ class MultiBrokerRouter:
                 f"Price: {price}\n"
                 f"Order ID: {result.get('order_id', 'UNKNOWN')}"
             )
+
+        self._exact_once_lock.release(
+            lock_key
+        )
 
         return result
     def cancel_order(
