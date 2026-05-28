@@ -359,6 +359,17 @@ from quant_ecosystem.civilization.civilization_engine import (
 from quant_ecosystem.evolution.policy_registry import (
     policy_registry,
 )
+from quant_ecosystem.existential.existential_analyzer import (
+    existential_analyzer,
+)
+
+from quant_ecosystem.existential.continuity_guardian import (
+    continuity_guardian,
+)
+
+from quant_ecosystem.existential.extinction_prevention_engine import (
+    extinction_prevention_engine,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -921,6 +932,18 @@ class MultiBrokerRouter:
         self._civilization_engine = (
             civilization_engine
         )
+        self._existential_analyzer = (
+            existential_analyzer
+        )
+
+        self._continuity_guardian = (
+            continuity_guardian
+        )
+
+        self._extinction_prevention_engine = (
+            extinction_prevention_engine
+        )
+        
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1263,7 +1286,65 @@ class MultiBrokerRouter:
             raise RuntimeError(
                 "Reality distortion detected"
             )
+        existential_threat = (
+            self._existential_analyzer
+            .analyze(
+                survivability=(
+                    simulation[
+                        "survivability"
+                    ]
+                ),
+                stress_level=(
+                    simulation[
+                        "stress_level"
+                    ]
+                ),
+                anomaly_score=(
+                    reality.anomaly_score
+                ),
+            )
+        )
 
+        continuity_safe = (
+            self._continuity_guardian
+            .survivable(
+                extinction_probability=(
+                    existential_threat
+                    .extinction_probability
+                ),
+                continuity_risk=(
+                    existential_threat
+                    .continuity_risk
+                ),
+            )
+        )
+
+        if not continuity_safe:
+
+            raise RuntimeError(
+                "Existential continuity threat detected"
+            )
+        extinction_posture = (
+            self._extinction_prevention_engine
+            .defensive_posture(
+                extinction_probability=(
+                    existential_threat
+                    .extinction_probability
+                )
+            )
+        )
+
+        if extinction_posture == "MAX_DEFENSE":
+
+            qty = 1
+
+        elif extinction_posture == "ELEVATED_DEFENSE":
+
+            qty = max(
+                1,
+                int(qty * 0.50),
+            )
+                
         execution_posture = (
             self._diplomatic_council
             .deliberate(
@@ -1755,7 +1836,7 @@ class MultiBrokerRouter:
                         dominant_regime.value
                     ),
                 )
-                
+
             except Exception as exc:
                 self._broker_health_router.mark_unhealthy(
                     broker_name
