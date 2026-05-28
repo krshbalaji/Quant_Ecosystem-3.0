@@ -254,6 +254,9 @@ from quant_ecosystem.execution.governance.kill_hierarchy import (
 from quant_ecosystem.execution.mesh.mesh_coordinator import (
     mesh_coordinator,
 )
+from quant_ecosystem.execution.scheduler.retry_governor import (
+    retry_governor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -728,6 +731,9 @@ class MultiBrokerRouter:
         )
         self._mesh = mesh_coordinator
         self._mesh.heartbeat()
+        self._retry_governor = (
+            retry_governor
+        )
 
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
@@ -2663,6 +2669,21 @@ class ExecutionRouter:
 
         if sid not in governor.get_active_ids():
             return False, "not_governor_active"
+
+        self._retry_governor.schedule_retry(
+            payload={
+                "symbol": symbol,
+                "side": side,
+                "qty": qty,
+                "price": price,
+                "execution_key": (
+                    f"{broker_name}:"
+                    f"{normalized_symbol}:"
+                    f"{side}"
+                ),
+            },
+            retry_count=1,
+        )
 
         # Token authority validation — must run before approving execution
         if self.token_authority:
