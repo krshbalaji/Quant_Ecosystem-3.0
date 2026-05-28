@@ -320,7 +320,13 @@ from quant_ecosystem.evolution.evolution_engine import (
 from quant_ecosystem.evolution.doctrine_engine import (
     doctrine_engine,
 )
+from quant_ecosystem.simulation.future_state_predictor import (
+    future_state_predictor,
+)
 
+from quant_ecosystem.simulation.survivability_engine import (
+    survivability_engine,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -853,6 +859,13 @@ class MultiBrokerRouter:
         self._doctrine_engine = (
             doctrine_engine
         )
+        self._future_state_predictor = (
+            future_state_predictor
+        )
+
+        self._survivability_engine = (
+            survivability_engine
+        )
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1114,6 +1127,36 @@ class MultiBrokerRouter:
                 broker_ok=True,
             )
         )
+        simulation = (
+            self._future_state_predictor
+            .predict(
+                volatility=0.30,
+                liquidity=0.80,
+                broker_health=0.90,
+            )
+        )
+
+        survivable = (
+            self._survivability_engine
+            .acceptable(
+                survivability=(
+                    simulation[
+                        "survivability"
+                    ]
+                ),
+                stress_level=(
+                    simulation[
+                        "stress_level"
+                    ]
+                ),
+            )
+        )
+
+        if not survivable:
+
+            raise RuntimeError(
+                "Predictive survivability rejection"
+            )
 
         if not consensus_approved:
 
