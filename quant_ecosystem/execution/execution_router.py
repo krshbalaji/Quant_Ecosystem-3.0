@@ -352,6 +352,13 @@ from quant_ecosystem.reality.reality_validator import (
 from quant_ecosystem.diplomacy.diplomatic_council import (
     diplomatic_council,
 )
+from quant_ecosystem.civilization.civilization_engine import (
+    civilization_engine,
+)
+
+from quant_ecosystem.evolution.policy_registry import (
+    policy_registry,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -911,7 +918,9 @@ class MultiBrokerRouter:
         self._diplomatic_council = (
             diplomatic_council
         )
-       
+        self._civilization_engine = (
+            civilization_engine
+        )
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1727,7 +1736,26 @@ class MultiBrokerRouter:
                     self._strategic_consciousness_engine
                     .mission()
                 )
-
+                self._civilization_engine.preserve_era(
+                    era_name="ERA-1",
+                    governance_generation=(
+                        policy_registry
+                        .current()
+                        .mutation_generation
+                    ),
+                    survivability_score=(
+                        simulation[
+                            "survivability"
+                        ]
+                    ),
+                    doctrine_state=(
+                        execution_posture
+                    ),
+                    dominant_regime=str(
+                        dominant_regime.value
+                    ),
+                )
+                
             except Exception as exc:
                 self._broker_health_router.mark_unhealthy(
                     broker_name
