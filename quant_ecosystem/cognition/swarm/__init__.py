@@ -210,6 +210,21 @@ from .federation_registry import (
 from .federation_core_engine import (
     FederationCoreEngine,
 )
+from .federation_capability import (
+    FederationCapability,
+)
+from .capability_status import (
+    CapabilityStatus,
+)
+from .capability_inventory import (
+    CapabilityInventory,
+)
+from .federation_capability_registry import (
+    FederationCapabilityRegistry,
+)
+from .federation_capability_engine import (
+    FederationCapabilityEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -312,4 +327,9 @@ __all__ = [
     "FederationHealthCheck",
     "FederationRegistry",
     "FederationCoreEngine",
+    "FederationCapability",
+    "CapabilityStatus",
+    "CapabilityInventory",
+    "FederationCapabilityRegistry",
+    "FederationCapabilityEngine",
 ]
