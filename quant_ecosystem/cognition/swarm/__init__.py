@@ -373,6 +373,21 @@ from .federation_namespace_auditor import (
 from .federation_topology_audit_engine import (
     FederationTopologyAuditEngine,
 )
+from .symbol_collision import (
+    SymbolCollision,
+)
+from .symbol_resolution import (
+    SymbolResolution,
+)
+from .resolution_report import (
+    ResolutionReport,
+)
+from .federation_symbol_resolution_registry import (
+    FederationSymbolResolutionRegistry,
+)
+from .federation_symbol_resolution_engine import (
+    FederationSymbolResolutionEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -525,4 +540,9 @@ __all__ = [
     "NamespaceRegistry",
     "FederationNamespaceAuditor",
     "FederationTopologyAuditEngine",
+    "SymbolCollision",
+    "SymbolResolution",
+    "ResolutionReport",
+    "FederationSymbolResolutionRegistry",
+    "FederationSymbolResolutionEngine",
 ]
