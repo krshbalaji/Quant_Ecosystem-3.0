@@ -82,6 +82,15 @@ from .federation_audit_registry import (
 from .execution_trace_engine import (
     ExecutionTraceEngine,
 )
+from .federation_action import FederationAction
+from .integration_contract import IntegrationContract
+from .federation_handoff import FederationHandoff
+from .federation_integration_registry import (
+    FederationIntegrationRegistry,
+)
+from .federation_integration_engine import (
+    FederationIntegrationEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -134,4 +143,9 @@ __all__ = [
     "AuthorizationTrace",
     "FederationAuditRegistry",
     "ExecutionTraceEngine",
+    "FederationAction",
+    "IntegrationContract",
+    "FederationHandoff",
+    "FederationIntegrationRegistry",
+    "FederationIntegrationEngine",
 ]
