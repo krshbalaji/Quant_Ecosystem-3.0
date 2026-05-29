@@ -117,6 +117,21 @@ from .execution_adapter_registry import (
 from .federation_execution_router_adapter import (
     FederationExecutionRouterAdapter,
 )
+from .orchestration_request import (
+    OrchestrationRequest,
+)
+from .orchestration_result import (
+    OrchestrationResult,
+)
+from .orchestration_stage import (
+    OrchestrationStage,
+)
+from .orchestration_registry import (
+    OrchestrationRegistry,
+)
+from .federation_orchestrator import (
+    FederationOrchestrator,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -184,4 +199,9 @@ __all__ = [
     "RouterAdapterContract",
     "ExecutionAdapterRegistry",
     "FederationExecutionRouterAdapter",
+    "OrchestrationRequest",
+    "OrchestrationResult",
+    "OrchestrationStage",
+    "OrchestrationRegistry",
+    "FederationOrchestrator",
 ]
