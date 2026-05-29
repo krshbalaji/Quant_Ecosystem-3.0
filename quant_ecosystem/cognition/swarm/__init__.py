@@ -523,6 +523,15 @@ from .federation_decision_registry import (
 from .federation_decision_engine import (
     FederationDecisionEngine,
 )
+from .execution_result import (
+    ExecutionResult,
+)
+from .execution_request_builder import (
+    ExecutionRequestBuilder,
+)
+from .decision_action_bridge import (
+    DecisionActionBridge,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -725,4 +734,7 @@ __all__ = [
     "ArchitectureDecisionReport",
     "FederationDecisionRegistry",
     "FederationDecisionEngine",
+    "ExecutionResult",
+    "ExecutionRequestBuilder",
+    "DecisionActionBridge",
 ]
