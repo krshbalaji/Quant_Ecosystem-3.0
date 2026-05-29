@@ -21,8 +21,12 @@ class NamespaceRegistry:
 
     def count(self) -> int:
 
-        return len(self._records)
+        return len(
+            self._records
+        )
 
     def records(self):
 
-        return list(self._records)
+        return list(
+            self._records
+        )
