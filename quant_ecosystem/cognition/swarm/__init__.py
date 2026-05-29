@@ -544,6 +544,16 @@ from .federation_feedback_registry import (
 from .federation_feedback_engine import (
     FederationFeedbackEngine,
 )
+from .feedback_learning_result import (
+    FeedbackLearningResult,
+)
+from .feedback_observation_adapter import (
+    FeedbackObservationAdapter,
+)
+from .feedback_learning_bridge import (
+    FeedbackLearningBridge,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -752,4 +762,7 @@ __all__ = [
     "ExecutionFeedbackReport",
     "FederationFeedbackRegistry",
     "FederationFeedbackEngine",
+    "FeedbackLearningResult",
+    "FeedbackObservationAdapter",
+    "FeedbackLearningBridge",
 ]
