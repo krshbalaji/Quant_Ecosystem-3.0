@@ -21,6 +21,16 @@ from .federation_conflict_resolver import (
 from .sovereign_diplomatic_council import (
     SovereignDiplomaticCouncil,
 )
+from .strategic_proposal import StrategicProposal
+from .strategic_vote import StrategicVote
+from .coordination_record import CoordinationRecord
+from .swarm_strategy_coordinator import (
+    SwarmStrategyCoordinator,
+)
+from .constitutional_coordination_engine import (
+    ConstitutionalCoordinationEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -37,4 +47,9 @@ __all__ = [
     "DiplomaticAlignmentEngine",
     "FederationConflictResolver",
     "SovereignDiplomaticCouncil",
+    "StrategicProposal",
+    "StrategicVote",
+    "CoordinationRecord",
+    "SwarmStrategyCoordinator",
+    "ConstitutionalCoordinationEngine",
 ]
