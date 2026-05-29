@@ -448,6 +448,36 @@ from .federation_drift_registry import (
 from .federation_drift_engine import (
     FederationDriftEngine,
 )
+from .architecture_trend_direction import (
+    ArchitectureTrendDirection,
+)
+from .architecture_trend_point import (
+    ArchitectureTrendPoint,
+)
+from .architecture_trend_report import (
+    ArchitectureTrendReport,
+)
+from .federation_trend_registry import (
+    FederationTrendRegistry,
+)
+from .federation_trend_engine import (
+    FederationTrendEngine,
+)
+from .architecture_forecast import (
+    ArchitectureForecast,
+)
+from .forecast_projection import (
+    ForecastProjection,
+)
+from .architecture_forecast_report import (
+    ArchitectureForecastReport,
+)
+from .federation_forecast_registry import (
+    FederationForecastRegistry,
+)
+from .federation_forecast_engine import (
+    FederationForecastEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -625,4 +655,14 @@ __all__ = [
     "ArchitectureDriftReport",
     "FederationDriftRegistry",
     "FederationDriftEngine",
+    "ArchitectureTrendDirection",
+    "ArchitectureTrendPoint",
+    "ArchitectureTrendReport",
+    "FederationTrendRegistry",
+    "FederationTrendEngine",
+    "ArchitectureForecast",
+    "ForecastProjection",
+    "ArchitectureForecastReport",
+    "FederationForecastRegistry",
+    "FederationForecastEngine",
 ]
