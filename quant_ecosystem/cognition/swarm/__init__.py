@@ -225,7 +225,21 @@ from .federation_capability_registry import (
 from .federation_capability_engine import (
     FederationCapabilityEngine,
 )
-
+from .capability_health import (
+    CapabilityHealth,
+)
+from .capability_diagnostic import (
+    CapabilityDiagnostic,
+)
+from .federation_health_report import (
+    FederationHealthReport,
+)
+from .federation_diagnostic_engine import (
+    FederationDiagnosticEngine,
+)
+from .federation_capability_monitor import (
+    FederationCapabilityMonitor,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
