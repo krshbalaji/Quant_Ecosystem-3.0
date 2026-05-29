@@ -162,6 +162,21 @@ from .workflow_integration_registry import (
 from .federation_workflow_integrator import (
     FederationWorkflowIntegrator,
 )
+from .governance_adapter_contract import (
+    GovernanceAdapterContract,
+)
+from .subsystem_adapter_request import (
+    SubsystemAdapterRequest,
+)
+from .subsystem_adapter_result import (
+    SubsystemAdapterResult,
+)
+from .qe3_federation_adapter_registry import (
+    QE3FederationAdapterRegistry,
+)
+from .qe3_federation_adapter_engine import (
+    QE3FederationAdapterEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -243,4 +258,9 @@ __all__ = [
     "WorkflowExecutionSummary",
     "WorkflowIntegrationRegistry",
     "FederationWorkflowIntegrator",
+    "GovernanceAdapterContract",
+    "SubsystemAdapterRequest",
+    "SubsystemAdapterResult",
+    "QE3FederationAdapterRegistry",
+    "QE3FederationAdapterEngine",
 ]
