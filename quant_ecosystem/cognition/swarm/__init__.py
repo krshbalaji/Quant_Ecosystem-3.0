@@ -315,6 +315,21 @@ from .federation_prioritization_registry import (
 from .federation_prioritization_engine import (
     FederationPrioritizationEngine,
 )
+from .roadmap_milestone import (
+    RoadmapMilestone,
+)
+from .roadmap_step import (
+    RoadmapStep,
+)
+from .strategic_roadmap import (
+    StrategicRoadmap,
+)
+from .federation_roadmap_registry import (
+    FederationRoadmapRegistry,
+)
+from .federation_roadmap_engine import (
+    FederationRoadmapEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -447,4 +462,9 @@ __all__ = [
     "PrioritizationReport",
     "FederationPrioritizationRegistry",
     "FederationPrioritizationEngine",
+    "RoadmapMilestone",
+    "RoadmapStep",
+    "StrategicRoadmap",
+    "FederationRoadmapRegistry",
+    "FederationRoadmapEngine",
 ]
