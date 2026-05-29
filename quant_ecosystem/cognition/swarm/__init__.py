@@ -478,6 +478,21 @@ from .federation_forecast_registry import (
 from .federation_forecast_engine import (
     FederationForecastEngine,
 )
+from .optimization_candidate import (
+    OptimizationCandidate,
+)
+from .optimization_target import (
+    OptimizationTarget,
+)
+from .architecture_optimization_report import (
+    ArchitectureOptimizationReport,
+)
+from .federation_optimization_registry import (
+    FederationOptimizationRegistry,
+)
+from .federation_optimization_engine import (
+    FederationOptimizationEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -665,4 +680,9 @@ __all__ = [
     "ArchitectureForecastReport",
     "FederationForecastRegistry",
     "FederationForecastEngine",
+    "OptimizationCandidate",
+    "OptimizationTarget",
+    "ArchitectureOptimizationReport",
+    "FederationOptimizationRegistry",
+    "FederationOptimizationEngine",
 ]
