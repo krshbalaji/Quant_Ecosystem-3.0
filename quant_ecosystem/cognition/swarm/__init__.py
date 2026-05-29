@@ -330,7 +330,36 @@ from .federation_roadmap_registry import (
 from .federation_roadmap_engine import (
     FederationRoadmapEngine,
 )
-
+from .execution_initiative import (
+    ExecutionInitiative,
+)
+from .governance_decision import (
+    GovernanceDecision,
+)
+from .execution_authorization import (
+    ExecutionAuthorization,
+)
+from .federation_execution_governance_registry import (
+    FederationExecutionGovernanceRegistry,
+)
+from .federation_execution_governance_engine import (
+    FederationExecutionGovernanceEngine,
+)
+from .initiative_lifecycle_state import (
+    InitiativeLifecycleState,
+)
+from .initiative_lifecycle_record import (
+    InitiativeLifecycleRecord,
+)
+from .initiative_lifecycle_report import (
+    InitiativeLifecycleReport,
+)
+from .federation_lifecycle_tracker import (
+    FederationLifecycleTracker,
+)
+from .federation_lifecycle_engine import (
+    FederationLifecycleEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -467,4 +496,14 @@ __all__ = [
     "StrategicRoadmap",
     "FederationRoadmapRegistry",
     "FederationRoadmapEngine",
+    "ExecutionInitiative",
+    "GovernanceDecision",
+    "ExecutionAuthorization",
+    "FederationExecutionGovernanceRegistry",
+    "FederationExecutionGovernanceEngine",
+    "InitiativeLifecycleState",
+    "InitiativeLifecycleRecord",
+    "InitiativeLifecycleReport",
+    "FederationLifecycleTracker",
+    "FederationLifecycleEngine",
 ]
