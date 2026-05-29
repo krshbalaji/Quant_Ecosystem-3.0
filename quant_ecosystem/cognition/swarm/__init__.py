@@ -186,6 +186,19 @@ from .federation_architecture_registry import (
 from .topology_validation_engine import (
     TopologyValidationEngine,
 )
+from .topology_metrics import TopologyMetrics
+from .dependency_analysis_result import (
+    DependencyAnalysisResult,
+)
+from .dependency_health_report import (
+    DependencyHealthReport,
+)
+from .federation_dependency_engine import (
+    FederationDependencyEngine,
+)
+from .federation_topology_analyzer import (
+    FederationTopologyAnalyzer,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -278,4 +291,9 @@ __all__ = [
     "FederationTopologyGraph",
     "FederationArchitectureRegistry",
     "TopologyValidationEngine",
+    "TopologyMetrics",
+    "DependencyAnalysisResult",
+    "DependencyHealthReport",
+    "FederationDependencyEngine",
+    "FederationTopologyAnalyzer",
 ]
