@@ -418,6 +418,36 @@ from .federation_architecture_classifier import (
 from .federation_architecture_classification_registry import (
     FederationArchitectureClassificationRegistry,
 )
+from .architecture_density_metric import (
+    ArchitectureDensityMetric,
+)
+from .architecture_density_snapshot import (
+    ArchitectureDensitySnapshot,
+)
+from .architecture_density_report import (
+    ArchitectureDensityReport,
+)
+from .federation_density_registry import (
+    FederationDensityRegistry,
+)
+from .federation_density_engine import (
+    FederationDensityEngine,
+)
+from .architecture_snapshot import (
+    ArchitectureSnapshot,
+)
+from .architecture_drift_record import (
+    ArchitectureDriftRecord,
+)
+from .architecture_drift_report import (
+    ArchitectureDriftReport,
+)
+from .federation_drift_registry import (
+    FederationDriftRegistry,
+)
+from .federation_drift_engine import (
+    FederationDriftEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -585,4 +615,14 @@ __all__ = [
     "ArchitectureClassificationReport",
     "FederationArchitectureClassifier",
     "FederationArchitectureClassificationRegistry",
+    "ArchitectureDensityMetric",
+    "ArchitectureDensitySnapshot",
+    "ArchitectureDensityReport",
+    "FederationDensityRegistry",
+    "FederationDensityEngine",
+    "ArchitectureSnapshot",
+    "ArchitectureDriftRecord",
+    "ArchitectureDriftReport",
+    "FederationDriftRegistry",
+    "FederationDriftEngine",
 ]
