@@ -300,6 +300,21 @@ from .federation_strategy_registry import (
 from .federation_strategy_engine import (
     FederationStrategyEngine,
 )
+from .prioritization_score import (
+    PrioritizationScore,
+)
+from .prioritized_objective import (
+    PrioritizedObjective,
+)
+from .prioritization_report import (
+    PrioritizationReport,
+)
+from .federation_prioritization_registry import (
+    FederationPrioritizationRegistry,
+)
+from .federation_prioritization_engine import (
+    FederationPrioritizationEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -427,4 +442,9 @@ __all__ = [
     "StrategicPlan",
     "FederationStrategyRegistry",
     "FederationStrategyEngine",
+    "PrioritizationScore",
+    "PrioritizedObjective",
+    "PrioritizationReport",
+    "FederationPrioritizationRegistry",
+    "FederationPrioritizationEngine",
 ]
