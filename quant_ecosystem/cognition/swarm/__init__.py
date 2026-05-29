@@ -37,6 +37,13 @@ from .collective_learning_engine import CollectiveLearningEngine
 from .federation_intelligence_report import (
     FederationIntelligenceReport,
 )
+from .council_member import CouncilMember
+from .council_vote import CouncilVote
+from .governance_resolution import GovernanceResolution
+from .governance_decision_engine import (
+    GovernanceDecisionEngine,
+)
+from .sovereign_council import SovereignCouncil
 
 __all__ = [
     "FederationIdentity",
@@ -64,4 +71,9 @@ __all__ = [
     "CivilizationKnowledgeBase",
     "CollectiveLearningEngine",
     "FederationIntelligenceReport",
+    "CouncilMember",
+    "CouncilVote",
+    "GovernanceResolution",
+    "GovernanceDecisionEngine",
+    "SovereignCouncil",
 ]
