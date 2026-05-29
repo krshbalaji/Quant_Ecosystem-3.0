@@ -403,6 +403,22 @@ from .federation_architecture_inventory_registry import (
 from .federation_architecture_inventory_engine import (
     FederationArchitectureInventoryEngine,
 )
+from .architecture_category import (
+    ArchitectureCategory,
+)
+from .architecture_classification import (
+    ArchitectureClassification,
+)
+from .architecture_classification_report import (
+    ArchitectureClassificationReport,
+)
+from .federation_architecture_classifier import (
+    FederationArchitectureClassifier,
+)
+from .federation_architecture_classification_registry import (
+    FederationArchitectureClassificationRegistry,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -564,4 +580,9 @@ __all__ = [
     "ArchitectureInventoryReport",
     "FederationArchitectureInventoryRegistry",
     "FederationArchitectureInventoryEngine",
+    "ArchitectureCategory",
+    "ArchitectureClassification",
+    "ArchitectureClassificationReport",
+    "FederationArchitectureClassifier",
+    "FederationArchitectureClassificationRegistry",
 ]
