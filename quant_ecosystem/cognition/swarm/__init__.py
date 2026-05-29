@@ -199,6 +199,17 @@ from .federation_dependency_engine import (
 from .federation_topology_analyzer import (
     FederationTopologyAnalyzer,
 )
+from .federation_entity import FederationEntity
+from .federation_contract import FederationContract
+from .federation_health_check import (
+    FederationHealthCheck,
+)
+from .federation_registry import (
+    FederationRegistry,
+)
+from .federation_core_engine import (
+    FederationCoreEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -296,4 +307,9 @@ __all__ = [
     "DependencyHealthReport",
     "FederationDependencyEngine",
     "FederationTopologyAnalyzer",
+    "FederationEntity",
+    "FederationContract",
+    "FederationHealthCheck",
+    "FederationRegistry",
+    "FederationCoreEngine",
 ]
