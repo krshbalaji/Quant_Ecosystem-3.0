@@ -73,6 +73,15 @@ from .execution_authorization_engine import (
 from .federation_execution_gate import (
     FederationExecutionGate,
 )
+from .audit_event import AuditEvent
+from .execution_lineage import ExecutionLineage
+from .authorization_trace import AuthorizationTrace
+from .federation_audit_registry import (
+    FederationAuditRegistry,
+)
+from .execution_trace_engine import (
+    ExecutionTraceEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -120,4 +129,9 @@ __all__ = [
     "ExecutionPolicy",
     "ExecutionAuthorizationEngine",
     "FederationExecutionGate",
+    "AuditEvent",
+    "ExecutionLineage",
+    "AuthorizationTrace",
+    "FederationAuditRegistry",
+    "ExecutionTraceEngine",
 ]
