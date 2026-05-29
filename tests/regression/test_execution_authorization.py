@@ -3,13 +3,15 @@ from quant_ecosystem.cognition.swarm import (
 )
 
 
-def test_execution_authorization_model():
+def test_execution_authorization():
 
-    authorization = ExecutionAuthorization(
-        organism_id="alpha",
-        execution_type="capital",
-        authorized=True,
-        approved_amount=10,
+    authorization = (
+        ExecutionAuthorization(
+            organism_id="ORG1",
+            execution_type="allocation",
+            authorized=True,
+            approved_amount=1000.0,
+        )
     )
 
     assert authorization.authorized
