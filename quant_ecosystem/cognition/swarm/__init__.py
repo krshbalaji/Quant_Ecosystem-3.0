@@ -147,7 +147,21 @@ from .workflow_registry import (
 from .federation_workflow_engine import (
     FederationWorkflowEngine,
 )
-
+from .workflow_context import (
+    WorkflowContext,
+)
+from .workflow_step import (
+    WorkflowStep,
+)
+from .workflow_execution_summary import (
+    WorkflowExecutionSummary,
+)
+from .workflow_integration_registry import (
+    WorkflowIntegrationRegistry,
+)
+from .federation_workflow_integrator import (
+    FederationWorkflowIntegrator,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -224,4 +238,9 @@ __all__ = [
     "WorkflowDefinition",
     "WorkflowRegistry",
     "FederationWorkflowEngine",
+    "WorkflowContext",
+    "WorkflowStep",
+    "WorkflowExecutionSummary",
+    "WorkflowIntegrationRegistry",
+    "FederationWorkflowIntegrator",
 ]
