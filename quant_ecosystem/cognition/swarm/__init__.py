@@ -177,6 +177,16 @@ from .qe3_federation_adapter_registry import (
 from .qe3_federation_adapter_engine import (
     QE3FederationAdapterEngine,
 )
+from .federation_component import FederationComponent
+from .dependency_edge import DependencyEdge
+from .federation_topology_graph import FederationTopologyGraph
+from .federation_architecture_registry import (
+    FederationArchitectureRegistry,
+)
+from .topology_validation_engine import (
+    TopologyValidationEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -263,4 +273,9 @@ __all__ = [
     "SubsystemAdapterResult",
     "QE3FederationAdapterRegistry",
     "QE3FederationAdapterEngine",
+    "FederationComponent",
+    "DependencyEdge",
+    "FederationTopologyGraph",
+    "FederationArchitectureRegistry",
+    "TopologyValidationEngine",
 ]
