@@ -388,7 +388,21 @@ from .federation_symbol_resolution_registry import (
 from .federation_symbol_resolution_engine import (
     FederationSymbolResolutionEngine,
 )
-
+from .architecture_component import (
+    ArchitectureComponent,
+)
+from .architecture_inventory import (
+    ArchitectureInventory,
+)
+from .architecture_inventory_report import (
+    ArchitectureInventoryReport,
+)
+from .federation_architecture_inventory_registry import (
+    FederationArchitectureInventoryRegistry,
+)
+from .federation_architecture_inventory_engine import (
+    FederationArchitectureInventoryEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -545,4 +559,9 @@ __all__ = [
     "ResolutionReport",
     "FederationSymbolResolutionRegistry",
     "FederationSymbolResolutionEngine",
+    "ArchitectureComponent",
+    "ArchitectureInventory",
+    "ArchitectureInventoryReport",
+    "FederationArchitectureInventoryRegistry",
+    "FederationArchitectureInventoryEngine",
 ]
