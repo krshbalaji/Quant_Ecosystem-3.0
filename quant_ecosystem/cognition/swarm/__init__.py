@@ -493,7 +493,21 @@ from .federation_optimization_registry import (
 from .federation_optimization_engine import (
     FederationOptimizationEngine,
 )
-
+from .architecture_efficiency_metric import (
+    ArchitectureEfficiencyMetric,
+)
+from .efficiency_snapshot import (
+    EfficiencySnapshot,
+)
+from .architecture_efficiency_report import (
+    ArchitectureEfficiencyReport,
+)
+from .federation_efficiency_registry import (
+    FederationEfficiencyRegistry,
+)
+from .federation_efficiency_engine import (
+    FederationEfficiencyEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -685,4 +699,9 @@ __all__ = [
     "ArchitectureOptimizationReport",
     "FederationOptimizationRegistry",
     "FederationOptimizationEngine",
+    "ArchitectureEfficiencyMetric",
+    "EfficiencySnapshot",
+    "ArchitectureEfficiencyReport",
+    "FederationEfficiencyRegistry",
+    "FederationEfficiencyEngine",
 ]
