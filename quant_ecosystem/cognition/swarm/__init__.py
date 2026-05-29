@@ -55,6 +55,15 @@ from .governance_enforcement_record import (
 from .federation_policy_council import (
     FederationPolicyCouncil,
 )
+from .resource_request import ResourceRequest
+from .resource_allocation import ResourceAllocation
+from .allocation_policy import AllocationPolicy
+from .capital_governance_engine import (
+    CapitalGovernanceEngine,
+)
+from .federation_resource_council import (
+    FederationResourceCouncil,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -92,4 +101,9 @@ __all__ = [
     "ConstitutionalPolicyEngine",
     "GovernanceEnforcementRecord",
     "FederationPolicyCouncil",
+    "ResourceRequest",
+    "ResourceAllocation",
+    "AllocationPolicy",
+    "CapitalGovernanceEngine",
+    "FederationResourceCouncil",
 ]
