@@ -102,6 +102,21 @@ from .federation_event_bus import (
 from .coordination_hub import (
     CoordinationHub,
 )
+from .router_execution_request import (
+    RouterExecutionRequest,
+)
+from .router_execution_result import (
+    RouterExecutionResult,
+)
+from .router_adapter_contract import (
+    RouterAdapterContract,
+)
+from .execution_adapter_registry import (
+    ExecutionAdapterRegistry,
+)
+from .federation_execution_router_adapter import (
+    FederationExecutionRouterAdapter,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -164,4 +179,9 @@ __all__ = [
     "EventDispatchRecord",
     "FederationEventBus",
     "CoordinationHub",
+    "RouterExecutionRequest",
+    "RouterExecutionResult",
+    "RouterAdapterContract",
+    "ExecutionAdapterRegistry",
+    "FederationExecutionRouterAdapter",
 ]
