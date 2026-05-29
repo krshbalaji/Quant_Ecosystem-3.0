@@ -30,6 +30,13 @@ from .swarm_strategy_coordinator import (
 from .constitutional_coordination_engine import (
     ConstitutionalCoordinationEngine,
 )
+from .federation_observation import FederationObservation
+from .knowledge_pattern import KnowledgePattern
+from .civilization_knowledge_base import CivilizationKnowledgeBase
+from .collective_learning_engine import CollectiveLearningEngine
+from .federation_intelligence_report import (
+    FederationIntelligenceReport,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -52,4 +59,9 @@ __all__ = [
     "CoordinationRecord",
     "SwarmStrategyCoordinator",
     "ConstitutionalCoordinationEngine",
+    "FederationObservation",
+    "KnowledgePattern",
+    "CivilizationKnowledgeBase",
+    "CollectiveLearningEngine",
+    "FederationIntelligenceReport",
 ]
