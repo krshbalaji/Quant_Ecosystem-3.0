@@ -508,6 +508,22 @@ from .federation_efficiency_registry import (
 from .federation_efficiency_engine import (
     FederationEfficiencyEngine,
 )
+from .architecture_decision import (
+    ArchitectureDecision,
+)
+from .decision_candidate import (
+    DecisionCandidate,
+)
+from .architecture_decision_report import (
+    ArchitectureDecisionReport,
+)
+from .federation_decision_registry import (
+    FederationDecisionRegistry,
+)
+from .federation_decision_engine import (
+    FederationDecisionEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -704,4 +720,9 @@ __all__ = [
     "ArchitectureEfficiencyReport",
     "FederationEfficiencyRegistry",
     "FederationEfficiencyEngine",
+    "ArchitectureDecision",
+    "DecisionCandidate",
+    "ArchitectureDecisionReport",
+    "FederationDecisionRegistry",
+    "FederationDecisionEngine",
 ]
