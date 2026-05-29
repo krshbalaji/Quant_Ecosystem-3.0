@@ -285,6 +285,21 @@ from .federation_maturity_registry import (
 from .federation_maturity_engine import (
     FederationMaturityEngine,
 )
+from .strategic_objective import (
+    StrategicObjective,
+)
+from .planning_recommendation import (
+    PlanningRecommendation,
+)
+from .strategic_plan import (
+    StrategicPlan,
+)
+from .federation_strategy_registry import (
+    FederationStrategyRegistry,
+)
+from .federation_strategy_engine import (
+    FederationStrategyEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -407,4 +422,9 @@ __all__ = [
     "MaturityReport",
     "FederationMaturityRegistry",
     "FederationMaturityEngine",
+    "StrategicObjective",
+    "PlanningRecommendation",
+    "StrategicPlan",
+    "FederationStrategyRegistry",
+    "FederationStrategyEngine",
 ]
