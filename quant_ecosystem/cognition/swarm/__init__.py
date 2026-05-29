@@ -240,6 +240,22 @@ from .federation_diagnostic_engine import (
 from .federation_capability_monitor import (
     FederationCapabilityMonitor,
 )
+from .capability_dependency import (
+    CapabilityDependency,
+)
+from .capability_dependency_report import (
+    CapabilityDependencyReport,
+)
+from .capability_dependency_registry import (
+    CapabilityDependencyRegistry,
+)
+from .federation_dependency_mapper import (
+    FederationDependencyMapper,
+)
+from .capability_readiness_engine import (
+    CapabilityReadinessEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -346,4 +362,9 @@ __all__ = [
     "CapabilityInventory",
     "FederationCapabilityRegistry",
     "FederationCapabilityEngine",
+    "CapabilityDependency",
+    "CapabilityDependencyReport",
+    "CapabilityDependencyRegistry",
+    "FederationDependencyMapper",
+    "CapabilityReadinessEngine",
 ]
