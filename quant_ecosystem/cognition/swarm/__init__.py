@@ -360,6 +360,20 @@ from .federation_lifecycle_tracker import (
 from .federation_lifecycle_engine import (
     FederationLifecycleEngine,
 )
+from .namespace_record import NamespaceRecord
+from .topology_audit_result import (
+    TopologyAuditResult,
+)
+from .namespace_registry import (
+    NamespaceRegistry,
+)
+from .federation_namespace_auditor import (
+    FederationNamespaceAuditor,
+)
+from .federation_topology_audit_engine import (
+    FederationTopologyAuditEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -506,4 +520,9 @@ __all__ = [
     "InitiativeLifecycleReport",
     "FederationLifecycleTracker",
     "FederationLifecycleEngine",
+    "NamespaceRecord",
+    "TopologyAuditResult",
+    "NamespaceRegistry",
+    "FederationNamespaceAuditor",
+    "FederationTopologyAuditEngine",
 ]
