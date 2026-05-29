@@ -532,7 +532,18 @@ from .execution_request_builder import (
 from .decision_action_bridge import (
     DecisionActionBridge,
 )
-
+from .execution_feedback import (
+    ExecutionFeedback,
+)
+from .execution_feedback_report import (
+    ExecutionFeedbackReport,
+)
+from .federation_feedback_registry import (
+    FederationFeedbackRegistry,
+)
+from .federation_feedback_engine import (
+    FederationFeedbackEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -737,4 +748,8 @@ __all__ = [
     "ExecutionResult",
     "ExecutionRequestBuilder",
     "DecisionActionBridge",
+    "ExecutionFeedback",
+    "ExecutionFeedbackReport",
+    "FederationFeedbackRegistry",
+    "FederationFeedbackEngine",
 ]
