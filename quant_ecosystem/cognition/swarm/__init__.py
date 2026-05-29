@@ -91,6 +91,17 @@ from .federation_integration_registry import (
 from .federation_integration_engine import (
     FederationIntegrationEngine,
 )
+from .federation_event import FederationEvent
+from .event_subscription import EventSubscription
+from .event_dispatch_record import (
+    EventDispatchRecord,
+)
+from .federation_event_bus import (
+    FederationEventBus,
+)
+from .coordination_hub import (
+    CoordinationHub,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -148,4 +159,9 @@ __all__ = [
     "FederationHandoff",
     "FederationIntegrationRegistry",
     "FederationIntegrationEngine",
+    "FederationEvent",
+    "EventSubscription",
+    "EventDispatchRecord",
+    "FederationEventBus",
+    "CoordinationHub",
 ]
