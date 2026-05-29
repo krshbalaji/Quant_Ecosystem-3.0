@@ -132,6 +132,21 @@ from .orchestration_registry import (
 from .federation_orchestrator import (
     FederationOrchestrator,
 )
+from .workflow_stage_result import (
+    WorkflowStageResult,
+)
+from .workflow_execution_record import (
+    WorkflowExecutionRecord,
+)
+from .workflow_definition import (
+    WorkflowDefinition,
+)
+from .workflow_registry import (
+    WorkflowRegistry,
+)
+from .federation_workflow_engine import (
+    FederationWorkflowEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -204,4 +219,9 @@ __all__ = [
     "OrchestrationStage",
     "OrchestrationRegistry",
     "FederationOrchestrator",
+    "WorkflowStageResult",
+    "WorkflowExecutionRecord",
+    "WorkflowDefinition",
+    "WorkflowRegistry",
+    "FederationWorkflowEngine",
 ]
