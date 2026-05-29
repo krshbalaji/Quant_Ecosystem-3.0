@@ -64,6 +64,15 @@ from .capital_governance_engine import (
 from .federation_resource_council import (
     FederationResourceCouncil,
 )
+from .execution_request import ExecutionRequest
+from .execution_authorization import ExecutionAuthorization
+from .execution_policy import ExecutionPolicy
+from .execution_authorization_engine import (
+    ExecutionAuthorizationEngine,
+)
+from .federation_execution_gate import (
+    FederationExecutionGate,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -106,4 +115,9 @@ __all__ = [
     "AllocationPolicy",
     "CapitalGovernanceEngine",
     "FederationResourceCouncil",
+    "ExecutionRequest",
+    "ExecutionAuthorization",
+    "ExecutionPolicy",
+    "ExecutionAuthorizationEngine",
+    "FederationExecutionGate",
 ]
