@@ -709,6 +709,15 @@ from .federation_cognition_report import (
 from .federation_cognition_fusion_engine import (
     FederationCognitionFusionEngine,
 )
+from .federation_cognition_trend_point import (
+    FederationCognitionTrendPoint,
+)
+from .federation_cognition_trend_report import (
+    FederationCognitionTrendReport,
+)
+from .federation_cognition_trend_engine import (
+    FederationCognitionTrendEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -973,4 +982,7 @@ __all__ = [
     "FederationCognitionSnapshot",
     "FederationCognitionReport",
     "FederationCognitionFusionEngine",
+    "FederationCognitionTrendPoint",
+    "FederationCognitionTrendReport",
+    "FederationCognitionTrendEngine",
 ]
