@@ -625,6 +625,21 @@ from .federation_improvement_registry import (
 from .federation_improvement_engine import (
     FederationImprovementEngine,
 )
+from .compliance_rule import (
+    ComplianceRule,
+)
+from .compliance_violation import (
+    ComplianceViolation,
+)
+from .compliance_report import (
+    ComplianceReport,
+)
+from .federation_compliance_registry import (
+    FederationComplianceRegistry,
+)
+from .federation_compliance_engine import (
+    FederationComplianceEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -861,4 +876,9 @@ __all__ = [
     "ImprovementRecommendation",
     "FederationImprovementRegistry",
     "FederationImprovementEngine",
+    "ComplianceRule",
+    "ComplianceViolation",
+    "ComplianceReport",
+    "FederationComplianceRegistry",
+    "FederationComplianceEngine",
 ]
