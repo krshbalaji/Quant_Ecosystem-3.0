@@ -586,6 +586,18 @@ from .federation_risk_registry import (
 from .federation_risk_engine import (
     FederationRiskEngine,
 )
+from .resilience_indicator import (
+    ResilienceIndicator,
+)
+from .resilience_report import (
+    ResilienceReport,
+)
+from .federation_resilience_registry import (
+    FederationResilienceRegistry,
+)
+from .federation_resilience_engine import (
+    FederationResilienceEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -809,4 +821,8 @@ __all__ = [
     "RiskReport",
     "FederationRiskRegistry",
     "FederationRiskEngine",
+    "ResilienceIndicator",
+    "ResilienceReport",
+    "FederationResilienceRegistry",
+    "FederationResilienceEngine",
 ]
