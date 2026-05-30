@@ -610,6 +610,9 @@ from .federation_capacity_registry import (
 from .federation_capacity_engine import (
     FederationCapacityEngine,
 )
+from .capacity_metric import (
+    CapacityMetric,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -841,4 +844,5 @@ __all__ = [
     "CapacityReport",
     "FederationCapacityRegistry",
     "FederationCapacityEngine",
+    "CapacityMetric",
 ]
