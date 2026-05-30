@@ -1,21 +1,50 @@
-from typing import Dict
-
 from .federation_identity import FederationIdentity
 
+from quant_ecosystem.core.registry_threading import (
+    ThreadSafeRegistry,
+)
 
-class TrustRegistry:
 
-    def __init__(self):
-        self._registry: Dict[str, FederationIdentity] = {}
+class TrustRegistry(
+    ThreadSafeRegistry[
+        str,
+        FederationIdentity,
+    ]
+):
 
-    def register(self, identity: FederationIdentity) -> None:
-        self._registry[identity.organism_id] = identity
+    def register(
+        self,
+        identity: FederationIdentity,
+    ) -> None:
 
-    def get(self, organism_id: str):
-        return self._registry.get(organism_id)
+        if self.exists(identity.organism_id):
+            return
 
-    def is_known(self, organism_id: str) -> bool:
-        return organism_id in self._registry
+        super().register(
+            identity.organism_id,
+            identity,
+        )
+
+    def get(
+        self,
+        organism_id: str,
+    ):
+
+        if not self.exists(organism_id):
+            return None
+
+        return super().get(
+            organism_id,
+        )
+
+    def is_known(
+        self,
+        organism_id: str,
+    ) -> bool:
+
+        return self.exists(
+            organism_id,
+        )
 
     def evaluate_trust(
         self,
@@ -23,9 +52,13 @@ class TrustRegistry:
         capability: str,
     ) -> bool:
 
-        identity = self.get(organism_id)
+        identity = self.get(
+            organism_id,
+        )
 
         if identity is None:
             return False
 
-        return identity.is_trusted_for(capability)
+        return identity.is_trusted_for(
+            capability,
+        )
