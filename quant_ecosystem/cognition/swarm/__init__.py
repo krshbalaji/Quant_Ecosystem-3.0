@@ -763,6 +763,15 @@ from .federation_cognition_execution_report import (
 from .federation_cognition_execution_coordinator import (
     FederationCognitionExecutionCoordinator,
 )
+from .federation_cognition_workflow_request import (
+    FederationCognitionWorkflowRequest,
+)
+from .federation_cognition_workflow_result import (
+    FederationCognitionWorkflowResult,
+)
+from .federation_cognition_workflow_adapter import (
+    FederationCognitionWorkflowAdapter,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -1044,4 +1053,7 @@ __all__ = [
     "FederationCognitionExecutionRequest",
     "FederationCognitionExecutionReport",
     "FederationCognitionExecutionCoordinator",
+    "FederationCognitionWorkflowRequest",
+    "FederationCognitionWorkflowResult",
+    "FederationCognitionWorkflowAdapter",
 ]
