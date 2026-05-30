@@ -772,6 +772,16 @@ from .federation_cognition_workflow_result import (
 from .federation_cognition_workflow_adapter import (
     FederationCognitionWorkflowAdapter,
 )
+from .federation_cognition_governance_request import (
+    FederationCognitionGovernanceRequest,
+)
+from .federation_cognition_governance_report import (
+    FederationCognitionGovernanceReport,
+)
+from .federation_cognition_governance_adapter import (
+    FederationCognitionGovernanceAdapter,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -1056,4 +1066,7 @@ __all__ = [
     "FederationCognitionWorkflowRequest",
     "FederationCognitionWorkflowResult",
     "FederationCognitionWorkflowAdapter",
+    "FederationCognitionGovernanceRequest",
+    "FederationCognitionGovernanceReport",
+    "FederationCognitionGovernanceAdapter",
 ]
