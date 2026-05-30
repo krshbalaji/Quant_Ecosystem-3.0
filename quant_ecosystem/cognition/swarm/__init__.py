@@ -562,6 +562,19 @@ from .knowledge_decision_result import (
 from .knowledge_decision_bridge import (
     KnowledgeDecisionBridge,
 )
+from .performance_snapshot import (
+    PerformanceSnapshot,
+)
+from .performance_report import (
+    PerformanceReport,
+)
+from .federation_performance_registry import (
+    FederationPerformanceRegistry,
+)
+from .federation_performance_engine import (
+    FederationPerformanceEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -776,4 +789,8 @@ __all__ = [
     "KnowledgeDecisionAdapter",
     "KnowledgeDecisionResult",
     "KnowledgeDecisionBridge",
+    "PerformanceSnapshot",
+    "PerformanceReport",
+    "FederationPerformanceRegistry",
+    "FederationPerformanceEngine",
 ]
