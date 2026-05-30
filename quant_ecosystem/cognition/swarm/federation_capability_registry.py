@@ -36,3 +36,11 @@ class FederationCapabilityRegistry:
             in self._capabilities.values()
             if capability.active
         )
+
+    def capabilities(
+        self,
+    ):
+
+        return list(
+            self._capabilities.values()
+        )   

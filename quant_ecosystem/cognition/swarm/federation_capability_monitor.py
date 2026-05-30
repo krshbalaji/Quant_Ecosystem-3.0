@@ -16,7 +16,7 @@ class FederationCapabilityMonitor:
         results = []
 
         for capability in (
-            registry._capabilities.values()
+            registry.capabilities()
         ):
             results.append(
                 CapabilityHealth(
