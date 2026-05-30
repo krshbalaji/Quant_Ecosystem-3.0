@@ -718,6 +718,15 @@ from .federation_cognition_trend_report import (
 from .federation_cognition_trend_engine import (
     FederationCognitionTrendEngine,
 )
+from .federation_cognition_forecast import (
+    FederationCognitionForecast,
+)
+from .federation_cognition_forecast_report import (
+    FederationCognitionForecastReport,
+)
+from .federation_cognition_forecast_engine import (
+    FederationCognitionForecastEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -985,4 +994,7 @@ __all__ = [
     "FederationCognitionTrendPoint",
     "FederationCognitionTrendReport",
     "FederationCognitionTrendEngine",
+    "FederationCognitionForecast",
+    "FederationCognitionForecastReport",
+    "FederationCognitionForecastEngine",
 ]
