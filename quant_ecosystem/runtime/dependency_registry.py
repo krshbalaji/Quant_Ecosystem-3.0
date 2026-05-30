@@ -1,32 +1,47 @@
-class DependencyRegistry:
+from quant_ecosystem.core.registry_threading import (
+    ThreadSafeRegistry,
+)
 
-    def __init__(self):
-        self._services = {}
+
+class DependencyRegistry(
+    ThreadSafeRegistry[
+        str,
+        object,
+    ]
+):
 
     def register(
         self,
         name,
         service,
     ):
-        self._services[name] = service
+
+        if self.exists(name):
+            return
+
+        super().register(
+            name,
+            service,
+        )
 
     def get(
         self,
         name,
     ):
-        return self._services.get(name)
 
-    def exists(
-        self,
-        name,
-    ):
-        return name in self._services
+        if not self.exists(name):
+            return None
+
+        return super().get(name)
 
     def all_services(self):
-        return dict(self._services)
+
+        return self.snapshot()
 
     def clear(self):
-        self._services.clear()
+
+        with self._lock:
+            self._items.clear()
 
 
 dependency_registry = (
