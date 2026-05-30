@@ -754,6 +754,15 @@ from .federation_cognition_action_plan import (
 from .federation_cognition_action_planner import (
     FederationCognitionActionPlanner,
 )
+from .federation_cognition_execution_request import (
+    FederationCognitionExecutionRequest,
+)
+from .federation_cognition_execution_report import (
+    FederationCognitionExecutionReport,
+)
+from .federation_cognition_execution_coordinator import (
+    FederationCognitionExecutionCoordinator,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -1032,4 +1041,7 @@ __all__ = [
     "FederationCognitionActionStep",
     "FederationCognitionActionPlan",
     "FederationCognitionActionPlanner",
+    "FederationCognitionExecutionRequest",
+    "FederationCognitionExecutionReport",
+    "FederationCognitionExecutionCoordinator",
 ]
