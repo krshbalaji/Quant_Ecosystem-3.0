@@ -640,7 +640,18 @@ from .federation_compliance_registry import (
 from .federation_compliance_engine import (
     FederationComplianceEngine,
 )
-
+from .stability_indicator import (
+    StabilityIndicator,
+)
+from .stability_report import (
+    StabilityReport,
+)
+from .federation_stability_registry import (
+    FederationStabilityRegistry,
+)
+from .federation_stability_engine import (
+    FederationStabilityEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -881,4 +892,8 @@ __all__ = [
     "ComplianceReport",
     "FederationComplianceRegistry",
     "FederationComplianceEngine",
+    "StabilityIndicator",
+    "StabilityReport",
+    "FederationStabilityRegistry",
+    "FederationStabilityEngine",
 ]
