@@ -553,7 +553,15 @@ from .feedback_observation_adapter import (
 from .feedback_learning_bridge import (
     FeedbackLearningBridge,
 )
-
+from .knowledge_decision_adapter import (
+    KnowledgeDecisionAdapter,
+)
+from .knowledge_decision_result import (
+    KnowledgeDecisionResult,
+)
+from .knowledge_decision_bridge import (
+    KnowledgeDecisionBridge,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -765,4 +773,7 @@ __all__ = [
     "FeedbackLearningResult",
     "FeedbackObservationAdapter",
     "FeedbackLearningBridge",
+    "KnowledgeDecisionAdapter",
+    "KnowledgeDecisionResult",
+    "KnowledgeDecisionBridge",
 ]
