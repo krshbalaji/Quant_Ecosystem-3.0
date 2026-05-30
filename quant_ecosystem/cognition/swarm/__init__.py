@@ -664,6 +664,18 @@ from .federation_trust_registry import (
 from .federation_trust_engine import (
     FederationTrustEngine,
 )
+from .adaptation_signal import (
+    AdaptationSignal,
+)
+from .adaptation_report import (
+    AdaptationReport,
+)
+from .federation_adaptation_registry import (
+    FederationAdaptationRegistry,
+)
+from .federation_adaptation_engine import (
+    FederationAdaptationEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -912,4 +924,8 @@ __all__ = [
     "TrustReport",
     "FederationTrustRegistry",
     "FederationTrustEngine",
+    "AdaptationSignal",
+    "AdaptationReport",
+    "FederationAdaptationRegistry",
+    "FederationAdaptationEngine",
 ]
