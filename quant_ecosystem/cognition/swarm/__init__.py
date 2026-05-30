@@ -574,6 +574,18 @@ from .federation_performance_registry import (
 from .federation_performance_engine import (
     FederationPerformanceEngine,
 )
+from .risk_indicator import (
+    RiskIndicator,
+)
+from .risk_report import (
+    RiskReport,
+)
+from .federation_risk_registry import (
+    FederationRiskRegistry,
+)
+from .federation_risk_engine import (
+    FederationRiskEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -793,4 +805,8 @@ __all__ = [
     "PerformanceReport",
     "FederationPerformanceRegistry",
     "FederationPerformanceEngine",
+    "RiskIndicator",
+    "RiskReport",
+    "FederationRiskRegistry",
+    "FederationRiskEngine",
 ]
