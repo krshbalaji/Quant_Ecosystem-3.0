@@ -613,6 +613,18 @@ from .federation_capacity_engine import (
 from .capacity_metric import (
     CapacityMetric,
 )
+from .improvement_candidate import (
+    ImprovementCandidate,
+)
+from .improvement_recommendation import (
+    ImprovementRecommendation,
+)
+from .federation_improvement_registry import (
+    FederationImprovementRegistry,
+)
+from .federation_improvement_engine import (
+    FederationImprovementEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -845,4 +857,8 @@ __all__ = [
     "FederationCapacityRegistry",
     "FederationCapacityEngine",
     "CapacityMetric",
+    "ImprovementCandidate",
+    "ImprovementRecommendation",
+    "FederationImprovementRegistry",
+    "FederationImprovementEngine",
 ]
