@@ -652,6 +652,18 @@ from .federation_stability_registry import (
 from .federation_stability_engine import (
     FederationStabilityEngine,
 )
+from .trust_metric import (
+    TrustMetric,
+)
+from .trust_report import (
+    TrustReport,
+)
+from .federation_trust_registry import (
+    FederationTrustRegistry,
+)
+from .federation_trust_engine import (
+    FederationTrustEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -896,4 +908,8 @@ __all__ = [
     "StabilityReport",
     "FederationStabilityRegistry",
     "FederationStabilityEngine",
+    "TrustMetric",
+    "TrustReport",
+    "FederationTrustRegistry",
+    "FederationTrustEngine",
 ]
