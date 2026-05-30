@@ -676,6 +676,18 @@ from .federation_adaptation_registry import (
 from .federation_adaptation_engine import (
     FederationAdaptationEngine,
 )
+from .predictability_signal import (
+    PredictabilitySignal,
+)
+from .predictability_report import (
+    PredictabilityReport,
+)
+from .federation_predictability_registry import (
+    FederationPredictabilityRegistry,
+)
+from .federation_predictability_engine import (
+    FederationPredictabilityEngine,
+)
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -928,4 +940,8 @@ __all__ = [
     "AdaptationReport",
     "FederationAdaptationRegistry",
     "FederationAdaptationEngine",
+    "PredictabilitySignal",
+    "PredictabilityReport",
+    "FederationPredictabilityRegistry",
+    "FederationPredictabilityEngine",
 ]
