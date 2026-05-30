@@ -700,6 +700,15 @@ from .federation_cohesion_registry import (
 from .federation_cohesion_engine import (
     FederationCohesionEngine,
 )
+from .federation_cognition_snapshot import (
+    FederationCognitionSnapshot,
+)
+from .federation_cognition_report import (
+    FederationCognitionReport,
+)
+from .federation_cognition_fusion_engine import (
+    FederationCognitionFusionEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -961,4 +970,7 @@ __all__ = [
     "CohesionReport",
     "FederationCohesionRegistry",
     "FederationCohesionEngine",
+    "FederationCognitionSnapshot",
+    "FederationCognitionReport",
+    "FederationCognitionFusionEngine",
 ]
