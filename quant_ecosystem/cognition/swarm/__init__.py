@@ -598,6 +598,18 @@ from .federation_resilience_registry import (
 from .federation_resilience_engine import (
     FederationResilienceEngine,
 )
+from .capacity_metric import (
+    CapacityMetric,
+)
+from .capacity_report import (
+    CapacityReport,
+)
+from .federation_capacity_registry import (
+    FederationCapacityRegistry,
+)
+from .federation_capacity_engine import (
+    FederationCapacityEngine,
+)
 
 __all__ = [
     "FederationIdentity",
@@ -825,4 +837,8 @@ __all__ = [
     "ResilienceReport",
     "FederationResilienceRegistry",
     "FederationResilienceEngine",
+    "CapacityMetric",
+    "CapacityReport",
+    "FederationCapacityRegistry",
+    "FederationCapacityEngine",
 ]
