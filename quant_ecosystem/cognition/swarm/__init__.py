@@ -688,6 +688,19 @@ from .federation_predictability_registry import (
 from .federation_predictability_engine import (
     FederationPredictabilityEngine,
 )
+from .cohesion_signal import (
+    CohesionSignal,
+)
+from .cohesion_report import (
+    CohesionReport,
+)
+from .federation_cohesion_registry import (
+    FederationCohesionRegistry,
+)
+from .federation_cohesion_engine import (
+    FederationCohesionEngine,
+)
+
 __all__ = [
     "FederationIdentity",
     "SwarmMessage",
@@ -944,4 +957,8 @@ __all__ = [
     "PredictabilityReport",
     "FederationPredictabilityRegistry",
     "FederationPredictabilityEngine",
+    "CohesionSignal",
+    "CohesionReport",
+    "FederationCohesionRegistry",
+    "FederationCohesionEngine",
 ]
