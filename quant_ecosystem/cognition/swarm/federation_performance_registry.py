@@ -1,34 +1,20 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .performance_snapshot import (
     PerformanceSnapshot,
 )
 
 
-class FederationPerformanceRegistry:
+class FederationPerformanceRegistry(
+    AppendRegistry[
+        PerformanceSnapshot
+    ]
+):
 
-    def __init__(self):
-        self._snapshots: List[
-            PerformanceSnapshot
-        ] = []
-
-    def register(
+    def snapshots(
         self,
-        snapshot: PerformanceSnapshot,
-    ) -> None:
+    ) -> list[PerformanceSnapshot]:
 
-        self._snapshots.append(
-            snapshot
-        )
-
-    def snapshots(self):
-
-        return list(
-            self._snapshots
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._snapshots
-        )
+        return self.entries()
