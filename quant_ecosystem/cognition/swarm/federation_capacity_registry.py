@@ -1,28 +1,20 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .capacity_metric import (
     CapacityMetric,
 )
 
 
-class FederationCapacityRegistry:
+class FederationCapacityRegistry(
+    AppendRegistry[
+        CapacityMetric
+    ]
+):
 
-    def __init__(self):
-        self._metrics: List[
-            CapacityMetric
-        ] = []
-
-    def register(
+    def metrics(
         self,
-        metric: CapacityMetric,
-    ) -> None:
+    ) -> list[CapacityMetric]:
 
-        self._metrics.append(metric)
-
-    def metrics(self):
-
-        return list(self._metrics)
-
-    def count(self) -> int:
-
-        return len(self._metrics)
+        return self.entries()
