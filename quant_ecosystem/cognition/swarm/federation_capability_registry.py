@@ -1,40 +1,32 @@
-from typing import Dict
+from quant_ecosystem.core.registry_threading import (
+    ThreadSafeRegistry,
+)
 
 from .federation_capability import (
     FederationCapability,
 )
 
 
-class FederationCapabilityRegistry:
-
-    def __init__(self):
-        self._capabilities: Dict[
-            str,
-            FederationCapability,
-        ] = {}
+class FederationCapabilityRegistry(
+    ThreadSafeRegistry[
+        str,
+        FederationCapability,
+    ]
+):
 
     def register(
         self,
         capability: FederationCapability,
     ) -> None:
 
-        self._capabilities[
+        if self.exists(
             capability.capability_id
-        ] = capability
+        ):
+            return
 
-    def count(self) -> int:
-
-        return len(
-            self._capabilities
-        )
-
-    def active_count(self) -> int:
-
-        return sum(
-            1
-            for capability
-            in self._capabilities.values()
-            if capability.active
+        super().register(
+            capability.capability_id,
+            capability,
         )
 
     def capabilities(
@@ -42,5 +34,16 @@ class FederationCapabilityRegistry:
     ):
 
         return list(
-            self._capabilities.values()
-        )   
+            self.snapshot().values()
+        )
+
+    def active_count(
+        self,
+    ) -> int:
+
+        return sum(
+            1
+            for capability
+            in self.capabilities()
+            if capability.active
+        )
