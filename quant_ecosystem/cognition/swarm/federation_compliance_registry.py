@@ -1,36 +1,20 @@
-# quant_ecosystem/cognition/swarm/federation_compliance_registry.py
-
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .compliance_violation import (
     ComplianceViolation,
 )
 
 
-class FederationComplianceRegistry:
+class FederationComplianceRegistry(
+    AppendRegistry[
+        ComplianceViolation
+    ]
+):
 
-    def __init__(self):
-        self._violations: List[
-            ComplianceViolation
-        ] = []
-
-    def register(
+    def violations(
         self,
-        violation: ComplianceViolation,
-    ) -> None:
+    ) -> list[ComplianceViolation]:
 
-        self._violations.append(
-            violation
-        )
-
-    def violations(self):
-
-        return list(
-            self._violations
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._violations
-        )
+        return self.entries()
