@@ -1,34 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .architecture_component import (
     ArchitectureComponent,
 )
 
 
-class FederationArchitectureInventoryRegistry:
+class FederationArchitectureInventoryRegistry(
+    AppendRegistry[
+        ArchitectureComponent
+    ]
+):
 
-    def __init__(self):
-        self._components: List[
-            ArchitectureComponent
-        ] = []
-
-    def register(
+    def components(
         self,
-        component: ArchitectureComponent,
-    ) -> None:
+    ) -> list[
+        ArchitectureComponent
+    ]:
 
-        self._components.append(
-            component
-        )
-
-    def components(self):
-
-        return list(
-            self._components
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._components
-        )
+        return self.entries()
