@@ -1,22 +1,20 @@
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
+
 from .adaptation_signal import (
     AdaptationSignal,
 )
 
 
-class FederationAdaptationRegistry:
-
-    def __init__(self) -> None:
-        self._signals: list[
-            AdaptationSignal
-        ] = []
-
-    def register(
-        self,
-        signal: AdaptationSignal,
-    ) -> None:
-        self._signals.append(signal)
+class FederationAdaptationRegistry(
+    AppendRegistry[
+        AdaptationSignal
+    ]
+):
 
     def signals(
         self,
     ) -> list[AdaptationSignal]:
-        return list(self._signals)
+
+        return self.entries()
