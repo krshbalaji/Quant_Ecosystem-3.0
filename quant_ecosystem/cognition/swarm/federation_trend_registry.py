@@ -1,32 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .architecture_trend_point import (
     ArchitectureTrendPoint,
 )
 
 
-class FederationTrendRegistry:
+class FederationTrendRegistry(
+    AppendRegistry[
+        ArchitectureTrendPoint
+    ]
+):
 
-    def __init__(self):
-        self._points: List[
-            ArchitectureTrendPoint
-        ] = []
-
-    def register(
+    def points(
         self,
-        point: ArchitectureTrendPoint,
-    ) -> None:
+    ) -> list[
+        ArchitectureTrendPoint
+    ]:
 
-        self._points.append(point)
-
-    def points(self):
-
-        return list(
-            self._points
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._points
-        )
+        return self.entries()
