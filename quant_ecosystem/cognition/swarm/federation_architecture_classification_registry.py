@@ -1,28 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .architecture_classification import (
     ArchitectureClassification,
 )
 
 
-class FederationArchitectureClassificationRegistry:
+class FederationArchitectureClassificationRegistry(
+    AppendRegistry[
+        ArchitectureClassification
+    ]
+):
 
-    def __init__(self):
-        self._items: List[
-            ArchitectureClassification
-        ] = []
-
-    def register(
+    def classifications(
         self,
-        item: ArchitectureClassification,
-    ) -> None:
+    ) -> list[
+        ArchitectureClassification
+    ]:
 
-        self._items.append(item)
-
-    def classifications(self):
-
-        return list(self._items)
-
-    def count(self) -> int:
-
-        return len(self._items)
+        return self.entries()
