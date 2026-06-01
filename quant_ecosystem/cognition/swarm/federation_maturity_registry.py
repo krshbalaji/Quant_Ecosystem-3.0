@@ -1,34 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .maturity_assessment import (
     MaturityAssessment,
 )
 
 
-class FederationMaturityRegistry:
+class FederationMaturityRegistry(
+    AppendRegistry[
+        MaturityAssessment
+    ]
+):
 
-    def __init__(self):
-        self._assessments: List[
-            MaturityAssessment
-        ] = []
-
-    def register(
+    def assessments(
         self,
-        assessment: MaturityAssessment,
-    ) -> None:
+    ) -> list[
+        MaturityAssessment
+    ]:
 
-        self._assessments.append(
-            assessment
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._assessments
-        )
-
-    def assessments(self):
-
-        return list(
-            self._assessments
-        )
+        return self.entries()
