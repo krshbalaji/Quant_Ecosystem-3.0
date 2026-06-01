@@ -1,34 +1,20 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .resilience_indicator import (
     ResilienceIndicator,
 )
 
 
-class FederationResilienceRegistry:
+class FederationResilienceRegistry(
+    AppendRegistry[
+        ResilienceIndicator
+    ]
+):
 
-    def __init__(self):
-        self._indicators: List[
-            ResilienceIndicator
-        ] = []
-
-    def register(
+    def indicators(
         self,
-        indicator: ResilienceIndicator,
-    ) -> None:
+    ) -> list[ResilienceIndicator]:
 
-        self._indicators.append(
-            indicator
-        )
-
-    def indicators(self):
-
-        return list(
-            self._indicators
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._indicators
-        )
+        return self.entries()
