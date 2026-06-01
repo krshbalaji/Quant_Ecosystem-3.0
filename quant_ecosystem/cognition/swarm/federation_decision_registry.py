@@ -1,34 +1,20 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .decision_candidate import (
     DecisionCandidate,
 )
 
 
-class FederationDecisionRegistry:
+class FederationDecisionRegistry(
+    AppendRegistry[
+        DecisionCandidate
+    ]
+):
 
-    def __init__(self):
-        self._candidates: List[
-            DecisionCandidate
-        ] = []
-
-    def register(
+    def candidates(
         self,
-        candidate: DecisionCandidate,
-    ) -> None:
+    ) -> list[DecisionCandidate]:
 
-        self._candidates.append(
-            candidate
-        )
-
-    def candidates(self):
-
-        return list(
-            self._candidates
-        )
-
-    def count(self):
-
-        return len(
-            self._candidates
-        )
+        return self.entries()
