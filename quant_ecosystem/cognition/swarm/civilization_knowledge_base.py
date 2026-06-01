@@ -1,24 +1,27 @@
-from typing import Dict, List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
-from .federation_observation import FederationObservation
+from .federation_observation import (
+    FederationObservation,
+)
 
 
-class CivilizationKnowledgeBase:
-
-    def __init__(self):
-        self._observations: List[FederationObservation] = []
+class CivilizationKnowledgeBase(
+    AppendRegistry[
+        FederationObservation
+    ]
+):
 
     def add(
         self,
         observation: FederationObservation,
     ) -> None:
 
-        self._observations.append(observation)
+        self.register(observation)
 
-    def observations(self):
+    def observations(
+        self,
+    ) -> list[FederationObservation]:
 
-        return list(self._observations)
-
-    def count(self):
-
-        return len(self._observations)
+        return self.entries()
