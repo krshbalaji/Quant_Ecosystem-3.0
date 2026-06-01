@@ -13,7 +13,7 @@ class FederationForecastEngine:
         registry: FederationForecastRegistry,
     ) -> ArchitectureForecastReport:
 
-        if not registry.projections():
+        if not registry.forecasts():
 
             return (
                 ArchitectureForecastReport(
@@ -23,7 +23,7 @@ class FederationForecastEngine:
             )
 
         latest = (
-            registry.projections()[-1]
+            registry.forecasts()[-1]
         )
 
         return ArchitectureForecastReport(

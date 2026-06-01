@@ -1,34 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .forecast_projection import (
     ForecastProjection,
 )
 
 
-class FederationForecastRegistry:
+class FederationForecastRegistry(
+    AppendRegistry[
+        ForecastProjection
+    ]
+):
 
-    def __init__(self):
-        self._projections: List[
-            ForecastProjection
-        ] = []
-
-    def register(
+    def forecasts(
         self,
-        projection: ForecastProjection,
-    ) -> None:
+    ) -> list[
+        ForecastProjection
+    ]:
 
-        self._projections.append(
-            projection
-        )
-
-    def projections(self):
-
-        return list(
-            self._projections
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._projections
-        )
+        return self.entries()
