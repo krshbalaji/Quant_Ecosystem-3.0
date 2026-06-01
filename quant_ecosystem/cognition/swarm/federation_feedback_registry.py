@@ -1,34 +1,20 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .execution_feedback import (
     ExecutionFeedback,
 )
 
 
-class FederationFeedbackRegistry:
+class FederationFeedbackRegistry(
+    AppendRegistry[
+        ExecutionFeedback
+    ]
+):
 
-    def __init__(self):
-        self._feedback: List[
-            ExecutionFeedback
-        ] = []
-
-    def register(
+    def feedback(
         self,
-        feedback: ExecutionFeedback,
-    ) -> None:
+    ) -> list[ExecutionFeedback]:
 
-        self._feedback.append(
-            feedback
-        )
-
-    def feedback(self):
-
-        return list(
-            self._feedback
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._feedback
-        )
+        return self.entries()
