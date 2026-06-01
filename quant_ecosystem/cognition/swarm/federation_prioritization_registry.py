@@ -1,34 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .strategic_objective import (
     StrategicObjective,
 )
 
 
-class FederationPrioritizationRegistry:
+class FederationPrioritizationRegistry(
+    AppendRegistry[
+        StrategicObjective
+    ]
+):
 
-    def __init__(self):
-        self._objectives: List[
-            StrategicObjective
-        ] = []
-
-    def register(
+    def objectives(
         self,
-        objective: StrategicObjective,
-    ) -> None:
+    ) -> list[
+        StrategicObjective
+    ]:
 
-        self._objectives.append(
-            objective
-        )
-
-    def objectives(self):
-
-        return list(
-            self._objectives
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._objectives
-        )
+        return self.entries()
