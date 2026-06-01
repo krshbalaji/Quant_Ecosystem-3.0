@@ -1,34 +1,20 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .risk_indicator import (
     RiskIndicator,
 )
 
 
-class FederationRiskRegistry:
+class FederationRiskRegistry(
+    AppendRegistry[
+        RiskIndicator
+    ]
+):
 
-    def __init__(self):
-        self._indicators: List[
-            RiskIndicator
-        ] = []
-
-    def register(
+    def indicators(
         self,
-        indicator: RiskIndicator,
-    ) -> None:
+    ) -> list[RiskIndicator]:
 
-        self._indicators.append(
-            indicator
-        )
-
-    def indicators(self):
-
-        return list(
-            self._indicators
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._indicators
-        )
+        return self.entries()
