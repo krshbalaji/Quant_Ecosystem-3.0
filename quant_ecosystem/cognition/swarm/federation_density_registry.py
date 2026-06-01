@@ -1,28 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .architecture_density_metric import (
     ArchitectureDensityMetric,
 )
 
 
-class FederationDensityRegistry:
+class FederationDensityRegistry(
+    AppendRegistry[
+        ArchitectureDensityMetric
+    ]
+):
 
-    def __init__(self):
-        self._metrics: List[
-            ArchitectureDensityMetric
-        ] = []
-
-    def register(
+    def metrics(
         self,
-        metric: ArchitectureDensityMetric,
-    ) -> None:
+    ) -> list[
+        ArchitectureDensityMetric
+    ]:
 
-        self._metrics.append(metric)
-
-    def metrics(self):
-
-        return list(self._metrics)
-
-    def count(self) -> int:
-
-        return len(self._metrics)
+        return self.entries()
