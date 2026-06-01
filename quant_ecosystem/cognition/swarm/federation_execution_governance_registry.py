@@ -1,34 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .execution_initiative import (
     ExecutionInitiative,
 )
 
 
-class FederationExecutionGovernanceRegistry:
+class FederationExecutionGovernanceRegistry(
+    AppendRegistry[
+        ExecutionInitiative
+    ]
+):
 
-    def __init__(self):
-        self._initiatives: List[
-            ExecutionInitiative
-        ] = []
-
-    def register(
+    def initiatives(
         self,
-        initiative: ExecutionInitiative,
-    ) -> None:
+    ) -> list[
+        ExecutionInitiative
+    ]:
 
-        self._initiatives.append(
-            initiative
-        )
-
-    def initiatives(self):
-
-        return list(
-            self._initiatives
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._initiatives
-        )
+        return self.entries()
