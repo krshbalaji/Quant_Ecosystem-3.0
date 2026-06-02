@@ -74,6 +74,11 @@ from .federation_execution_gate import (
     FederationExecutionGate,
 )
 from .audit_event import AuditEvent
+from .audit_replay import (
+    AuditReplayEngine,
+    AuditReplayQuery,
+    AuditReplayResult,
+)
 from .execution_lineage import ExecutionLineage
 from .authorization_trace import AuthorizationTrace
 from .federation_audit_registry import (
