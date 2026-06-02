@@ -32,6 +32,31 @@ def test_distributed_memory_mesh_accepts_valid_contract():
     assert len(mesh.snapshots) == 1
 
 
+def test_distributed_memory_mesh_shadow_persists_snapshot_to_multimapstore():
+
+    mesh = DistributedMemoryMesh()
+
+    contract = FederationMemoryContract(
+        contract_id="C-2",
+        permitted_memory_types=["strategic"],
+        authorized_constitutions=["CONST-A"],
+    )
+
+    snapshot = FederationMemorySnapshot(
+        organism_id="beta",
+        memory_type="strategic",
+        payload={"signal": "shadow"},
+        lineage_id="L-2",
+        constitutional_hash="CONST-A",
+    )
+
+    accepted = mesh.synchronize(snapshot, contract)
+
+    assert accepted
+    assert len(mesh.snapshots) == 1
+    assert mesh._shadow_store.get("audit.execution.lineage.L-2") == [snapshot]
+
+
 def test_distributed_memory_mesh_rejects_invalid_contract():
 
     mesh = DistributedMemoryMesh()

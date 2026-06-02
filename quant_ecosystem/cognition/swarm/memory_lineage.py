@@ -32,7 +32,9 @@ class MemoryLineage:
 
         # shadow write to MultiMapStore for migration parity
         try:
-            self._shadow_store.put(self._shadow_key(snapshot.lineage_id), snapshot)
+            latest_snapshot = self._shadow_store.latest(self._shadow_key(snapshot.lineage_id))
+            if latest_snapshot != snapshot:
+                self._shadow_store.put(self._shadow_key(snapshot.lineage_id), snapshot)
         except Exception:
             # silently ignore shadow store errors to avoid changing behavior
             pass

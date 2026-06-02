@@ -42,3 +42,5 @@ def test_replication_engine_replicates_memory():
 
     assert latest is not None
     assert latest.payload["epoch"] == 42
+    assert mesh._shadow_store.get("audit.execution.lineage.LINEAGE-1") == [snapshot]
+    assert lineage._shadow_store.get("audit.execution.lineage.LINEAGE-1") == [snapshot]
