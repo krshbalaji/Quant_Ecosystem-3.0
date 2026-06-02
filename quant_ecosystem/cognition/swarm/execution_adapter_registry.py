@@ -1,33 +1,34 @@
-from typing import Dict
+from quant_ecosystem.core.keyed_registry import (
+    KeyedRegistry,
+)
 
 from .router_adapter_contract import (
     RouterAdapterContract,
 )
 
 
-class ExecutionAdapterRegistry:
-
-    def __init__(self):
-        self._contracts: Dict[
-            str,
-            RouterAdapterContract,
-        ] = {}
+class ExecutionAdapterRegistry(
+    KeyedRegistry[
+        str,
+        RouterAdapterContract,
+    ]
+):
 
     def register(
         self,
         contract: RouterAdapterContract,
     ) -> None:
 
-        self._contracts[
-            contract.adapter_id
-        ] = contract
+        super().register(
+            contract.adapter_id,
+            contract,
+        )
 
     def get(
         self,
         adapter_id: str,
     ):
-
-        return self._contracts.get(
+        return super().get(
             adapter_id
         )
 

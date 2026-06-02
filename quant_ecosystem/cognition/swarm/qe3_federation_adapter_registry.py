@@ -1,33 +1,34 @@
-from typing import Dict
+from quant_ecosystem.core.keyed_registry import (
+    KeyedRegistry,
+)
 
 from .governance_adapter_contract import (
     GovernanceAdapterContract,
 )
 
 
-class QE3FederationAdapterRegistry:
-
-    def __init__(self):
-        self._contracts: Dict[
-            str,
-            GovernanceAdapterContract,
-        ] = {}
+class QE3FederationAdapterRegistry(
+    KeyedRegistry[
+        str,
+        GovernanceAdapterContract,
+    ]
+):
 
     def register(
         self,
         contract: GovernanceAdapterContract,
     ) -> None:
 
-        self._contracts[
-            contract.subsystem_name
-        ] = contract
+        super().register(
+            contract.subsystem_name,
+            contract,
+        )
 
     def get(
         self,
         subsystem_name: str,
     ):
-
-        return self._contracts.get(
+        return super().get(
             subsystem_name
         )
 

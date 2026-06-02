@@ -1,29 +1,25 @@
-from typing import Dict
+from quant_ecosystem.core.keyed_registry import (
+    KeyedRegistry,
+)
 
 from .federation_entity import (
     FederationEntity,
 )
 
 
-class FederationRegistry:
-
-    def __init__(self):
-        self._entities: Dict[
-            str,
-            FederationEntity,
-        ] = {}
+class FederationRegistry(
+    KeyedRegistry[
+        str,
+        FederationEntity,
+    ]
+):
 
     def register(
         self,
         entity: FederationEntity,
     ) -> None:
 
-        self._entities[
-            entity.entity_id
-        ] = entity
-
-    def count(self) -> int:
-
-        return len(
-            self._entities
+        super().register(
+            entity.entity_id,
+            entity,
         )
