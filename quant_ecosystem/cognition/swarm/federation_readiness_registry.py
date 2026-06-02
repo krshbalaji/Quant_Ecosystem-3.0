@@ -1,37 +1,25 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .readiness_status import (
     ReadinessStatus,
 )
 
 
-class FederationReadinessRegistry:
+class FederationReadinessRegistry(
+    AppendRegistry[
+        ReadinessStatus
+    ]
+):
 
-    def __init__(self):
-        self._statuses: List[
-            ReadinessStatus
-        ] = []
-
-    def register(
+    def ready_count(
         self,
-        status: ReadinessStatus,
-    ) -> None:
-
-        self._statuses.append(
-            status
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._statuses
-        )
-
-    def ready_count(self) -> int:
+    ) -> int:
 
         return sum(
             1
             for status
-            in self._statuses
+            in self.entries()
             if status.ready
         )
