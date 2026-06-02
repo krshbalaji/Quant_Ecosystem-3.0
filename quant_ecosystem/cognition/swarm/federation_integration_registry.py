@@ -1,34 +1,27 @@
-from typing import Dict
+from quant_ecosystem.core.keyed_registry import (
+    KeyedRegistry,
+)
 
 from .integration_contract import (
     IntegrationContract,
 )
 
 
-class FederationIntegrationRegistry:
-
-    def __init__(self):
-        self._contracts: Dict[
-            str,
-            IntegrationContract,
-        ] = {}
+class FederationIntegrationRegistry(
+    KeyedRegistry[
+        str,
+        IntegrationContract
+    ]
+):
 
     def register(
         self,
         contract: IntegrationContract,
     ) -> None:
 
-        self._contracts[
-            contract.target_system
-        ] = contract
-
-    def get(
-        self,
-        target_system: str,
-    ):
-
-        return self._contracts.get(
-            target_system
+        super().register(
+            contract.target_system,
+            contract,
         )
 
     def enabled(
