@@ -1,34 +1,22 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .symbol_collision import (
     SymbolCollision,
 )
 
 
-class FederationSymbolResolutionRegistry:
+class FederationSymbolResolutionRegistry(
+    AppendRegistry[
+        SymbolCollision
+    ]
+):
 
-    def __init__(self):
-        self._collisions: List[
-            SymbolCollision
-        ] = []
-
-    def register(
+    def collisions(
         self,
-        collision: SymbolCollision,
-    ) -> None:
+    ) -> list[
+        SymbolCollision
+    ]:
 
-        self._collisions.append(
-            collision
-        )
-
-    def collisions(self):
-
-        return list(
-            self._collisions
-        )
-
-    def count(self) -> int:
-
-        return len(
-            self._collisions
-        )
+        return self.entries()
