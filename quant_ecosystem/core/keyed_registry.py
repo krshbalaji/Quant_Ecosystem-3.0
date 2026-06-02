@@ -1,5 +1,3 @@
-# quant_ecosystem/core/keyed_registry.py
-
 from typing import Generic, TypeVar
 
 K = TypeVar("K")
