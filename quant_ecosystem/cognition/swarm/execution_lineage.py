@@ -17,6 +17,9 @@ class ExecutionLineage:
         except Exception:
             self._shadow_store = None
 
+    def _shadow_key(self) -> str:
+        return f"audit.execution.lineage.{self.lineage_id}"
+
     def append(
         self,
         event: AuditEvent,
@@ -27,7 +30,7 @@ class ExecutionLineage:
         # shadow write to MultiMapStore for parity
         if getattr(self, "_shadow_store", None) is not None:
             try:
-                self._shadow_store.put(self.lineage_id, event)
+                self._shadow_store.put(self._shadow_key(), event)
             except Exception:
                 # swallow to avoid changing behavior
                 pass

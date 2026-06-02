@@ -32,6 +32,7 @@ def test_memory_lineage_shadow_parity_append_get_latest():
     assert ml.latest("L1") == s2
 
     # Shadow store has same sequence
-    shadow_get = ml._shadow_store.get("L1")
+    shadow_key = "audit.execution.lineage.L1"
+    shadow_get = ml._shadow_store.get(shadow_key)
     assert shadow_get == [s1, s2]
-    assert ml._shadow_store.latest("L1") == s2
+    assert ml._shadow_store.latest(shadow_key) == s2

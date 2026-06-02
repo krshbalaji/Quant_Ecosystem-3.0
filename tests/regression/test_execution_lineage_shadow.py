@@ -27,6 +27,7 @@ def test_execution_lineage_shadow_parity():
     assert el.count() == 2
 
     # shadow store parity
-    shadow_get = el._shadow_store.get("LX")
+    shadow_key = "audit.execution.lineage.LX"
+    shadow_get = el._shadow_store.get(shadow_key)
     assert shadow_get == [e1, e2]
-    assert el._shadow_store.latest("LX") == e2
+    assert el._shadow_store.latest(shadow_key) == e2

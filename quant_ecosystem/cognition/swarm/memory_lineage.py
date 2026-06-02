@@ -14,6 +14,9 @@ class MemoryLineage:
         # shadow multimap store for parity writes (non-primary)
         self._shadow_store = MultiMapStore()
 
+    def _shadow_key(self, lineage_id: str) -> str:
+        return f"audit.execution.lineage.{lineage_id}"
+
     def append(
         self,
         snapshot: FederationMemorySnapshot,
@@ -29,7 +32,7 @@ class MemoryLineage:
 
         # shadow write to MultiMapStore for migration parity
         try:
-            self._shadow_store.put(snapshot.lineage_id, snapshot)
+            self._shadow_store.put(self._shadow_key(snapshot.lineage_id), snapshot)
         except Exception:
             # silently ignore shadow store errors to avoid changing behavior
             pass
