@@ -1,29 +1,27 @@
-from typing import List
+from quant_ecosystem.core.append_registry import (
+    AppendRegistry,
+)
 
 from .prioritized_objective import (
     PrioritizedObjective,
 )
 
 
-class FederationRoadmapRegistry:
+class FederationRoadmapRegistry(
+    AppendRegistry[
+        PrioritizedObjective
+    ]
+):
 
-    def __init__(self):
-        self._objectives: List[
-            PrioritizedObjective
-        ] = []
-
-    def register(
+    def objectives(
         self,
-        objective: PrioritizedObjective,
-    ) -> None:
-
-        self._objectives.append(
-            objective
-        )
-
-    def objectives(self):
+    ) -> list[
+        PrioritizedObjective
+    ]:
 
         return sorted(
-            self._objectives,
-            key=lambda x: x.priority_rank,
+            self.entries(),
+            key=lambda x: (
+                x.priority_rank
+            ),
         )
