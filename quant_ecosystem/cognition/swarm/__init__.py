@@ -36,6 +36,14 @@ from .knowledge_registry import KnowledgeRegistry
 from .knowledge_consolidation_engine import KnowledgeConsolidationEngine
 from .learning_pattern import LearningPattern
 from .learning_pattern_registry import LearningPatternRegistry
+from .knowledge_replay import (
+    KnowledgeReplayQuery,
+    KnowledgeReplayResult,
+    KnowledgeReplayEngine,
+)
+from .governance_observation import GovernanceObservation
+from .governance_observability_registry import GovernanceObservabilityRegistry
+from .governance_observability_engine import GovernanceObservabilityEngine
 from .civilization_knowledge_base import CivilizationKnowledgeBase
 from .collective_learning_engine import CollectiveLearningEngine
 from .federation_intelligence_report import (
@@ -816,6 +824,12 @@ __all__ = [
     "KnowledgePattern",
     "KnowledgeRegistry",
     "KnowledgeConsolidationEngine",
+    "KnowledgeReplayQuery",
+    "KnowledgeReplayResult",
+    "KnowledgeReplayEngine",
+    "GovernanceObservation",
+    "GovernanceObservabilityRegistry",
+    "GovernanceObservabilityEngine",
     "LearningPattern",
     "LearningPatternRegistry",
     "CivilizationKnowledgeBase",
