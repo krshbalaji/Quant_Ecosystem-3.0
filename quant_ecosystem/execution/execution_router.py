@@ -528,7 +528,7 @@ class _FyersBrokerAdapter:
     ) -> Dict:
         raw = self._broker.place_order(
             symbol=symbol, side=side, qty=qty, price=price,
-            fee=fee, meta=enriched_meta,
+            fee=fee, meta=meta,
         )
         if isinstance(raw, dict):
             raw.setdefault("order_id", raw.get("id", ""))
@@ -3242,19 +3242,13 @@ class ExecutionRouter:
                             .TRENDING
                         )
 
-                    snapshot = (
-                        RegimeSnapshot(
-                            volatility=volatility,
-                            liquidity=liquidity,
-                            trend_strength=(
-                                trend_strength
-                            ),
-                            detected_regime=(
-                                regime.value
-                            ),
-                        )
-                    )
-
+                    
+                    return {
+                        "volatility": volatility,
+                        "liquidity": liquidity,
+                        "trend_strength": trend_strength,
+                    }
+                    
                     regime_memory.record(
                         snapshot
                     )
@@ -3481,15 +3475,8 @@ class ExecutionRouter:
 
         self._retry_governor.schedule_retry(
             payload={
-                "symbol": symbol,
-                "side": side,
-                "qty": qty,
-                "price": price,
-                "execution_key": (
-                    f"{broker_name}:"
-                    f"{normalized_symbol}:"
-                    f"{side}"
-                ),
+                "symbol": signal.get("symbol"),
+                "side": signal.get("side"),
             },
             retry_count=1,
         )
@@ -4525,11 +4512,11 @@ class ExecutionRouter:
             symbol=symbol, side=side, qty=qty, price=fill_price, fee=fee,
             asset_class=self._asset_class(symbol),
             meta={
-                "strategy_id": signal.get("strategy_id"),
-                "trade_type": signal.get("trade_type") or self._trade_type(signal),
+                "strategy_id": "liquidation_assist_v1",
+                "trade_type": "LIQUIDATION",
                 "regime": regime,
                 "rebalance_assist": bool(signal.get("rebalance_assist", False)),
-                **self._build_instrument_meta(instrument),
+              
             },
         )
 
@@ -4539,13 +4526,7 @@ class ExecutionRouter:
             qty=qty,
         )
 
-        strategy = self._execution_strategy.choose(
-            broker=broker,
-            symbol=normalized_symbol,
-            qty=qty,
-            price=price,
-        )
-
+        
         realized_pnl = self._apply_fill_accounting(
             order=order, fill_price=fill_price, fill_notional=fill_notional,
             fee=fee, prev_realized=prev_realized,
