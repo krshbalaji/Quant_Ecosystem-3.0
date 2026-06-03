@@ -34,6 +34,10 @@ from .federation_observation import FederationObservation
 from .knowledge_pattern import KnowledgePattern
 from .knowledge_registry import KnowledgeRegistry
 from .knowledge_consolidation_engine import KnowledgeConsolidationEngine
+from .knowledge_relationship import KnowledgeRelationship
+from .knowledge_dependency import KnowledgeDependency
+from .knowledge_graph import KnowledgeGraph
+from .knowledge_graph_engine import KnowledgeGraphEngine
 from .learning_pattern import LearningPattern
 from .learning_pattern_registry import LearningPatternRegistry
 from .knowledge_replay import (
@@ -824,6 +828,10 @@ __all__ = [
     "KnowledgePattern",
     "KnowledgeRegistry",
     "KnowledgeConsolidationEngine",
+    "KnowledgeRelationship",
+    "KnowledgeDependency",
+    "KnowledgeGraph",
+    "KnowledgeGraphEngine",
     "KnowledgeReplayQuery",
     "KnowledgeReplayResult",
     "KnowledgeReplayEngine",
