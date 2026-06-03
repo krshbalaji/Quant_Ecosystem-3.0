@@ -38,6 +38,12 @@ from .knowledge_relationship import KnowledgeRelationship
 from .knowledge_dependency import KnowledgeDependency
 from .knowledge_graph import KnowledgeGraph
 from .knowledge_graph_engine import KnowledgeGraphEngine
+from .cross_domain_reasoning import (
+    CrossDomainReasoningEngine,
+    KnowledgeReasoningResult,
+    ReasoningChain,
+    ReasoningStep,
+)
 from .learning_pattern import LearningPattern
 from .learning_pattern_registry import LearningPatternRegistry
 from .knowledge_replay import (
@@ -832,6 +838,10 @@ __all__ = [
     "KnowledgeDependency",
     "KnowledgeGraph",
     "KnowledgeGraphEngine",
+    "CrossDomainReasoningEngine",
+    "KnowledgeReasoningResult",
+    "ReasoningChain",
+    "ReasoningStep",
     "KnowledgeReplayQuery",
     "KnowledgeReplayResult",
     "KnowledgeReplayEngine",
