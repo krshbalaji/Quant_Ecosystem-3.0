@@ -54,6 +54,12 @@ from .knowledge_replay import (
 from .governance_observation import GovernanceObservation
 from .governance_observability_registry import GovernanceObservabilityRegistry
 from .governance_observability_engine import GovernanceObservabilityEngine
+from .governance_insight import GovernanceInsight
+from .governance_diagnostic import GovernanceDiagnostic
+from .governance_summary import GovernanceSummary
+from .governance_intelligence_engine import (
+    GovernanceIntelligenceEngine,
+)
 from .civilization_knowledge_base import CivilizationKnowledgeBase
 from .collective_learning_engine import CollectiveLearningEngine
 from .federation_intelligence_report import (
@@ -848,6 +854,10 @@ __all__ = [
     "GovernanceObservation",
     "GovernanceObservabilityRegistry",
     "GovernanceObservabilityEngine",
+    "GovernanceInsight",
+    "GovernanceDiagnostic",
+    "GovernanceSummary",
+    "GovernanceIntelligenceEngine",
     "LearningPattern",
     "LearningPatternRegistry",
     "CivilizationKnowledgeBase",
