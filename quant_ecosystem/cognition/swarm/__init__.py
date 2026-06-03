@@ -32,6 +32,8 @@ from .constitutional_coordination_engine import (
 )
 from .federation_observation import FederationObservation
 from .knowledge_pattern import KnowledgePattern
+from .learning_pattern import LearningPattern
+from .learning_pattern_registry import LearningPatternRegistry
 from .civilization_knowledge_base import CivilizationKnowledgeBase
 from .collective_learning_engine import CollectiveLearningEngine
 from .federation_intelligence_report import (
@@ -810,6 +812,8 @@ __all__ = [
     "ConstitutionalCoordinationEngine",
     "FederationObservation",
     "KnowledgePattern",
+    "LearningPattern",
+    "LearningPatternRegistry",
     "CivilizationKnowledgeBase",
     "CollectiveLearningEngine",
     "FederationIntelligenceReport",
