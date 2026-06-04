@@ -395,6 +395,8 @@ from quant_ecosystem.sentience.self_reflection_engine import (
 from quant_ecosystem.sentience.identity_guardian import (
     identity_guardian,
 )
+from quant_ecosystem.regime.market_regime import MarketRegime
+
 logger = logging.getLogger(__name__)
 
 
@@ -4515,14 +4517,14 @@ class ExecutionRouter:
                 "strategy_id": "liquidation_assist_v1",
                 "trade_type": "LIQUIDATION",
                 "regime": regime,
-                "rebalance_assist": bool(signal.get("rebalance_assist", False)),
+                "rebalance_assist": False
               
             },
         )
 
         self._liquidity_guard.ensure_liquid(
-            broker=broker,
-            symbol=normalized_symbol,
+            broker=order.get("broker"),
+            symbol=symbol,
             qty=qty,
         )
 
