@@ -51,7 +51,9 @@ class GenomeGenerator:
             pass
         if genome_library is not None:
             self._library = genome_library
-
+    @classmethod
+    def from_genome_dict(cls, data):
+        return cls(**data)
     def generate_random(self, count: int = 10, seed: int | None = None, regime: str = "all") -> List[Dict]:
         rng = random.Random(seed)
         out = []
@@ -63,7 +65,7 @@ class GenomeGenerator:
                 self._bridge.record_seed(genome, regime=regime)
             if self._library:
                 from quant_ecosystem.alpha_genome.genome_library import GenomeRecord
-                self._library.store_record(GenomeRecord.from_genome_dict(genome))
+                self._library.store_record(genome)
         return out
 
     def generate_from_mutation(self, base_genomes: Iterable[Dict], variants_per_base: int = 3, regime: str = "all") -> List[Dict]:

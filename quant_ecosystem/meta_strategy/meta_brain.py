@@ -251,3 +251,5 @@ class MetaStrategyBrain:
         reduced_new = [row for row in reduced if str(row.get("id")) not in retired_ids]
         return active_new, reduced_new, retired
 
+        MetaBrain = MetaStrategyBrain
+

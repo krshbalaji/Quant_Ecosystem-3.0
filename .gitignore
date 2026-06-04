@@ -211,3 +211,14 @@ venv/
 __pycache__/
 .ipynb_checkpoints/organism_audit_pack/
 venv311/
+
+pyright*.txt
+ruff*.txt
+pylint*.txt
+PACK*.txt
+defs.txt
+dispatcher_refs.txt
+journal_refs.txt
+router_*.txt
+FORENSIC_AUDIT_OUTPUT/
+tools/

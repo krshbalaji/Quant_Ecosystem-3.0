@@ -13,7 +13,7 @@ from quant_ecosystem.portfolio_ai.risk_parity_engine import RiskParityEngine
 from quant_ecosystem.portfolio_ai.volatility_targeting import VolatilityTargeting
 
 
-class PortfolioAI:
+class PortfolioAICore:
     """Dynamic portfolio optimization engine with publish hooks."""
 
     def __init__(
