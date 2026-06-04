@@ -8,7 +8,9 @@ from quant_ecosystem.alpha_grid.result_aggregator import ResultAggregator
 from quant_ecosystem.alpha_grid.task_dispatcher import TaskDispatcher
 from quant_ecosystem.alpha_grid.task_queue import GridTask, GridTaskQueue
 from quant_ecosystem.alpha_grid.worker_node import WorkerNode
-
+from quant_ecosystem.research.distributed_research_engine import (
+    ResearchWorker,
+)
 
 class AlphaGridController:
     """Coordinates workers, tasks, dispatching, and result aggregation."""

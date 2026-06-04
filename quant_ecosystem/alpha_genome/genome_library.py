@@ -9,6 +9,8 @@ The authoritative implementation lives in alpha_genome/genome_library.py
 which already has all enhanced features (GenomeRecord, top_genomes,
 update_fitness, store_record, ResearchMemoryLayer bridge, etc.).
 """
+import os
+import json
 
 from quant_ecosystem.alpha_genome.genome_library import (  # noqa: F401
     AlphaGenomeLibrary,

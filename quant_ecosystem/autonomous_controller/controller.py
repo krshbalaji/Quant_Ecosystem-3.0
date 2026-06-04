@@ -1,5 +1,7 @@
 """Autonomous controller for operational modes and deployment actions."""
+import logging
 
+logger = logging.getLogger(__name__)
 
 class AutonomousController:
     """Controls Manual / Assisted / Autonomous behavior and strategy actions."""
