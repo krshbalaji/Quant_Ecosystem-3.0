@@ -36,6 +36,7 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
+from quant_ecosystem.core.market_mode import MarketModeController
 
 logger = logging.getLogger(__name__)
 
@@ -441,7 +442,11 @@ class BacktestEngine:
             equity_curve=equity_curve,
             metrics=metrics,
         )
-    def _load_historical_data(self, symbol):
+    def _load_historical_data(
+        self,
+        symbol,
+        timeframe="1d",
+    ):
 
         try:
             from quant_ecosystem.market_data.market_data_engine import MarketDataEngine

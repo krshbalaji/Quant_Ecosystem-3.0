@@ -16,7 +16,9 @@ from quant_ecosystem.risk.black_swan_guard import BlackSwanGuard
 from quant_ecosystem.risk.safety_layer import SafetyLayer
 from quant_ecosystem.risk.survival_playbook import SurvivalPlaybook
 from quant_ecosystem.strategy_bank.strategy_evaluator import StrategyEvaluator
+import logging
 
+logger = logging.getLogger(__name__)
 
 class MasterOrchestrator:
 
@@ -781,8 +783,8 @@ class MasterOrchestrator:
             self._govern_activation(
                 router,
                 selector_result=selector_result,
-                diversity_result=diversity_engine_report,
-                survival_result=survival_engine_report,
+                diversity_result=diversity_result,
+                survival_result=survival_result,
             )
 
         except Exception:
@@ -1483,4 +1485,4 @@ class MasterOrchestrator:
         except Exception as exc:
             return {"error": str(exc)}
 
-router.research_memory.create_snapshot("session_end")
+            router.research_memory.create_snapshot("session_end")

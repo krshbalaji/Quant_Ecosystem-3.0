@@ -391,7 +391,7 @@ class SQLiteStorage(StorageBackend):
                 """)
                 
                 conn.commit()
-                logger.info("SQLiteStorage initialized at %s", db_path)
+                logger.info("SQLiteStorage initialized at %s", self.db_path)
         
         except Exception as exc:
             logger.error("SQLiteStorage.init failed: %s", exc)

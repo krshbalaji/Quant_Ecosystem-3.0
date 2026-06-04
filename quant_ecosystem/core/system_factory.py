@@ -561,6 +561,11 @@ class SystemFactory:
 
         from quant_ecosystem.core.market_mode import REALITY_MODE
 
+        try:
+            from quant_ecosystem.synthetic_market_engine import SyntheticMarketEngine
+        except Exception:
+            SyntheticMarketEngine = None
+
         if not REALITY_MODE:
             logger.info("[boot] synthetic_market …")
             self.synthetic_market = SyntheticMarketEngine(...)
@@ -1399,7 +1404,14 @@ def _make_grid_result_callback(router):
             result.sharpe, result.fitness,
         )
         
-        print("REAL THRESHOLD =", self._cfg.promote_threshold)
+        print(
+            "REAL THRESHOLD =",
+            getattr(
+                getattr(router, "research_grid", None),
+                "promote_threshold",
+                None,
+            )
+        )
 
         rg = getattr(router, "research_grid", None)
         if rg is None:
