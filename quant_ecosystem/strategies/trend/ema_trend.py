@@ -5,7 +5,7 @@ from typing import Dict, Optional
 import pandas as pd
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy, Signal
-
+from typing import cast
 
 class EMATrendStrategy(BaseStrategy):
     """
@@ -46,8 +46,8 @@ class EMATrendStrategy(BaseStrategy):
             return None
 
         df = pd.DataFrame({"close": closes})
-        fast = int(self.params.get("fast_ema", 20))
-        slow = int(self.params.get("slow_ema", 50))
+        fast = int(cast(int | float, self.params.get("fast_ema", 20)))
+        slow = int(cast(int | float, self.params.get("slow_ema", 50)))
         fast = max(3, fast)
         slow = max(fast + 1, slow)
 
@@ -67,7 +67,9 @@ class EMATrendStrategy(BaseStrategy):
         if not side:
             return None
 
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 1.0)) / 100.0
+        stop_loss_pct = float(
+            cast(int | float, self.params.get("stop_loss_pct", 1.0))
+        )
         take_profit_pct = float(self.params.get("take_profit_pct", 2.0)) / 100.0
 
         if side == "BUY":
@@ -91,26 +93,3 @@ class EMATrendStrategy(BaseStrategy):
 
         return signal if self.validate_signal(signal) else None
 
-import pandas as pd
-
-class EMATrendStrategy:
-
-    id = "ema_trend"
-
-    def generate_signal(self, candles):
-
-        if not candles or len(candles) < 50:
-            return None
-
-        df = pd.DataFrame(candles)
-
-        df["ema_fast"] = df["close"].ewm(span=20).mean()
-        df["ema_slow"] = df["close"].ewm(span=50).mean()
-
-        if df["ema_fast"].iloc[-1] > df["ema_slow"].iloc[-1]:
-            return "BUY"
-
-        if df["ema_fast"].iloc[-1] < df["ema_slow"].iloc[-1]:
-            return "SELL"
-
-        return None

@@ -58,6 +58,7 @@ import heapq
 import logging
 import time
 import hashlib
+from typing import Optional
 from types import SimpleNamespace
 import random
 from dataclasses import dataclass, field
@@ -995,7 +996,7 @@ class MultiBrokerRouter:
         self._identity_guardian = (
             identity_guardian
         )
-        
+       
         logger.info("MultiBrokerRouter initialised (mode=%s)", self.mode)
 
     # ------------------------------------------------------------------
@@ -1050,6 +1051,10 @@ class MultiBrokerRouter:
             supports_retry = True
             supports_health_check = hasattr(broker, "health_check")
             requires_market_session = True
+            supports_modify_order = hasattr(
+                broker,
+                "modify_order",
+            )
 
             @property
             def supports_reconciliation(self):
@@ -1165,8 +1170,8 @@ class MultiBrokerRouter:
         self,
         broker_name: str,
         order_id: str,
-        qty: int = None,
-        price: float = None,
+        qty: Optional[int] = None,
+        price: Optional[float] = None,
         lifecycle_state: str = "",
     ):
         self._execution_metrics.record_modify()
@@ -1182,10 +1187,22 @@ class MultiBrokerRouter:
         caps = self._get_capabilities(
             broker
         )
-
-        if not caps.supports_modify_order:
+        class _LegacyCaps:
+            supports_retry = True
+            supports_health_check = hasattr(broker, "health_check")
+            requires_market_session = True
+            supports_modify_order = hasattr(
+                broker,
+                "modify_order",
+            )
+        if not getattr(caps, "supports_modify_order", False):
             raise RuntimeError(
                 f"{broker_name} does not support modify_order"
+            )
+
+        if broker is None:
+            raise RuntimeError(
+                f"Broker not found: {broker_name}"
             )
 
         return broker.modify_order(
@@ -1779,7 +1796,16 @@ class MultiBrokerRouter:
                 and strict_market_hours
                 and getattr(caps, "requires_market_session", False)
             ):
-                if not self._session_guard.is_market_open(market, asset_class):
+                market_open = getattr(
+                    self._session_guard,
+                    "is_market_open",
+                    lambda *_args, **_kwargs: True,
+                )
+
+                if not market_open(
+                    market,
+                    asset_class,
+                ):
                     raise RuntimeError(
                         f"MARKET CLOSED: market={market}, asset={asset_class}"
                     )
@@ -2462,6 +2488,8 @@ class ExecutionRouter:
         self.token_authority      = token_authority
         self.portfolio_governor   = portfolio_governor
         self.mode                 = str(mode).upper()
+        self._retry_governor = None
+        self._kill_hierarchy = KillHierarchy()
 
         # Config — lazy import to avoid import-time side effects
         self.config = self._load_config()
@@ -2503,6 +2531,8 @@ class ExecutionRouter:
         self._last_risk_block_reason:     str  = ""
         self._liquidation_cooldown_until: int  = 0
 
+        self._kill_hierarchy = KillHierarchy()
+        self._liquidity_guard = LiquidityGuard()
 
         logger.info(
             "ExecutionRouter initialised (mode=%s, symbols=%d)",
@@ -2733,7 +2763,10 @@ class ExecutionRouter:
                 None,
             )
 
-        if hasattr(asset_class, "value"):
+        if (
+            asset_class is not None
+            and hasattr(asset_class, "value")
+        ):
             asset_class = asset_class.value
 
         return str(asset_class or fallback).upper()
@@ -2929,6 +2962,8 @@ class ExecutionRouter:
         
         broker_key = str(broker).lower()
 
+        result = None
+
         if broker_key == "fyers":
             result = self._multi_broker.place_order(
                 symbol=payload["symbol"],
@@ -2967,6 +3002,14 @@ class ExecutionRouter:
                 price=payload["price"],
                 asset_class="CRYPTO",
                 meta=enriched_meta,
+            )
+        else:
+            raise ValueError(
+                f"unsupported broker: {broker}"
+         )
+        if result is None:
+            raise RuntimeError(
+                f"Broker returned no execution result: {broker}"
             )
 
         else:
@@ -3475,13 +3518,14 @@ class ExecutionRouter:
         if sid not in governor.get_active_ids():
             return False, "not_governor_active"
 
-        self._retry_governor.schedule_retry(
-            payload={
-                "symbol": signal.get("symbol"),
-                "side": signal.get("side"),
-            },
-            retry_count=1,
-        )
+        if self._retry_governor is not None:
+            self._retry_governor.schedule_retry(
+                payload={
+                    "symbol": signal.get("symbol"),
+                    "side": signal.get("side"),
+                },
+                retry_count=1,
+            )
 
         # Token authority validation — must run before approving execution
         if self.token_authority:
@@ -3842,8 +3886,19 @@ class ExecutionRouter:
         factor  = mapping.get(preset)
         if factor is None:
             return "Invalid risk preset. Use 25%, 50%, or 100%."
-        base      = getattr(self.risk_engine, "base_trade_risk", 1.0)
-        new_value = self.risk_engine.set_trade_risk_pct(base * factor)
+        if self.risk_engine is None:
+            return "Risk engine unavailable."
+
+        base = getattr(
+            self.risk_engine,
+            "base_trade_risk",
+            1.0,
+        )
+
+        new_value = self.risk_engine.set_trade_risk_pct(
+            base * factor
+        )
+
         self.state.risk_preset = preset
         return f"Risk preset {preset} applied. Trade risk={_quantize(new_value, 2)}%."
 
@@ -4716,7 +4771,7 @@ class CanonicalPortfolioBridge:
         if raw_margin is None:
             raw_margin = {}
 
-        margin_data = adapter.translate_margin(raw_margin)
+        margin_data = adapter.translate_margin(raw_margin) or {}
 
         margin = CanonicalMarginSnapshot(
             provider=broker,
