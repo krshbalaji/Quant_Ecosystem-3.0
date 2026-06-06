@@ -70,8 +70,15 @@ class SystemRouter:
     * All engine attrs accessed via getattr(router, "...", None)
     """
 
-    def __init__(self, config: Any) -> None:
+    def __init__(
+        self,
+        max_total_exposure_pct: float = 100.0,
+        max_strategy_exposure_pct: float = 30.0,
+        config: Optional[Any] = None,
+    ):
         self.config: Any = config
+        self.max_total_exposure_pct: float = max_total_exposure_pct
+        self.max_strategy_exposure_pct: float = max_strategy_exposure_pct
 
         # ── Core ──────────────────────────────────────────────────────────────
         self.state:            Optional[Any] = None
@@ -161,6 +168,10 @@ class SystemRouter:
 
         # ── Autonomous Research Loop (continuous hedge-fund lab) ─────────────
         self.autonomous_research_loop: Optional[Any] = None
+
+        self.lifecycle_parliament: Optional[Any] = None
+        self.resolution_registry: Optional[Any] = None
+        self.institutional_orchestrator: Optional[Any] = None
 
     # ── MasterOrchestrator compatibility ──────────────────────────────────────
 
@@ -253,11 +264,11 @@ class SystemFactory:
     """
 
     def __init__(
-        self, 
+        self,
         max_total_exposure_pct: float = 100.0,
         max_strategy_exposure_pct: float = 30.0,
-        config = Any
-        ):
+        config: Optional[Any] = None,
+    ):
         self._config = config
         cfg_obj = getattr(config, "Config", config)
 
@@ -419,7 +430,7 @@ class SystemFactory:
             from quant_ecosystem.research.factor_dataset_builder import (  # noqa: PLC0415
                 FactorDatasetBuilder,
             )
-            factor_builder = FactorDatasetBuilder(dataset_builder)
+            factor_builder = FactorDatasetBuilder()
             logger.debug("FactorDatasetBuilder initialized.")
         except Exception:
             logger.warning("FactorDatasetBuilder unavailable.", exc_info=True)
@@ -497,25 +508,18 @@ class SystemFactory:
 
         # Always boot genome library — ResearchGrid depends on it
         try:
-            from quant_ecosystem.genome_library.genome_library import (  # noqa: PLC0415
+            from quant_ecosystem.alpha_genome.genome_library import (
+                AlphaGenomeLibrary,
                 GenomeLibrary,
             )
+
             lib = GenomeLibrary()
             router.genome_library       = lib
             router.alpha_genome_library = lib
             logger.debug("GenomeLibrary initialized.")
         except Exception:
             logger.debug("GenomeLibrary unavailable — trying AlphaGenomeLibrary.")
-            try:
-                from quant_ecosystem.alpha_genome.genome_library import (  # noqa: PLC0415
-                    AlphaGenomeLibrary,
-                )
-                lib = AlphaGenomeLibrary()
-                router.genome_library       = lib
-                router.alpha_genome_library = lib
-                logger.debug("AlphaGenomeLibrary (fallback) initialized.")
-            except Exception:
-                logger.debug("AlphaGenomeLibrary unavailable (non-critical).")
+            
 
         if not getattr(cfg, "enable_alpha_genome_engine", False):
             return
@@ -562,24 +566,23 @@ class SystemFactory:
         from quant_ecosystem.core.market_mode import REALITY_MODE
 
         try:
-            from quant_ecosystem.synthetic_market_engine import SyntheticMarketEngine
+            from quant_ecosystem.synthetic_market.synthetic_market_engine import (
+                SyntheticMarketEngine,
+            )
         except Exception:
             SyntheticMarketEngine = None
 
-        if not REALITY_MODE:
+        if not REALITY_MODE and SyntheticMarketEngine is not None:
             logger.info("[boot] synthetic_market …")
-            self.synthetic_market = SyntheticMarketEngine(...)
-            self.synthetic_market.start()
+            self.synthetic_market = SyntheticMarketEngine()
         else:
             logger.info("🚫 SyntheticMarketEngine skipped (REALITY MODE)")
 
         try:
-            from quant_ecosystem.data.data_router import DataRouter  # noqa: PLC0415
-            router.data_router = DataRouter(
-                mode=self._mode.value,
-                fyers_broker=router._broker,
-                csv_dir=str(getattr(cfg, "csv_data_dir", "") or ""),
+            from quant_ecosystem.market.market_data_router import (
+                MarketDataRouter,  # noqa: PLC0415
             )
+            router.data_router = MarketDataRouter()
             logger.debug("DataRouter initialized.")
         except Exception:
             logger.debug("DataRouter unavailable (synthetic fallback active).")
@@ -885,14 +888,16 @@ class SystemFactory:
                 
                 
         except Exception as e:
-                logger.warning(f"Execution loop failed to start: {e}")
-
-        except Exception as e:
-            logger.exception("ExecutionRouter initialization failed.")
+            logger.exception(
+                f"ExecutionRouter initialization failed: {e}"
+            )
         # --- start execution loop AFTER strategy wiring ---
         try:
-            if getattr(router, "_execution_router", None):
-                router._execution_router.start_execution_loop()
+            execution_router = router._execution_router
+
+            if execution_router is not None:
+                execution_router.start_execution_loop()
+                logger.info("ExecutionRouter loop started AFTER strategy boot.")
                 logger.info("🔥 ExecutionRouter loop started AFTER strategy boot.")
         except Exception as e:
             logger.warning(f"Execution loop start failed: {e}")
@@ -908,18 +913,20 @@ class SystemFactory:
 
         try:
             if broker_name == "FYERS":
-                from quant_ecosystem.broker.fyers_broker import FyersBroker  # noqa: PLC0415
+                from quant_ecosystem.broker.fyers_broker import FyersBroker
                 live_broker = FyersBroker(config=self._config)
-            elif broker_name == "COINSWITCH":
-                from quant_ecosystem.broker.coinswitch_broker import (  # noqa: PLC0415
-                    CoinSwitchBroker,
-                )
-                live_broker = CoinSwitchBroker()
-            else:
-                raise ValueError(f"Unsupported broker: {broker_name!r}")
-            live_broker = FyersBroker(config=self._config)
-            live_broker.connect()
 
+            elif broker_name == "COINSWITCH":
+                from quant_ecosystem.broker.coinswitch_broker import CoinSwitchBroker
+                live_broker = CoinSwitchBroker()
+
+            else:
+                raise ValueError(
+                    f"Unsupported broker: {broker_name!r}"
+                )
+
+            live_broker.connect()
+           
             from quant_ecosystem.broker.broker_router import BrokerRouter  # noqa: PLC0415
             live_broker_router = BrokerRouter(broker=live_broker)
 
@@ -964,8 +971,10 @@ class SystemFactory:
         router.strategy_engine = strategy_engine
 
         # propagate to execution router
-        if getattr(router, "_execution_router", None):
-            router._execution_router.strategy_engine = strategy_engine
+        execution_router = getattr(router, "_execution_router", None)
+
+        if execution_router is not None:
+            execution_router.strategy_engine = strategy_engine
 
         logger.info("LiveStrategyEngine wired into ExecutionRouter.")
 
@@ -996,10 +1005,27 @@ class SystemFactory:
             )
             logger.debug("StrategyBankLayer initialized.")
         except Exception:
-            logger.warning("StrategyBankLayer unavailable.", exc_info=True)
+            logger.warning(
+                "StrategyBankLayer unavailable.",
+                exc_info=True,
+            )
 
-            from quant_ecosystem.strategy_governance.lifecycle_parliament_engine import LifecycleParliamentEngine
-            router.lifecycle_parliament = LifecycleParliamentEngine()
+        try:
+            from quant_ecosystem.strategy_governance.lifecycle_parliament_engine import (
+                LifecycleParliamentEngine,
+            )
+
+            router.lifecycle_parliament = (
+                LifecycleParliamentEngine()
+            )
+            logger.debug(
+                "LifecycleParliamentEngine initialized."
+            )
+        except Exception:
+            logger.warning(
+                "LifecycleParliamentEngine unavailable.",
+                exc_info=True,
+            )
 
         try:
             from quant_ecosystem.strategy_selector.selector_core import (  # noqa: PLC0415
@@ -1024,8 +1050,9 @@ class SystemFactory:
 
     def _boot_meta_strategy_brain(self, router: SystemRouter) -> None:
         try:
-            from quant_ecosystem.meta_strategy.meta_brain import MetaBrain  # noqa: PLC0415
-            router.meta_strategy_brain = MetaBrain(
+            from quant_ecosystem.meta_strategy.meta_brain import MetaStrategyBrain
+
+            router.meta_strategy_brain = MetaStrategyBrain(
                 config=self._config,
                 strategy_bank_layer=router.strategy_bank_layer,
             )
@@ -1129,10 +1156,11 @@ class SystemFactory:
 
         # Market Regime Detector (non-ML fallback)
         try:
-            from quant_ecosystem.market_regime.regime_detector import (  # noqa: PLC0415
-                RegimeDetector,
+            from quant_ecosystem.market_regime.regime_detector import (
+                MarketRegimeDetector,
             )
-            router.market_regime_detector = RegimeDetector()
+
+            router.market_regime_detector = MarketRegimeDetector()
             logger.debug("RegimeDetector initialized.")
         except Exception:
             logger.debug("RegimeDetector unavailable (non-critical).")
@@ -1229,10 +1257,13 @@ class SystemFactory:
 
     def _boot_adaptive_learning(self, router: SystemRouter) -> None:
         try:
-            from quant_ecosystem.adaptive_learning.learning_engine import (  # noqa: PLC0415
-                LearningEngine,
+            from quant_ecosystem.adaptive_learning.learning_engine import (
+                AdaptiveLearningEngine,
             )
-            router.adaptive_learning_engine = LearningEngine(config=self._config)
+
+            router.adaptive_learning_engine = AdaptiveLearningEngine(
+                config=self._config,
+            )
             logger.debug("LearningEngine (AdaptiveLearning) initialized.")
         except Exception:
             logger.warning("AdaptiveLearning unavailable.", exc_info=True)
@@ -1253,10 +1284,13 @@ class SystemFactory:
 
     def _boot_global_market_brain(self, router: SystemRouter) -> None:
         try:
-            from quant_ecosystem.global_market_brain.market_brain import (  # noqa: PLC0415
-                MarketBrain,
+            from quant_ecosystem.global_market_brain.market_brain import (
+                GlobalMarketBrain,
             )
-            router.global_market_brain = MarketBrain(config=self._config)
+
+            router.global_market_brain = GlobalMarketBrain(
+                config=self._config,
+            )
             logger.debug("MarketBrain (GlobalMarketBrain) initialized.")
         except Exception:
             logger.warning("GlobalMarketBrain unavailable.", exc_info=True)
@@ -1375,9 +1409,14 @@ class SystemFactory:
 
             orchestrator.start()
 
+            resolution_registry = getattr(router, "resolution_registry", None)
+
+            if resolution_registry is None:
+                return
+
             logger.info(
                 "[boot] Institutional Research Fabric started | horizons=%s",
-                router.resolution_registry.list_active_resolutions(),
+                resolution_registry.list_active_resolutions(),
             )
 
 
