@@ -3012,9 +3012,7 @@ class ExecutionRouter:
                 f"Broker returned no execution result: {broker}"
             )
 
-        else:
-            raise ValueError(f"unsupported broker: {broker}")
-
+        
         order_id = (
             result.get("order_id")
             or result.get("id")
