@@ -2840,7 +2840,7 @@ class ExecutionRouter:
             order_type=order_type,
             product=product,
             price=price,
-            meta=meta,
+            meta=meta or {},
         )
 
         return self._canonical_bridge.build_order_payload(
@@ -2936,7 +2936,7 @@ class ExecutionRouter:
                     "reason": reason,
                     "strategy_id": strategy_id,
                 }    
-
+                          
         payload = self.canonical_order_payload(
             broker=broker,
             symbol=symbol,
@@ -2947,6 +2947,9 @@ class ExecutionRouter:
             price=price,
             meta=meta,
         )
+
+        if payload is None:
+            raise ValueError("canonical payload generation failed")
 
         instrument = self._resolve_instrument(symbol)
         resolved_asset = self._instrument_asset_class(instrument, "EQUITY")
@@ -3546,7 +3549,10 @@ class ExecutionRouter:
         prev_realized: Optional[float] = None,
     ) -> Dict:
         if prev_equity is None:
-            prev_equity   = getattr(self.state, "equity", 0.0)
+            prev_equity = getattr(self.state, "equity", 0.0)
+        
+        assert prev_equity is not None
+        
         if prev_realized is None:
             prev_realized = float(getattr(self.state, "realized_pnl", 0))
 
@@ -4250,7 +4256,11 @@ class ExecutionRouter:
         max_risk = getattr(self.risk_engine, "max_portfolio_risk", 80)
         equity   = getattr(self.state, "equity", 0.0)
         max_n    = equity * (max_risk / 100.0)
-        used     = self.portfolio_engine.net_exposure_notional(
+        portfolio = self.portfolio_engine
+        if portfolio is None:
+            return max(0.0, max_n)
+
+        used = portfolio.net_exposure_notional(
             getattr(self.state, "latest_prices", {})
         )
         return max(0.0, max_n - used)
@@ -4259,8 +4269,13 @@ class ExecutionRouter:
         max_risk = getattr(self.risk_engine, "max_symbol_risk", 20)
         equity   = getattr(self.state, "equity", 0.0)
         max_n    = equity * (max_risk / 100.0)
-        used     = self.portfolio_engine.symbol_exposure_notional(
-            symbol, getattr(self.state, "latest_prices", {})
+        portfolio = self.portfolio_engine
+        if portfolio is None:
+            return max(0.0, max_n)
+
+        used = portfolio.symbol_exposure_notional(
+            symbol,
+            getattr(self.state, "latest_prices", {})
         )
         return max(0.0, max_n - used)
 
@@ -4490,10 +4505,16 @@ class ExecutionRouter:
         )
         if not exposure_pressure:
             return None
+
+        portfolio = self.portfolio_engine
+        if portfolio is None:
+            return None
+
         symbol, pos = max(
             positions.items(),
-            key=lambda kv: self.portfolio_engine.symbol_exposure_notional(
-                kv[0], getattr(self.state, "latest_prices", {})
+            key=lambda kv: portfolio.symbol_exposure_notional(
+                kv[0],
+                getattr(self.state, "latest_prices", {}),
             ),
         )
         net_qty = int(pos.get("net_qty", 0))
@@ -4539,10 +4560,16 @@ class ExecutionRouter:
             return None
         if not positions:
             return None
+
+        portfolio = self.portfolio_engine
+        if portfolio is None:
+            return None
+
         symbol, pos = max(
             positions.items(),
-            key=lambda kv: self.portfolio_engine.symbol_exposure_notional(
-                kv[0], getattr(self.state, "latest_prices", {})
+            key=lambda kv: portfolio.symbol_exposure_notional(
+                kv[0],
+                getattr(self.state, "latest_prices", {}),
             ),
         )
         net_qty = int(pos.get("net_qty", 0))
@@ -4763,8 +4790,12 @@ class CanonicalPortfolioBridge:
 
         adapter = portfolio_adapter_registry.get(broker)
 
-        positions = adapter.translate_positions(raw_positions)
-        balance = adapter.translate_balances(raw_balance)
+        positions = adapter.translate_positions(raw_positions) or []
+        balance = (
+            adapter.translate_balances(raw_balance)
+            if raw_balance is not None
+            else None
+        )
 
         if raw_margin is None:
             raw_margin = {}
