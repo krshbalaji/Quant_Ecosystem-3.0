@@ -114,10 +114,22 @@ class GenomeMemoryBridge:
         """Record a freshly generated (seed) genome."""
         if not self._active:
             return
+
+        rm = self._rm
+        if rm is None:
+            return   
+
         try:
             gid    = str(genome.get("genome_id", ""))
             family = _infer_family(genome)
-            self._rm.record_evolved_alpha(
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            rm.record_evolved_alpha(
                 strategy_id  = gid,
                 parent_id    = None,
                 family       = family,
@@ -144,6 +156,10 @@ class GenomeMemoryBridge:
         """Record parent → child mutation genealogy."""
         if not self._active:
             return
+        rm = self._rm
+        if rm is None:
+            return
+                
         try:
             parent_id = str(parent.get("genome_id", "unknown"))
             child_id  = str(child.get("genome_id",  "unknown"))
@@ -152,7 +168,14 @@ class GenomeMemoryBridge:
             gen       = _safe_int(
                 child.get("metadata", {}).get("generation", generation)
             )
-            self._rm.register_mutation(
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            rm.register_mutation(
                 child_id        = child_id,
                 parent_id       = parent_id,
                 family          = family,
@@ -176,12 +199,23 @@ class GenomeMemoryBridge:
         """Record two-parent crossover genealogy."""
         if not self._active:
             return
+        rm = self._rm
+        if rm is None:
+            return
+                
         try:
             aid    = str(parent_a.get("genome_id", "A"))
             bid    = str(parent_b.get("genome_id", "B"))
             cid    = str(child.get("genome_id",    "child"))
             family = _infer_family(child)
-            self._rm.genealogy.register_crossover(
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            rm.genealogy.register_crossover(
                 child_id       = cid,
                 parent_a_id    = aid,
                 parent_b_id    = bid,
@@ -190,7 +224,14 @@ class GenomeMemoryBridge:
                 birth_regime   = regime,
             )
             # Also register in alpha store as a discovered alpha
-            self._rm.alpha_store.record_from_dict({
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            rm.alpha_store.record_from_dict({
                 "strategy_id": cid,
                 "parent_id":   aid,
                 "family":      family,
@@ -221,6 +262,10 @@ class GenomeMemoryBridge:
         """
         if not self._active:
             return
+        rm = self._rm
+        if rm is None:
+            return
+
         try:
             sharpe    = _safe_float(metrics.get("sharpe"))
             drawdown  = -abs(_safe_float(metrics.get("drawdown")))   # ensure negative
@@ -231,7 +276,14 @@ class GenomeMemoryBridge:
             family    = _infer_family(genome) if genome else "unknown"
 
             # 1. Archive performance slice
-            self._rm.performance.add_slice_from_dict({
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            rm.performance.add_slice_from_dict({
                 "strategy_id":   genome_id,
                 "phase":         phase,
                 "regime":        regime,
@@ -243,11 +295,25 @@ class GenomeMemoryBridge:
             })
 
             # 2. Update or create alpha record with latest stats
-            existing = self._rm.alpha_store.get(genome_id)
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            existing = rm.alpha_store.get(genome_id)
             if existing is not None:
                 # Patch live stats if this is a live evaluation
                 if phase in ("live", "shadow"):
-                    self._rm.alpha_store.update_live_stats(
+                    if not self._active:
+                        return
+
+                    rm = self._rm
+                    if rm is None:
+                        return
+                        
+                    rm.alpha_store.update_live_stats(
                         genome_id,
                         live_sharpe      = sharpe,
                         live_drawdown    = drawdown,
@@ -261,9 +327,23 @@ class GenomeMemoryBridge:
                     existing.win_rate      = win_rate
                     existing.trade_count   = tc
                     existing.extra["fitness_score"] = fitness
-                    self._rm.alpha_store.record(existing)
+                    if not self._active:
+                        return
+
+                    rm = self._rm
+                    if rm is None:
+                        return
+                        
+                    rm.alpha_store.record(existing)
             else:
-                self._rm.alpha_store.record_from_dict({
+                if not self._active:
+                    return
+
+                rm = self._rm
+                if rm is None:
+                    return
+                    
+                rm.alpha_store.record_from_dict({
                     "strategy_id":   genome_id,
                     "family":        family,
                     "regime":        regime,
@@ -292,11 +372,29 @@ class GenomeMemoryBridge:
         """Called when a genome is stored in GenomeLibrary."""
         if not self._active:
             return
+        rm = self._rm
+        if rm is None:
+            return
+
         try:
-            existing = self._rm.alpha_store.get(genome_id)
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            existing = rm.alpha_store.get(genome_id)
             if existing is None:
                 family = _infer_family(genome)
-                self._rm.alpha_store.record_from_dict({
+                if not self._active:
+                    return
+
+                rm = self._rm
+                if rm is None:
+                    return
+                    
+                rm.alpha_store.record_from_dict({
                     "strategy_id": genome_id,
                     "family":      family,
                     "regime":      "all",
@@ -322,11 +420,18 @@ class GenomeMemoryBridge:
         if not self._active:
             return None
         try:
-            snap = self._rm.snapshots.create(
-                alpha_store  = self._rm._alpha_store,
-                genealogy    = self._rm._genealogy,
-                perf_archive = self._rm._perf,
-                tracker      = self._rm._tracker,
+            if not self._active:
+                return
+
+            rm = self._rm
+            if rm is None:
+                return
+                
+            snap = rm.snapshots.create(
+                alpha_store  = rm._alpha_store,
+                genealogy    = rm._genealogy,
+                perf_archive = rm._perf,
+                tracker      = rm._tracker,
                 label        = label or "genome_cycle_snapshot",
                 trigger      = trigger,
                 notes        = notes,
