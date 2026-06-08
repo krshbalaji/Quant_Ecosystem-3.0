@@ -216,6 +216,9 @@ class AlphaBank:
                 strategy["genome_id"] = self._generate_genome_id()
             
             strategy_id = strategy.get("genome_id")
+
+            if not isinstance(strategy_id, str):
+                raise ValueError("strategy genome_id must be a non-empty string")
             
             # Add metadata
             if metadata is None:

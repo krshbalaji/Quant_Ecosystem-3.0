@@ -494,7 +494,7 @@ class SQLiteStorage(StorageBackend):
                     SELECT data FROM strategies
                     WHERE num_trades >= ?
                 """
-                params = [min_trades]
+                params: list[Any] = [min_trades]
                 
                 if symbol:
                     query += " AND symbol = ?"
@@ -523,7 +523,7 @@ class SQLiteStorage(StorageBackend):
                 cursor = conn.cursor()
                 
                 query = "SELECT data FROM strategies WHERE fitness >= ?"
-                params = [min_fitness]
+                params: list[Any] = [min_fitness]
                 
                 if symbol:
                     query += " AND symbol = ?"

@@ -24,13 +24,13 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 
+from dataclasses import dataclass, field
+
 @dataclass
 class TournamentRound:
-    """Represents a tournament round."""
-    
     round_num: int
     matchups: List[Tuple[Dict[str, Any], Dict[str, Any]]]
-    winners: List[Dict[str, Any]] = None
+    winners: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class AlphaCompetition:
@@ -389,7 +389,10 @@ class AlphaCompetition:
                     strategies = self.bank.rank_strategies()[:sample_size]
                 else:
                     return 0.0
-            
+
+            if strategies is None:
+                return 0.0
+
             if len(strategies) < 2:
                 return 0.0
             
