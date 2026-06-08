@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
-
+from typing import Any, Dict, Iterable, List, Optional
+from dataclasses import dataclass, field
 
 @dataclass
 class StrategyMetadata:
@@ -16,7 +16,7 @@ class StrategyMetadata:
     asset_class: str = "stocks"
     timeframe: str = "5m"
     category: str = "momentum"
-    regime_preference: List[str] = None
+    regime_preference: List[str] = field(default_factory=list)
     sharpe: float = 0.0
     profit_factor: float = 0.0
     max_drawdown: float = 0.0
@@ -28,7 +28,7 @@ class StrategyMetadata:
     stage: str = "CANDIDATE"
     score: float = 0.0
     sample_size: int = 0
-    returns: List[float] = None
+    returns: List[float] = field(default_factory=list)
 
     def to_dict(self) -> Dict:
         return {
@@ -59,7 +59,9 @@ class StrategyRegistryStore:
         self.governance_mode = governance_mode
         self.metadata_file = Path(metadata_path)
         self.metadata_file.parent.mkdir(parents=True, exist_ok=True)
-        self._items: Dict[str, Dict] = {}
+        from typing import Any
+
+        self._items: Dict[str, Dict[str, Any]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -69,7 +71,77 @@ class StrategyRegistryStore:
         try:
             self._items = json.loads(self.metadata_file.read_text(encoding="utf-8"))
         except Exception:
-            self._items = {}
+            self._items = {} 
+        
+    def save(self) -> None:
+        self.metadata_file.write_text(json.dumps(self._items, indent=2), encoding="utf-8")
+
+    from typing import Any
+
+    def get(self, strategy_id: str) -> Optional[Dict[str, Any]]:
+        return self._items.get(strategy_id)
+
+    def all(self) -> List[Dict[str, Any]]:
+        return [self._items[key] for key in sorted(self._items.keys())]
+
+    def upsert(self, row, source="runtime"):
+        if self.governance_mode and source != "governor":
+            return 
+
+    def bulk_upsert(self, rows: Iterable[Dict]) -> None:
+        for row in rows:
+            self.upsert(row)
+        self.save()
+
+    def update_metrics(
+        self,
+        strategy_id: str,
+        metrics: Dict[str, Any],
+    ) -> Dict[str, Any]:
+
+        current: Dict[str, Any] | None = self._items.get(strategy_id)
+
+        if current is None:
+            current = {"id": strategy_id}
+            self._items[strategy_id] = current
+
+        current["sharpe"] = float(
+            metrics.get("sharpe", current.get("sharpe", 0.0))
+        )
+        current["profit_factor"] = float(
+            metrics.get("profit_factor", current.get("profit_factor", 0.0))
+        )
+        current["max_drawdown"] = float(
+            metrics.get(
+                "max_drawdown",
+                metrics.get(
+                    "max_dd",
+                    current.get("max_drawdown", 0.0),
+                ),
+            )
+        )
+        current["win_rate"] = float(
+            metrics.get("win_rate", current.get("win_rate", 0.0))
+        )
+        current["expectancy"] = float(
+            metrics.get("expectancy", current.get("expectancy", 0.0))
+        )
+        current["sample_size"] = int(
+            metrics.get("sample_size", current.get("sample_size", 0))
+        )
+        current["returns"] = list(
+            metrics.get("returns", current.get("returns", []))
+        )
+
+        self.save()
+        return current
+class StrategyRegistry:
+
+    def __init__(self):
+        self._registry = {}
+
+    def register(self, strategy_id, strategy_fn):
+        self._registry[strategy_id] = strategy_fn
 
     def load(self):
         """
@@ -94,60 +166,7 @@ class StrategyRegistryStore:
             import logging
             logging.getLogger(__name__).warning(f"Registry load fallback: {e}")
 
-        return strategies
-    
-    def load(self):
-        try:
-            return self.get_live_strategies()
-        except Exception:
-            return []
-    
-    def save(self) -> None:
-        self.metadata_file.write_text(json.dumps(self._items, indent=2), encoding="utf-8")
-
-    def get(self, strategy_id: str) -> Optional[Dict]:
-        return self._items.get(strategy_id)
-
-    def all(self) -> List[Dict]:
-        return [self._items[key] for key in sorted(self._items.keys())]
-
-    def upsert(self, row, source="runtime"):
-        if self.governance_mode and source != "governor":
-            return 
-
-    def bulk_upsert(self, rows: Iterable[Dict]) -> None:
-        for row in rows:
-            self.upsert(row)
-        self.save()
-
-    def update_metrics(self, strategy_id: str, metrics: Dict) -> Dict:
-        current = self._items.get(strategy_id)
-        if not current:
-            current = self.upsert({"id": strategy_id})
-        current.update(
-            {
-                "sharpe": float(metrics.get("sharpe", current.get("sharpe", 0.0))),
-                "profit_factor": float(metrics.get("profit_factor", current.get("profit_factor", 0.0))),
-                "max_drawdown": float(metrics.get("max_drawdown", metrics.get("max_dd", current.get("max_drawdown", 0.0)))),
-                "win_rate": float(metrics.get("win_rate", current.get("win_rate", 0.0))),
-                "expectancy": float(metrics.get("expectancy", current.get("expectancy", 0.0))),
-                "sample_size": int(metrics.get("sample_size", current.get("sample_size", 0))),
-                "returns": list(metrics.get("returns", current.get("returns", []))),
-            }
-        )
-        self._items[strategy_id] = current
-        self.save()
-        return current
-class StrategyRegistry:
-
-    def __init__(self):
-        self._registry = {}
-
-    def register(self, strategy_id, strategy_fn):
-        self._registry[strategy_id] = strategy_fn
-
-    def load(self):
-        return self._registry
+        return strategies  
 
     def get_live_strategies(self):
-        return self._registry
+        return self._registry      
