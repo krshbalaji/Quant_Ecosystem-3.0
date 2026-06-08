@@ -92,40 +92,52 @@ class MasterOrchestrator:
         if allocation:
             print(f"CapitalAllocator Weights: {allocation}")
 
+        system = self.system
+        if system is None:
+            raise RuntimeError(
+                "MasterOrchestrator requires initialized system"
+            )
+
     async def start(self, router, git_sync=None, auto_push_end=True, auto_tag_end=True):
         print("Quant Ecosystem 3.0 booting...")
         self.scheduler.start_day()
 
+        system = self.system
+        if system is None:
+            raise RuntimeError(
+                "MasterOrchestrator requires initialized system"
+            )
+            
         if hasattr(self.system, "market_data"):
-            asyncio.create_task(self.system.market_data.start())
+            asyncio.create_task(system.market_data.start())
 
-        if hasattr(self.system, "alpha_competition") and self.system.alpha_competition:
+        if hasattr(self.system, "alpha_competition") and system.alpha_competition:
             # Research engine: strategy Darwinism
-            if hasattr(self.system.alpha_competition, "evaluate"):
-                self.system.alpha_competition.evaluate()
-            elif hasattr(self.system.alpha_competition, "run"):
-                self.system.alpha_competition.run()
+            if hasattr(system.alpha_competition, "evaluate"):
+                system.alpha_competition.evaluate()
+            elif hasattr(system.alpha_competition, "run"):
+                system.alpha_competition.run()
 
         if hasattr(self.system, "strategy_discovery"):
 
-            if self.system.strategy_discovery:
-                self.system.strategy_discovery.discover()
+            if system.strategy_discovery:
+                system.strategy_discovery.discover()
             else:
                 logger.warning("StrategyDiscoveryEngine not available — skipping discovery.")
             
-        if hasattr(self.system, "capital_intelligence") and self.system.capital_intelligence:
+        if hasattr(self.system, "capital_intelligence") and system.capital_intelligence:
             # Capital allocation intelligence layer
-            if hasattr(self.system.capital_intelligence, "evaluate"):
-                self.system.capital_intelligence.evaluate()
-            elif hasattr(self.system.capital_intelligence, "run"):
-                self.system.capital_intelligence.run()
+            if hasattr(system.capital_intelligence, "evaluate"):
+                system.capital_intelligence.evaluate()
+            elif hasattr(system.capital_intelligence, "run"):
+                system.capital_intelligence.run()
 
-        if hasattr(self.system, "alpha_evolution") and self.system.alpha_evolution:
+        if hasattr(self.system, "alpha_evolution") and system.alpha_evolution:
             # Evolutionary engine for strategies
-            if hasattr(self.system.alpha_evolution, "evolve"):
-                self.system.alpha_evolution.evolve()
-            elif hasattr(self.system.alpha_evolution, "run"):
-                self.system.alpha_evolution.run()
+            if hasattr(system.alpha_evolution, "evolve"):
+                system.alpha_evolution.evolve()
+            elif hasattr(system.alpha_evolution, "run"):
+                system.alpha_evolution.run()
 
         health = self.health_check.run(router=router)
         if not health.get("broker_connected", False):
@@ -244,25 +256,25 @@ class MasterOrchestrator:
             cc_interval = max(0.5, float(getattr(router.config, "cognitive_control_interval_sec", 2.0)))
             print(f"Cognitive control enabled: interval={cc_interval}s")
 
-        if hasattr(self.system, "alpha_discovery") and self.system.alpha_discovery:
+        if hasattr(self.system, "alpha_discovery") and system.alpha_discovery:
             # New alpha idea generation
-            if hasattr(self.system.alpha_discovery, "discover"):
-                self.system.alpha_discovery.discover()
-            elif hasattr(self.system.alpha_discovery, "run"):
-                self.system.alpha_discovery.run()
+            if hasattr(system.alpha_discovery, "discover"):
+                system.alpha_discovery.discover()
+            elif hasattr(system.alpha_discovery, "run"):
+                system.alpha_discovery.run()
 
-        if hasattr(self.system, "alpha_grid") and self.system.alpha_grid:
-            if hasattr(self.system.alpha_grid, "run_cycle"):
-                self.system.alpha_grid.run_cycle()
-            elif hasattr(self.system.alpha_grid, "run"):
-                self.system.alpha_grid.run()
+        if hasattr(self.system, "alpha_grid") and system.alpha_grid:
+            if hasattr(system.alpha_grid, "run_cycle"):
+                system.alpha_grid.run_cycle()
+            elif hasattr(system.alpha_grid, "run"):
+                system.alpha_grid.run()
 
         if hasattr(self.system, "market_data"):
-            get_snapshot = getattr(self.system.market_data, "get_snapshot", None)
+            get_snapshot = getattr(system.market_data, "get_snapshot", None)
             if callable(get_snapshot):
-                _ = self.system.market_data.get_snapshot()
+                _ = system.market_data.get_snapshot()
             else:
-                _ = self.system.market_data.get_market_data()
+                _ = system.market_data.get_market_data()
 
         try:
             for i in range(1, self.cycles + 1):

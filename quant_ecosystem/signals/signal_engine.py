@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy, Signal
 
@@ -28,27 +28,47 @@ class SignalEngine:
 
     def generate_signals(self) -> List[Dict]:
         signals: List[Dict] = []
+
         for strategy in self._iter_strategies():
             if not isinstance(strategy, BaseStrategy):
-                # Legacy entries wrapped by StrategyRegistry will still
-                # be subclasses of BaseStrategy.
                 continue
+
             try:
-                sig: Optional[Signal] = strategy.generate_signal(self.market_data)
+                sig: Optional[Signal] = strategy.generate_signal(
+                    self.market_data
+                )
             except Exception:
                 continue
+
+            if sig is None:
+                continue
+
             if not strategy.validate_signal(sig):
                 continue
 
-            payload: Dict = {
-                "strategy_id": strategy.id,
-                "symbol": sig["symbol"],
-                "side": sig["side"],
-                "strength": float(sig.get("strength", 1.0)),
-                "stop_loss": float(sig.get("stop_loss")) if sig.get("stop_loss") is not None else None,
-                "take_profit": float(sig.get("take_profit")) if sig.get("take_profit") is not None else None,
-                "meta": dict(sig.get("meta") or {}),
-            }
-            signals.append(payload)
-        return signals
+            strength = sig.get("strength", 1.0)
+            stop_loss = sig.get("stop_loss")
+            take_profit = sig.get("take_profit")
+            meta = sig.get("meta", {})
 
+            payload: Dict[str, Any] = {
+                "strategy_id": strategy.id,
+                "symbol": str(sig["symbol"]),
+                "side": str(sig["side"]),
+                "strength": float(str(strength)),
+                "stop_loss": (
+                    float(str(stop_loss))
+                    if stop_loss is not None
+                    else None
+                ),
+                "take_profit": (
+                    float(str(take_profit))
+                    if take_profit is not None
+                    else None
+                ),
+                "meta": meta if isinstance(meta, dict) else {},
+            }
+
+            signals.append(payload)
+
+        return signals
