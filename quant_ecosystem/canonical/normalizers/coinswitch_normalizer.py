@@ -93,16 +93,26 @@ class CoinSwitchCanonicalNormalizer(BaseCanonicalNormalizer):
 
         for row in candles:
             if isinstance(row, dict):
+                if (
+                    row.get("timestamp") is None
+                    or row.get("open") is None
+                    or row.get("high") is None
+                    or row.get("low") is None
+                    or row.get("close") is None
+                ):
+                    continue
+
                 bars.append(
                     CanonicalOHLCVBar(
-                        timestamp=row.get("timestamp"),
-                        open=row.get("open"),
-                        high=row.get("high"),
-                        low=row.get("low"),
-                        close=row.get("close"),
-                        volume=row.get("volume", 0),
+                        timestamp=row["timestamp"],
+                        open=float(row["open"]),
+                        high=float(row["high"]),
+                        low=float(row["low"]),
+                        close=float(row["close"]),
+                        volume=int(row.get("volume", 0)),
                     )
                 )
+
             else:
                 bars.append(
                     CanonicalOHLCVBar(
