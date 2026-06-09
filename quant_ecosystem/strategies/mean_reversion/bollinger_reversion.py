@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, Optional
+from typing import cast
 
 import pandas as pd
 
@@ -35,20 +36,34 @@ class BollingerReversionStrategy(BaseStrategy):
             return None
 
         symbol = symbols[0]
-        lookback = int(max(5, float(self.params.get("lookback", 20))))
-        closes = market_data.get_series(symbol=symbol, timeframe="5m", lookback=lookback + 2)
+
+        lookback_raw = self.params.get("lookback", 20)
+        lookback = int(max(5, float(cast(float | int, lookback_raw))))
+
+        closes = market_data.get_series(
+            symbol=symbol,
+            timeframe="5m",
+            lookback=lookback + 2,
+        )
+
         if len(closes) < lookback:
             return None
 
         df = pd.DataFrame({"close": closes})
+
+        close_values = df["close"].to_numpy(dtype=float)
+
         ma = df["close"].rolling(lookback).mean()
         std = df["close"].rolling(lookback).std()
-        upper = ma + float(self.params.get("num_std", 2.0)) * std
-        lower = ma - float(self.params.get("num_std", 2.0)) * std
 
-        last_close = float(df["close"].iloc[-1])
-        last_upper = float(upper.iloc[-1])
-        last_lower = float(lower.iloc[-1])
+        num_std = float(cast(float | int, self.params.get("num_std", 2.0)))
+
+        upper = ma + num_std * std
+        lower = ma - num_std * std
+
+        last_close = float(close_values[-1])
+        last_upper = float(list(upper)[-1])
+        last_lower = float(list(lower)[-1])
 
         side: Optional[str] = None
         if last_close <= last_lower:
@@ -59,8 +74,20 @@ class BollingerReversionStrategy(BaseStrategy):
         if not side:
             return None
 
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 1.0)) / 100.0
-        take_profit_pct = float(self.params.get("take_profit_pct", 1.5)) / 100.0
+        lookback_raw = self.params.get("lookback", 20)
+        lookback = int(max(5, float(cast(float | int, lookback_raw))))
+
+        num_std = float(cast(float | int, self.params.get("num_std", 2.0)))
+
+        stop_loss_pct = (
+            float(cast(float | int, self.params.get("stop_loss_pct", 1.0)))
+            / 100.0
+        )
+
+        take_profit_pct = (
+            float(cast(float | int, self.params.get("take_profit_pct", 1.5)))
+            / 100.0
+        )
 
         if side == "BUY":
             stop_loss = last_close * (1.0 - stop_loss_pct)
