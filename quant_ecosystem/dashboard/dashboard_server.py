@@ -8,17 +8,23 @@ from typing import Callable, Optional
 
 from quant_ecosystem.dashboard.system_state_api import SystemStateAPI
 from quant_ecosystem.dashboard.websocket_stream import WebSocketStreamHub
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+    from fastapi.responses import FileResponse, JSONResponse
+    from fastapi.staticfiles import StaticFiles
 
 try:
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect
     from fastapi.responses import FileResponse, JSONResponse
     from fastapi.staticfiles import StaticFiles
+
+    _FASTAPI_IMPORT_ERROR = None
+
 except Exception as exc:  # pragma: no cover
     FastAPI = None
     _FASTAPI_IMPORT_ERROR = exc
-else:
-    _FASTAPI_IMPORT_ERROR = None
-
 
 def create_dashboard_app(
     router_provider: Optional[Callable[[], object]] = None,
@@ -34,34 +40,40 @@ def create_dashboard_app(
             "Install with: pip install fastapi uvicorn"
         ) from _FASTAPI_IMPORT_ERROR
 
-    app = FastAPI(title="Quant Ecosystem Live Dashboard", version="1.0.0")
+    FastAPICls = FastAPI
+    StaticFilesCls = StaticFiles
+    FileResponseCls = FileResponse
+    JSONResponseCls = JSONResponse
+    WebSocketDisconnectCls = WebSocketDisconnect
+
+    app = FastAPICls(title="Quant Ecosystem Live Dashboard", version="1.0.0")
     state_api = SystemStateAPI(router_provider=router_provider)
     stream_hub = WebSocketStreamHub()
     app.state.system_state_api = state_api
     app.state.stream_hub = stream_hub
 
     ui_dir = Path(__file__).parent / "dashboard_ui"
-    app.mount("/ui", StaticFiles(directory=str(ui_dir)), name="dashboard_ui")
+    app.mount("/ui", StaticFilesCls(directory=str(ui_dir)), name="dashboard_ui")
 
     @app.get("/")
     async def index():
-        return FileResponse(str(ui_dir / "index.html"))
+        return FileResponseCls(str(ui_dir / "index.html"))
 
     @app.get("/system/state")
     async def system_state():
-        return JSONResponse(state_api.get_system_state())
+        return JSONResponseCls(state_api.get_system_state())
 
     @app.get("/strategies")
     async def strategies():
-        return JSONResponse(state_api.get_strategies())
+        return JSONResponseCls(state_api.get_strategies())
 
     @app.get("/events")
     async def events(limit: int = 200):
-        return JSONResponse({"events": state_api.get_events(limit=limit)})
+        return JSONResponseCls({"events": state_api.get_events(limit=limit)})
 
     @app.get("/portfolio")
     async def portfolio():
-        return JSONResponse(state_api.get_portfolio())
+        return JSONResponseCls(state_api.get_portfolio())
 
     @app.websocket("/ws")
     async def ws_endpoint(websocket: WebSocket):
@@ -69,7 +81,7 @@ def create_dashboard_app(
         try:
             while True:
                 _ = await websocket.receive_text()
-        except WebSocketDisconnect:
+        except WebSocketDisconnectCls:
             await stream_hub.disconnect(websocket)
         except Exception:
             await stream_hub.disconnect(websocket)
