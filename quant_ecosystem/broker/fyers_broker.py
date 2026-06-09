@@ -146,7 +146,7 @@ class FyersBroker(BaseBroker):
         symbol: str,
         side: str,
         qty: int,
-        price: float = None,
+        price: float | None = None,
         fee: float = 0.0,
         meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -159,7 +159,7 @@ class FyersBroker(BaseBroker):
                 symbol=symbol,
                 side=side,
                 qty=qty,
-                price=price,
+                price=price if price is not None else 0.0,
                 fee=fee,
                 meta=meta or {},
             )
@@ -233,9 +233,9 @@ class FyersBroker(BaseBroker):
     def modify_order(
         self,
         order_id: str,
-        qty: int = None,
-        price: float = None,
-    ) -> Dict[str, Any]:
+        qty: int | None = None,
+        price: float | None = None,
+    ):
 
         if not self.live_client:
             raise RuntimeError(
@@ -280,14 +280,20 @@ class FyersBroker(BaseBroker):
     # ACCOUNT
     # =========================================================
 
-    def get_balance(self):
+    def get_balance(self) -> Dict[str, Any]:
         if self.live_client:
             try:
                 return self.live_client.get_funds()
             except Exception:
                 pass
 
-        return quantize(self.cash_balance, 4)
+        balance = quantize(self.cash_balance, 4)
+
+        return {
+            "cash": balance,
+            "equity": balance,
+            "source": "SIMULATED",
+        }
 
     def get_positions(self):
         if self.live_client:
@@ -401,8 +407,17 @@ class FyersBroker(BaseBroker):
                 "details": "simulation mode",
             }
 
+        client = self.live_client
+
+        if client is None:
+            return {
+                "broker": "fyers",
+                "healthy": False,
+                "details": "live client unavailable",
+            }
+
         try:
-            self.live_client.get_funds()
+            client.get_funds()
 
             return {
                 "broker": "fyers",
