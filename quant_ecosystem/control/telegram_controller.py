@@ -229,27 +229,35 @@ class TelegramController:
                 return f"Denied: {required_role} role required."
             return controlled
 
+        router = self.router
+
+        if router is None:
+            return "Router unavailable."
+            
         action_map = {
-            "status": ("viewer", self.router.get_status_report),
-            "positions": ("viewer", self.router.get_positions_report),
-            "strategies": ("viewer", self.router.get_strategy_report),
+            "status": ("viewer", router.get_status_report),
+            "positions": ("viewer", router.get_positions_report),
+            "strategies": ("viewer", router.get_strategy_report),
             "dashboard": ("viewer", lambda: "Dashboard refreshed."),
             "refresh": ("viewer", lambda: "Dashboard refreshed."),
-            "start": ("operator", self.router.start_trading),
-            "stop": ("operator", self.router.stop_trading),
-            "auto_on": ("operator", lambda: self.router.set_auto_mode(True)),
-            "auto_off": ("operator", lambda: self.router.set_auto_mode(False)),
-            "paper": ("operator", lambda: self.router.set_trading_mode("PAPER")),
-            "live": ("admin", lambda: self.router.set_trading_mode("LIVE")),
-            "25%": ("operator", lambda: self.router.set_risk_preset("25%")),
-            "50%": ("operator", lambda: self.router.set_risk_preset("50%")),
-            "100%": ("operator", lambda: self.router.set_risk_preset("100%")),
-            "alpha": ("operator", lambda: self.router.set_strategy_profile("alpha")),
-            "beta": ("operator", lambda: self.router.set_strategy_profile("beta")),
-            "gamma": ("operator", lambda: self.router.set_strategy_profile("gamma")),
-            "kill": ("admin", self.router.kill_switch),
-            "admin_pause": ("admin", self.router.stop_trading),
-            "help": ("viewer", lambda: "Use inline pages: Trading, Risk, Strategy, Admin."),
+            "start": ("operator", router.start_trading),
+            "stop": ("operator", router.stop_trading),
+            "auto_on": ("operator", lambda: router.set_auto_mode(True)),
+            "auto_off": ("operator", lambda: router.set_auto_mode(False)),
+            "paper": ("operator", lambda: router.set_trading_mode("PAPER")),
+            "live": ("admin", lambda: router.set_trading_mode("LIVE")),
+            "25%": ("operator", lambda: router.set_risk_preset("25%")),
+            "50%": ("operator", lambda: router.set_risk_preset("50%")),
+            "100%": ("operator", lambda: router.set_risk_preset("100%")),
+            "alpha": ("operator", lambda: router.set_strategy_profile("alpha")),
+            "beta": ("operator", lambda: router.set_strategy_profile("beta")),
+            "gamma": ("operator", lambda: router.set_strategy_profile("gamma")),
+            "kill": ("admin", router.kill_switch),
+            "admin_pause": ("admin", router.stop_trading),
+            "help": (
+                "viewer",
+                lambda: "Use inline pages: Trading, Risk, Strategy, Admin.",
+            ),
         }
 
         if normalized not in action_map:
