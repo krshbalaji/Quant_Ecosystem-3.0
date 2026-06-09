@@ -4,6 +4,8 @@ from typing import Dict, Optional
 
 import pandas as pd
 
+from typing import cast
+
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy, Signal
 
 
@@ -36,28 +38,42 @@ class VWAPReversionStrategy(BaseStrategy):
             return None
 
         symbol = symbols[0]
-        lookback = int(max(5, float(self.params.get("lookback", 30))))
-
+        lookback_raw = self.params.get("lookback", 30)
+        lookback = int(max(5, float(cast(float | int, lookback_raw))))
         feature_engine = getattr(market_data, "feature_engine", None)
         if feature_engine is not None:
-            vwap = feature_engine.get_vwap(symbol, timeframe="5m", lookback=lookback)
+            vwap_raw = feature_engine.get_vwap(
+                symbol,
+                timeframe="5m",
+                lookback=lookback,
+            )
+
+
+            vwap = float(cast(float | int, vwap_raw))
+
             closes = feature_engine.get_close_series(symbol, timeframe="5m", lookback=lookback)
         else:
             closes = market_data.get_series(symbol=symbol, timeframe="5m", lookback=lookback)
             if not closes:
                 return None
             df = pd.DataFrame({"close": closes})
-            vwap = float(df["close"].mean())
+
+            close_values = df["close"].to_numpy(dtype=float)
+            vwap = float(close_values.mean())
 
         if not closes:
             return None
 
-        price = float(closes[-1])
+        last_close = closes[-1]
+        price = float(cast(float | int, last_close))
+
         if vwap <= 0:
             return None
 
         deviation = (price - vwap) / vwap * 100.0
-        threshold = float(self.params.get("deviation_pct", 0.3))
+        threshold = float(
+            cast(float | int, self.params.get("deviation_pct", 0.3))
+        )
 
         side: Optional[str] = None
         if deviation <= -threshold:
@@ -68,8 +84,15 @@ class VWAPReversionStrategy(BaseStrategy):
         if not side:
             return None
 
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 0.8)) / 100.0
-        take_profit_pct = float(self.params.get("take_profit_pct", 1.2)) / 100.0
+        stop_loss_pct = (
+            float(cast(float | int, self.params.get("stop_loss_pct", 0.8)))
+            / 100.0
+        )
+
+        take_profit_pct = (
+            float(cast(float | int, self.params.get("take_profit_pct", 1.2)))
+            / 100.0
+        )
 
         if side == "BUY":
             stop_loss = price * (1.0 - stop_loss_pct)
