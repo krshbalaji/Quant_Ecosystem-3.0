@@ -8,9 +8,17 @@ from quant_ecosystem.intelligence.regime_service import RegimeService
 from quant_ecosystem.market_regime.regime_classifier import RegimeClassifier
 from quant_ecosystem.profiles import get_profile
 
+from typing import cast, Union
+
+from quant_ecosystem.market_regime import MarketRegimeDetector
+from quant_ecosystem.regime_transition import RegimeTransitionDetector
 
 class StubMarketRegimeDetector:
-    def __init__(self, payload: Dict[str, Any], fallback: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        payload: Union[Dict[str, Any], Exception],
+        fallback: Optional[Dict[str, Any]] = None,
+    ):
         self._payload = payload
         self._fallback = fallback or {"regime": "UNKNOWN", "confidence": 0.0, "details": {}}
 
@@ -24,7 +32,11 @@ class StubMarketRegimeDetector:
 
 
 class StubTransitionDetector:
-    def __init__(self, payload: Dict[str, Any], fallback: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        payload: Union[Dict[str, Any], Exception],
+        fallback: Optional[Dict[str, Any]] = None,
+    ):
         self._payload = payload
         self._fallback = fallback or {
             "transition_alert": False,
@@ -41,7 +53,7 @@ class StubTransitionDetector:
     def get_transition_state(self) -> Dict[str, Any]:
         return self._fallback
 
-
+        
 class RegimeServiceTests(unittest.TestCase):
 
     def test_classifier_produces_volatile_breakout(self):
@@ -75,8 +87,10 @@ class RegimeServiceTests(unittest.TestCase):
         transition_detector = StubTransitionDetector(
             {"transition_alert": False, "transition_score": 0.12, "transition_type": "NONE"}
         )
-        service = RegimeService(market_regime_detector=market_detector, transition_detector=transition_detector)
-
+        service = RegimeService(
+            market_regime_detector=cast(MarketRegimeDetector, market_detector),
+            transition_detector=cast(RegimeTransitionDetector, transition_detector),
+        )
         payload = service.analyze(timeframe_data={"1h": {"close": [100, 105]}}, extra_signals={})
 
         self.assertEqual(payload["legacy_regime"], "TRENDING_BULL")
@@ -93,7 +107,10 @@ class RegimeServiceTests(unittest.TestCase):
         transition_detector = StubTransitionDetector(
             {"transition_alert": True, "transition_score": 0.78, "transition_type": "TRENDING_TO_REVERSAL"}
         )
-        service = RegimeService(market_regime_detector=market_detector, transition_detector=transition_detector)
+        service = RegimeService(
+            market_regime_detector=cast(MarketRegimeDetector, market_detector),
+            transition_detector=cast(RegimeTransitionDetector, transition_detector),
+        )
 
         payload = service.analyze(timeframe_data={"15m": {"close": [120, 90]}}, extra_signals={})
 
@@ -112,7 +129,10 @@ class RegimeServiceTests(unittest.TestCase):
         transition_detector = StubTransitionDetector(
             {"transition_alert": True, "transition_score": 0.82, "transition_type": "VOLATILITY_TRANSITION"}
         )
-        service = RegimeService(market_regime_detector=market_detector, transition_detector=transition_detector)
+        service = RegimeService(
+            market_regime_detector=cast(MarketRegimeDetector, market_detector),
+            transition_detector=cast(RegimeTransitionDetector, transition_detector),
+        )
 
         payload = service.analyze(timeframe_data={"5m": {"close": [10, 12, 11]}}, extra_signals={})
 
@@ -127,7 +147,10 @@ class RegimeServiceTests(unittest.TestCase):
     def test_failure_fallback(self):
         market_detector = StubMarketRegimeDetector(Exception("market failure"))
         transition_detector = StubTransitionDetector(Exception("transition failure"))
-        service = RegimeService(market_regime_detector=market_detector, transition_detector=transition_detector)
+        service = RegimeService(
+            market_regime_detector=cast(MarketRegimeDetector, market_detector),
+            transition_detector=cast(RegimeTransitionDetector, transition_detector),
+        )
 
         payload = service.analyze(timeframe_data={"1d": {"close": []}}, extra_signals={})
 
@@ -145,7 +168,10 @@ class RegimeServiceTests(unittest.TestCase):
         transition_detector = StubTransitionDetector(
             {"transition_alert": False, "transition_score": 0.22, "transition_type": "NONE"}
         )
-        service = RegimeService(market_regime_detector=market_detector, transition_detector=transition_detector)
+        service = RegimeService(
+            market_regime_detector=cast(MarketRegimeDetector, market_detector),
+            transition_detector=cast(RegimeTransitionDetector, transition_detector),
+        )
         profile = get_profile(ProfileTypes.SCALP)
         discipline_decision = DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.5)
 
