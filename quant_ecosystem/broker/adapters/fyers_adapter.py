@@ -1,3 +1,5 @@
+from typing import Any
+
 class FyersAdapter:
 
     def __init__(self, app_id, access_token, **kwargs):
@@ -26,7 +28,7 @@ class FyersAdapter:
         order_type=2,
         product_type="INTRADAY"
     ):
-        self._ensure_client()
+        client = self._ensure_client()
 
         payload = {
             "symbol": symbol,
@@ -41,36 +43,44 @@ class FyersAdapter:
             "offlineOrder": False,
         }
 
-        return self.client.place_order(payload)
+        return client.place_order(payload)
        
     def get_positions(self):
-        self._ensure_client()
-        return self.client.positions()
+        client = self._ensure_client()
+        return client.positions()
 
     def get_orderbook(self):
-        self._ensure_client()
-        return self.client.orderbook()
+        client = self._ensure_client()
+        return client.orderbook()
 
     def get_tradebook(self):
-        self._ensure_client()
-        return self.client.tradebook()
+        client = self._ensure_client()
+        return client.tradebook()
 
     def get_funds(self):
-        self._ensure_client()
-        return self.client.funds()
+        client = self._ensure_client()
+        return client.funds()
 
-    def _ensure_client(self):
-        if not self.client:
-            raise RuntimeError("FYERS client not initialized. Call login() first.")
+    from typing import Any
+
+    def _ensure_client(self) -> Any:
+        client = self.client
+
+        if client is None:
+            raise RuntimeError(
+                "FYERS client not initialized. Call login() first."
+            )
+
+        return client
 
     def get_account_snapshot(self):
-        self._ensure_client()
+        client = self._ensure_client()
 
-        funds = self.client.funds() or {}
-        positions = self.client.positions() or {}
-        orderbook = self.client.orderbook() or {}
-        tradebook = self.client.tradebook() or {}
-        holdings = self.client.holdings() or {}
+        funds = client.funds() or {}
+        positions = client.positions() or {}
+        orderbook = client.orderbook() or {}
+        tradebook = client.tradebook() or {}
+        holdings = client.holdings() or {}
 
         fund_rows = funds.get("fund_limit", []) if isinstance(funds, dict) else []
 
