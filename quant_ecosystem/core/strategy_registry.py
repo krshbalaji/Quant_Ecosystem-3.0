@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Union
+from typing import Dict, List, Union, cast
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
 
@@ -13,25 +13,42 @@ class StrategyRegistry:
     def __init__(self, **kwargs) -> None:
         self._strategies: Dict[str, BaseStrategy] = {}
 
-    def register(self, strategy: Union[BaseStrategy, Dict[str, object], object]) -> None:
-        """
-        Register a strategy.
+    def register(
+        self,
+        strategy: Union[BaseStrategy, Dict[str, object], object]
+    ) -> None:
 
-        Preferred usage is to pass a BaseStrategy instance. A legacy
-        dict payload is also accepted and will be wrapped into a
-        minimal BaseStrategy-compatible object to keep the registry
-        free of raw dictionaries.
-        """
-        if isinstance(strategy, BaseStrategy) or hasattr(strategy, "id"):
+        if isinstance(strategy, BaseStrategy):
             self._strategies[strategy.id] = strategy
             return
+
+        if hasattr(strategy, "id"):
+            discovered = cast(BaseStrategy, strategy)
+            self._strategies[discovered.id] = discovered
+            return
+
         if not isinstance(strategy, dict):
-            raise TypeError("Strategy must be a BaseStrategy-like object or dict-compatible payload.")
+            raise TypeError(
+                "Strategy must be a BaseStrategy-like object or dict-compatible payload."
+            )
 
         sid = str(strategy.get("id"))
         name = str(strategy.get("name", sid))
         family = str(strategy.get("family", "research"))
-        params = dict(strategy.get("parameters") or strategy.get("params") or {})
+
+        raw_params = (
+            strategy.get("parameters")
+            or strategy.get("params")
+            or {}
+        )
+
+        if not isinstance(raw_params, dict):
+            raw_params = {}
+
+        params: Dict[str, object] = {
+            str(k): v
+            for k, v in raw_params.items()
+        }
 
         class _DiscoveredStrategy(BaseStrategy):
             def generate_signal(self, market_data):
