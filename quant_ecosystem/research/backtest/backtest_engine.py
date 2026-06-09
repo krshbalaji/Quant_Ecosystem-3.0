@@ -691,14 +691,21 @@ class BacktestEngine:
         opens   = [c.get("open",  c["close"]) for c in candles]
 
         # Try numpy path
+        closes_arr = closes
+        opens_arr = opens
+        volumes_arr = volumes
+        use_np = False
+
         try:
             import numpy as np  # noqa: lazy
-            closes_arr  = np.array(closes,  dtype=float)
+
+            closes_arr = np.array(closes, dtype=float)
+            opens_arr = np.array(opens, dtype=float)
             volumes_arr = np.array(volumes, dtype=float)
-            opens_arr   = np.array(opens,   dtype=float)
             use_np = True
+
         except ImportError:
-            use_np = False
+            pass
 
         equity      = self.initial_capital
         position    = 0      # 0 = flat, 1 = long, -1 = short
@@ -731,6 +738,10 @@ class BacktestEngine:
                 }
 
             # ---- call strategy ------------------------------------------
+            price = 0.0
+            volume = 0.0
+            signal = "HOLD"
+
             try:
                 signal = strategy_fn(window)
                 price  = closes[idx]
