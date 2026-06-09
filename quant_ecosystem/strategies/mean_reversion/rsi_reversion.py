@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, Optional
-
+from typing import Any, cast
 import pandas as pd
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy, Signal
@@ -31,36 +31,78 @@ class RSIMeanReversionStrategy(BaseStrategy):
         )
 
     def generate_signal(self, market_data) -> Optional[Signal]:
-        symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])
+        symbols = self.required_symbols or list(
+            getattr(market_data, "symbols", []) or []
+        )
         if not symbols:
             return None
 
         symbol = symbols[0]
-        length = int(max(5, float(self.params.get("rsi_length", 14))))
-        closes = market_data.get_series(symbol=symbol, timeframe="5m", lookback=length + 5)
+
+        length = int(
+            max(
+                5,
+                float(cast(Any, self.params.get("rsi_length", 14))),
+            )
+        )
+
+        closes = market_data.get_series(
+            symbol=symbol,
+            timeframe="5m",
+            lookback=length + 5,
+        )
+
         if len(closes) < length + 1:
             return None
 
-        df = pd.DataFrame({"close": closes})
-        delta = df["close"].diff()
-        gain = delta.clip(lower=0.0).rolling(length).mean()
-        loss = (-delta.clip(upper=0.0)).rolling(length).mean()
-        rs = gain / loss.replace(0, float("inf"))
-        rsi = 100.0 - (100.0 / (1.0 + rs))
+        close_series = pd.Series(closes, dtype=float)
+
+        delta = close_series.diff()
+        gain = cast(
+            pd.Series,
+            delta.clip(lower=0.0).rolling(length).mean(),
+        )
+
+        loss = cast(
+            pd.Series,
+            (-delta.clip(upper=0.0)).rolling(length).mean(),
+        )
+
+        loss = cast(
+            pd.Series,
+            loss.replace(0.0, float("inf")),
+        )
+
+        rs = cast(pd.Series, gain / loss)
+
+        rsi = cast(
+            pd.Series,
+            100.0 - (100.0 / (1.0 + rs)),
+        )
+
         value = float(rsi.iloc[-1])
 
         side: Optional[str] = None
-        if value <= float(self.params.get("oversold", 30.0)):
+
+        if value <= float(cast(Any, self.params.get("oversold", 30.0))):
             side = "BUY"
-        elif value >= float(self.params.get("overbought", 70.0)):
+        elif value >= float(cast(Any, self.params.get("overbought", 70.0))):
             side = "SELL"
 
         if not side:
             return None
 
         price = float(closes[-1])
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 1.0)) / 100.0
-        take_profit_pct = float(self.params.get("take_profit_pct", 1.5)) / 100.0
+
+        stop_loss_pct = (
+            float(cast(Any, self.params.get("stop_loss_pct", 1.0)))
+            / 100.0
+        )
+
+        take_profit_pct = (
+            float(cast(Any, self.params.get("take_profit_pct", 1.5)))
+            / 100.0
+        )
 
         if side == "BUY":
             stop_loss = price * (1.0 - stop_loss_pct)
