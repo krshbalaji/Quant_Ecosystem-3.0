@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 
 try:
     from telegram import Update, Chat
@@ -39,9 +39,23 @@ try:
         filters,
     )
     TELEGRAM_AVAILABLE = True
+
 except ImportError:
     TELEGRAM_AVAILABLE = False
-    logging.warning("python-telegram-bot not installed. Telegram support disabled.")
+
+if TYPE_CHECKING:
+    from telegram import Update, Chat
+    from telegram.ext import (
+        Application,
+        CommandHandler,
+        MessageHandler,
+        ContextTypes,
+        filters,
+    )  
+
+    logging.warning(
+        "python-telegram-bot not installed. Telegram support disabled."
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -161,18 +175,26 @@ class QuantTelegramBot:
             
             self._running = True
             
+            updater = self.app.updater
+
+            if updater is None:
+                raise RuntimeError("Telegram updater unavailable")
+
+          
             if self.polling:
                 # Start polling
                 logger.info("Starting bot with polling mode")
-                await self.app.updater.start_polling(
-                    allowed_updates=Update.ALL_TYPES,
-                    drop_pending_updates=True,
-                )
+                await updater.start_polling()
+                
             else:
                 # Webhook mode
                 logger.info("Starting bot with webhook mode: %s", self.webhook_url)
                 if self.webhook_url:
-                    await self.app.updater.start_webhook(
+                    updater = self.app.updater
+
+                    if updater is None:
+                        raise RuntimeError("Telegram updater unavailable")
+                    await updater.start_webhook(
                         listen="0.0.0.0",
                         port=8080,
                         url_path=self.token,
@@ -193,7 +215,10 @@ class QuantTelegramBot:
             
             logger.info("Stopping QuantTelegramBot...")
             
-            await self.app.updater.stop()
+            updater = self.app.updater
+
+            if updater is not None:
+                await updater.stop()
             await self.app.stop()
             await self.app.shutdown()
             
@@ -242,6 +267,10 @@ class QuantTelegramBot:
             # Check authorization
             user_id = str(update.effective_user.id)
             if not self._is_authorized(user_id, update.effective_chat):
+                message = update.message
+
+                if message is None:
+                    return
                 await update.message.reply_text(
                     "🚫 You are not authorized to use this bot.\n"
                     "Contact the administrator for access."
@@ -278,7 +307,12 @@ class QuantTelegramBot:
         except Exception as exc:
             logger.error("Command handler error: %s", exc)
             try:
-                await update.message.reply_text(
+                message = update.message
+
+                if message is None:
+                    return
+
+                await message.reply_text(
                     f"❌ Error: {str(exc)[:100]}"
                 )
             except Exception:
