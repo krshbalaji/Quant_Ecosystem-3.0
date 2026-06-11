@@ -1,16 +1,28 @@
-"""Cockpit REST API routes."""
-
-from __future__ import annotations
-
 from datetime import datetime
+from typing import Any, TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     from fastapi import Header, HTTPException
     from fastapi.responses import JSONResponse
-except Exception:  # pragma: no cover
-    Header = None
-    HTTPException = Exception
-    JSONResponse = None
+else:
+    try:
+        from fastapi import Header, HTTPException
+        from fastapi.responses import JSONResponse
+    except Exception:
+
+        def Header(**kwargs: Any) -> str:
+            return ""
+
+        class HTTPException(Exception):
+            def __init__(
+                self,
+                status_code: int = 500,
+                detail: str = "",
+            ) -> None:
+                super().__init__(detail)
+
+        def JSONResponse(content: Any) -> Any:
+            return content
 
 
 def register_control_routes(app, command_router, state_api, auth_token: str):
