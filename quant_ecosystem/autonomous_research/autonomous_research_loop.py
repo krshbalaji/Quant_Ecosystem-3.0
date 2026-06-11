@@ -363,19 +363,7 @@ class AutonomousResearchLoop:
     
     def set_strategy_bank_engine(self, bank: Any) -> None:
         self._bank = bank
-
-    def start(self):
-        self._running = True
-
-        if self.fabric_state:
-            self.fabric_state.register_resolution(self.resolution)
-
-    def stop(self):
-        self._running = False
-
-    def is_running(self):
-        return self._running
-    
+        
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -804,25 +792,20 @@ class AutonomousResearchLoop:
         """Use ResearchGrid.run_research_cycle for the full parallel pipeline."""
         tag = self._cfg.log_prefix
         try:
-            summary = self._grid.run_research_cycle(
-                genomes      = batch,
-                symbols      = self._cfg.eval_symbols,
-                periods      = self._cfg.eval_periods,
-                run_mc       = self._cfg.enable_monte_carlo,
-                mc_runs      = self._cfg.monte_carlo_runs,
-                timeout_sec  = self._cfg.eval_timeout_sec,
+            grid = self._grid
+            if grid is None:
+                return []
+
+            summary = grid.run_research_cycle(
+                genomes=batch,
+                symbols=self._cfg.eval_symbols,
+                periods=self._cfg.eval_periods,
+                run_mc=self._cfg.enable_monte_carlo,
+                mc_runs=self._cfg.monte_carlo_runs,
+                timeout_sec=self._cfg.eval_timeout_sec,
             )
 
-            print(f"{tag} evaluation complete")
-            logger.info(
-                "%s [6/8] grid evaluation complete | jobs=%s promoted=%s elapsed=%.1fs",
-                tag,
-                summary.get("total_jobs", "?"),
-                summary.get("n_promoted", "?"),
-                summary.get("elapsed_sec", 0.0),
-            )
-
-            results = self._grid.top_results(self._cfg.promote_top_n * 4)
+            results = grid.top_results(self._cfg.promote_top_n * 4)
             cycle.evaluated_count = len(results)
             cycle.phases_completed.append("submit")
             cycle.phases_completed.append("evaluate")
