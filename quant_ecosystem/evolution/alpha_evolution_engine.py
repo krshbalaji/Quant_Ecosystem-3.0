@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Any
 from quant_ecosystem.evolution.alpha_genome_engine import AlphaGenomeEngine
 
 import logging
@@ -12,6 +12,7 @@ class AlphaEvolutionEngine:
     def __init__(self, config=None, genome_engine=None, **kwargs):
         self.config = config
         self.genome_engine = genome_engine
+        self.strategy_registry: Any = None
 
         logger.info("AlphaEvolutionEngine initialized")
 
@@ -38,9 +39,12 @@ class AlphaEvolutionEngine:
         return children
     
     def generate_initial_populations(self):
+        if self.genome_engine is None:
+            return []
+
         population = self.genome_engine.generate_population(1000)
         return population
-        
+              
     def _mutate(self, strategy):
 
         params = getattr(strategy, "params", {}).copy()
