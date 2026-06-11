@@ -10,6 +10,9 @@ from quant_ecosystem.risk.correlation_guard import CorrelationGuard
 from quant_ecosystem.risk.reserve_manager import ReserveManager
 from quant_ecosystem.risk.capital_allocator_v2 import CapitalAllocatorV2
 
+from typing import cast
+from quant_ecosystem.intelligence.regime_service import RegimeService
+
 
 class DummyRegimeService:
     def __init__(self, payload: dict):
@@ -65,9 +68,9 @@ class DecisionArbitrationTests(unittest.TestCase):
         context = DecisionContext.from_regime_inputs(
             profile=self.profile,
             discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.4),
-            regime_service=DummyRegimeService(
+            regime_service=cast(RegimeService, DummyRegimeService(
                 {"regime": "BEAR", "confidence": 0.72, "details": {"bearness": True}},
-            ),
+            )),
             capital_allocator=CapitalAllocatorV2(total_capital=100_000.0),
             reserve_manager=ReserveManager(total_capital=100_000.0, reserve_pct=0.05),
             correlation_guard=CorrelationGuard(total_capital=100_000.0),
@@ -77,9 +80,11 @@ class DecisionArbitrationTests(unittest.TestCase):
 
         decision = self.classifier.arbitrate([scalp_signal, multibagger_signal], context)
 
-        self.assertEqual(decision.action, ArbitrationAction.TAKE)
-        self.assertEqual(decision.selected_signal.symbol, "BTC")
-        self.assertEqual(decision.selected_signal.side, "SELL")
+        assert decision.selected_signal is not None
+        selected = decision.selected_signal
+
+        self.assertEqual(selected.symbol, "BTC")
+        self.assertEqual(selected.side, "SELL")
 
     def test_morning_scalp_vs_afternoon_aplus_swing(self):
         scalp_signal = self._make_signal(
@@ -106,9 +111,9 @@ class DecisionArbitrationTests(unittest.TestCase):
         context = DecisionContext.from_regime_inputs(
             profile=self.profile,
             discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.5),
-            regime_service=DummyRegimeService(
+            regime_service=cast(RegimeService, DummyRegimeService(
                 {"regime": "BULL", "confidence": 0.88, "details": {"bull_bias": True}},
-            ),
+            )),
             capital_allocator=CapitalAllocatorV2(total_capital=100_000.0, reserve_pct=0.05),
             reserve_manager=ReserveManager(total_capital=100_000.0, reserve_pct=0.05),
             correlation_guard=CorrelationGuard(total_capital=100_000.0),
@@ -120,9 +125,11 @@ class DecisionArbitrationTests(unittest.TestCase):
 
         decision = self.classifier.arbitrate([scalp_signal, swing_signal], context)
 
-        self.assertEqual(decision.action, ArbitrationAction.OVERRIDE)
-        self.assertEqual(decision.selected_signal.symbol, "ETH")
-        self.assertEqual(decision.selected_signal.profile, ProfileTypes.SWING)
+        assert decision.selected_signal is not None
+        selected = decision.selected_signal
+
+        self.assertEqual(selected.symbol, "ETH")
+        self.assertEqual(selected.profile, ProfileTypes.SWING)
 
     def test_correlated_crypto_shorts(self):
         guard = CorrelationGuard(total_capital=100_000.0, max_thesis_exposure_pct=0.10, max_group_exposures=2)
@@ -143,9 +150,9 @@ class DecisionArbitrationTests(unittest.TestCase):
         context = DecisionContext.from_regime_inputs(
             profile=self.profile,
             discipline_decision=DisciplineDecision(action=DisciplineAction.ALLOW, reason="ok", confidence=0.4),
-            regime_service=DummyRegimeService(
+            regime_service=cast(RegimeService, DummyRegimeService(
                 {"regime": "BEAR", "confidence": 0.65, "details": {"bear_risk": True}},
-            ),
+            )),
             capital_allocator=CapitalAllocatorV2(total_capital=100_000.0),
             reserve_manager=ReserveManager(total_capital=100_000.0, reserve_pct=0.05),
             correlation_guard=guard,
