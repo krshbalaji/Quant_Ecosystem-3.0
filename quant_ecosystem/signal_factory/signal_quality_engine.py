@@ -184,8 +184,11 @@ class SignalQualityEngine:
             return stats
 
         strengths = np.array([r.strength for r in resolved], dtype=np.float64)
-        forward_rets = np.array([r.forward_return * (1 if r.side == "BUY" else -1)
-                                  for r in resolved], dtype=np.float64)
+        forward_rets = np.array([
+            float(r.forward_return or 0.0) * (
+                1 if r.side == "BUY" else -1
+            )
+            for r in resolved], dtype=np.float64)
 
         ic = self._spearman_ic(strengths, forward_rets)
         ir = self._information_ratio(resolved, window=self._ic_window)
@@ -267,8 +270,16 @@ class SignalQualityEngine:
             return 0.0
         from scipy.stats import spearmanr
         try:
-            corr, _ = spearmanr(strengths, forward_rets)
-            return float(corr) if np.isfinite(corr) else 0.0
+            result = spearmanr(strengths, forward_rets)
+
+            corr_raw = result[0]
+
+            if not isinstance(corr_raw, (int, float)):
+                return 0.0
+
+            corr = float(corr_raw)
+
+            return corr if np.isfinite(corr) else 0.0
         except Exception:
             return 0.0
 
@@ -285,7 +296,11 @@ class SignalQualityEngine:
         for i in range(window, len(resolved) + 1, step):
             chunk = resolved[i - window : i]
             s = np.array([r.strength for r in chunk], dtype=np.float64)
-            f = np.array([r.forward_return * (1 if r.side == "BUY" else -1) for r in chunk], dtype=np.float64)
+            f = np.array([
+                float(r.forward_return or 0.0) * (
+                    1 if r.side == "BUY" else -1
+                ) 
+            for r in chunk], dtype=np.float64)
             ic_series.append(self._spearman_ic(s, f))
         if len(ic_series) < 2:
             return 0.0
@@ -310,7 +325,11 @@ class SignalQualityEngine:
             if len(chunk) < 5:
                 break
             s = np.array([r.strength for r in chunk], dtype=np.float64)
-            f = np.array([r.forward_return * (1 if r.side == "BUY" else -1) for r in chunk], dtype=np.float64)
+            f = np.array([
+                float(r.forward_return or 0.0) * (
+                    1 if r.side == "BUY" else -1
+                ) 
+                for r in chunk], dtype=np.float64)
             ics.append(self._spearman_ic(s, f))
         if len(ics) < 2 or ics[0] == 0:
             return np.inf
