@@ -11,12 +11,44 @@ class MarketUniverseManager:
 
     def __init__(self, config=None, **kwargs):
         self.config = config
-        self.symbols = ["NSE:RELIANCE-EQ"]
+
+        self._universe = {
+            "stocks": [
+                "NSE:RELIANCE-EQ",
+                "NSE:INFY-EQ",
+                "NSE:HDFCBANK-EQ",
+                "NSE:SBIN-EQ",
+            ],
+            "indices": [
+                "NSE:NIFTY50-INDEX",
+                "NSE:BANKNIFTY-INDEX",
+            ],
+            "futures": [
+                "NSE:NIFTY24MARFUT",
+                "NSE:BANKNIFTY24MARFUT",
+            ],
+            "options": [
+                "NSE:NIFTY24MAR22000CE",
+                "NSE:NIFTY24MAR22000PE",
+            ],
+            "forex": [
+                "FX:USDINR",
+                "FX:EURINR",
+            ],
+            "crypto": [
+                "CRYPTO:BTCUSDT",
+                "CRYPTO:ETHUSDT",
+            ],
+            "commodities": [
+                "MCX:GOLD",
+                "MCX:CRUDEOIL",
+            ],
+        }
 
         logger.info("MarketUniverseManager initialized")
 
     def get_universe(self):
-        return self.symbols
+        return self.symbols()
         
         self._universe = {
             "stocks": ["NSE:RELIANCE-EQ", "NSE:INFY-EQ", "NSE:HDFCBANK-EQ", "NSE:SBIN-EQ"],
