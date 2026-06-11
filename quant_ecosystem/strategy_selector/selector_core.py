@@ -47,7 +47,7 @@ class AutonomousStrategySelector:
                 blocked_reasons[sid] = reason
             else:
                 rows.append(row)
-
+            
         if not rows:
             return {
                 "regime": market_regime,
@@ -93,9 +93,21 @@ class AutonomousStrategySelector:
             sid = str(row.get("id", "")).strip()
             if sid and sid not in selected_set:
                 blocked_reasons.setdefault(sid, "not_selected_by_rank")
+        selected_ids_clean = [
+            str(sid)
+            for sid in selected_ids
+            if sid is not None
+        ]
+
+        available_ids = [
+            str(row.get("id"))
+            for row in rows
+            if row.get("id") is not None
+        ]
+
         activation = self.activation_manager.apply_selection(
-            selected_ids=selected_ids,
-            available_ids=[row.get("id") for row in rows],
+            selected_ids=selected_ids_clean,
+            available_ids=available_ids,
         )
         return {
             "regime": market_regime,
@@ -199,7 +211,11 @@ class SelectorCore:
         """
         if self._delegate is not None:
             try:
-                return self._delegate.select(strategies=strategies, regime=regime)
+                result = self._delegate.select(
+                    market_regime=regime,
+                )
+
+                return list(result.get("selected", []))
             except Exception as exc:  # noqa: BLE001
                 self._log.warning("SelectorCore.select_strategies: delegate error (%s)", exc)
         return list(strategies)
