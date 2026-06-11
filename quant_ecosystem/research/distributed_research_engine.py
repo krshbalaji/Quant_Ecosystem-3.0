@@ -31,14 +31,15 @@ from __future__ import annotations
 import asyncio
 import time
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 import numpy as np
 
 try:
     import ray
     _RAY = True
-except ImportError:
+except Exception:
+    ray = None
     _RAY = False
 
 
@@ -46,7 +47,7 @@ except ImportError:
 # Ray remote: batched genome evaluation
 # ---------------------------------------------------------------------------
 
-if _RAY:
+if _RAY and ray is not None:
     @ray.remote(num_cpus=0.5)
     class ResearchWorker:
         """
@@ -64,13 +65,16 @@ if _RAY:
             regime: str,
             transaction_cost: float = 0.001,
         ) -> List[Dict]:
-            from quant_ecosystem.research_orchestrator.research_pipeline_manager import _quick_backtest
+            from quant_ecosystem.research_orchestrator import research_pipeline_manager as rpm
+
+            quick_backtest = cast(Any, getattr(rpm, "_quick_backtest"))
             results = []
+
             for dna in dnas:
                 metrics_all = []
                 for ps in price_series_list:
                     arr = np.array(ps, dtype=np.float64)
-                    m = _quick_backtest(dna, arr, regime, transaction_cost)
+                    m = quick_backtest(dna, arr, regime, transaction_cost)
                     metrics_all.append(m)
                 if metrics_all:
                     avg = {
@@ -134,7 +138,8 @@ class DistributedResearchEngine:
             return
         if self.use_ray:
             try:
-                ray.init(ignore_reinit_error=True, num_cpus=self.n_workers * 2)
+                if ray is not None:
+                    ray.init(ignore_reinit_error=True, num_cpus=self.n_workers * 2)
                 if _RAY:
                     self._workers = [
                         ResearchWorker.remote() for _ in range(self.n_workers)
@@ -147,7 +152,8 @@ class DistributedResearchEngine:
         """Gracefully shut down workers."""
         if self.use_ray:
             try:
-                ray.shutdown()
+                if ray is not None:
+                    ray.shutdown()
             except Exception:
                 pass
         self._started = False
@@ -277,7 +283,22 @@ class DistributedResearchEngine:
                 symbols = getattr(md, "symbols", [])[:8]
             if not symbols:
                 symbols = ["SYNTH_A", "SYNTH_B", "SYNTH_C", "SYNTH_D"]
-            return builder.build_flat_list(symbols, timeframe="5m", lookback_bars=500)
+            build_flat_list = cast(
+                Any,
+                getattr(builder, "build_flat_list", None),
+            )
+
+            if callable(build_flat_list):
+                return cast(
+                    List[np.ndarray],
+                    build_flat_list(
+                        symbols,
+                        timeframe="5m",
+                        lookback_bars=500,
+                    ),
+                )
+
+            return []
         except Exception:
             return []
 
