@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Tuple
-
+from typing import Any, Dict, List
 
 class CorrelationManager:
     """Computes pairwise rolling correlation and returns allocation penalties."""
@@ -12,19 +12,23 @@ class CorrelationManager:
         self.threshold = float(threshold)
 
     def matrix(self, rows: List[Dict]) -> Dict[str, Dict[str, float]]:
-        ids = [row.get("id") for row in rows]
-        out: Dict[str, Dict[str, float]] = {item: {} for item in ids}
+        ids = [str(row.get("id", "")) for row in rows]
+
+        out: Dict[str, Dict[str, float]] = {
+            item: {} for item in ids
+        }
         for left in rows:
-            left_id = left.get("id")
+            left_id = str(left.get("id", ""))
             left_series = list(left.get("returns", []))
             for right in rows:
-                right_id = right.get("id")
+                right_id = str(right.get("id", ""))
                 right_series = list(right.get("returns", []))
                 out[left_id][right_id] = self._corr(left_series, right_series)
         return out
 
     def penalize(self, rows: List[Dict]) -> Dict[str, Dict]:
-        result = {row.get("id"): {"penalty": 0.0, "cluster": "", "reduce": False} for row in rows}
+        result = {
+            str(row.get("id", "")): {"penalty": 0.0, "cluster": "", "reduce": False} for row in rows}
         data = sorted(rows, key=lambda item: float(item.get("score", 0.0)))
         corr = self.matrix(rows)
 
@@ -32,8 +36,8 @@ class CorrelationManager:
             for j in range(i + 1, len(data)):
                 left = data[i]
                 right = data[j]
-                left_id = left.get("id")
-                right_id = right.get("id")
+                left_id = str(left.get("id", ""))
+                right_id = str(right.get("id", ""))
                 pair_corr = abs(corr.get(left_id, {}).get(right_id, 0.0))
                 if pair_corr <= self.threshold:
                     continue
