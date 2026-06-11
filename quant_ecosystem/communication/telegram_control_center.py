@@ -199,7 +199,12 @@ class TelegramControlCenter:
             elif command == "research_progress":
                 return self.research_progress()
             elif command == "top_strategies":
-                return self.top_strategies(limit=args[0] if args else 10)
+                try:
+                    limit = int(args[0]) if args else 10
+                except Exception:
+                    limit = 10
+
+                return self.top_strategies(limit=limit)
             elif command == "portfolio":
                 return self.portfolio()
             elif command == "pause_research":
@@ -213,8 +218,10 @@ class TelegramControlCenter:
             elif command == "research_stats":
                 return self.research_stats()
             elif command == "allocate":
-                return self.allocate_capital(strategy_id=args[0] if len(args) > 0 else None,
-                                            pct=float(args[1]) if len(args) > 1 else None)
+                return self.allocate_capital(
+                    strategy_id=args[0] if args and len(args) > 0 else None,
+                    pct=float(args[1]) if args and len(args) > 1 else None,
+                )
             elif command == "help":
                 return self.help()
             else:
@@ -437,7 +444,13 @@ class TelegramControlCenter:
             lines.append(f"Max Drawdown: {max_dd:.2%}")
             
             # Positions
-            positions = getattr(self.system_router, "get_open_positions", lambda: [])()
+            positions = getattr(
+                self.system_router,
+                "get_open_positions",
+                lambda: [],
+            )()
+
+            positions = list(positions or [])
             if positions:
                 lines.append(f"\n📍 **Open Positions: {len(positions)}**")
                 for pos in positions[:5]:
