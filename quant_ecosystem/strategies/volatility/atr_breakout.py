@@ -35,39 +35,18 @@ class ATRBreakoutStrategy(BaseStrategy):
             return None
 
         symbol = symbols[0]
-        length = int(max(5, float(self.params.get("atr_length", 14))))
-        # For now we approximate ATR using close-only series, which is conservative.
-        closes = market_data.get_series(symbol=symbol, timeframe="5m", lookback=length + 5)
-        if len(closes) < length + 2:
-            return None
 
-        df = pd.DataFrame({"close": closes})
-        df["prev_close"] = df["close"].shift(1)
-        # Proxy ATR using absolute close-to-close changes.
-        tr = (df["close"] - df["prev_close"]).abs()
-        atr = tr.rolling(length).mean()
-        last_atr = float(atr.iloc[-1])
-        price = float(df["close"].iloc[-1])
+    def _to_float(value: object, default: float) -> float:
+        return float(value) if isinstance(value, (int, float)) else default    
+        
+        length = int(max(5, _to_float(self.params.get("atr_length"), 14.0)))
 
-        if last_atr <= 0:
-            return None
+        mult = _to_float(self.params.get("atr_mult"), 2.0)
 
-        mult = float(self.params.get("atr_mult", 2.0))
-        upper = price + mult * last_atr
-        lower = price - mult * last_atr
+        sl_mult = _to_float(self.params.get("stop_loss_mult"), 1.0)
 
-        side: Optional[str] = None
-        if price >= upper:
-            side = "BUY"
-        elif price <= lower:
-            side = "SELL"
-
-        if not side:
-            return None
-
-        sl_mult = float(self.params.get("stop_loss_mult", 1.0))
-        tp_mult = float(self.params.get("take_profit_mult", 2.0))
-
+        tp_mult = _to_float(self.params.get("take_profit_mult"), 2.0)
+        
         if side == "BUY":
             stop_loss = price - sl_mult * last_atr
             take_profit = price + tp_mult * last_atr
