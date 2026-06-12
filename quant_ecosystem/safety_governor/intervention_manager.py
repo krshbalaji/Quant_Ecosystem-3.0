@@ -44,9 +44,13 @@ class InterventionManager:
                 actions.append("Enforce execution cooldown (>=3 cycles)")
             strategy_engine = getattr(router, "strategy_engine", None)
             active_ids = list(getattr(strategy_engine, "active_ids", []) or [])
-            if len(active_ids) > 1:
-                strategy_engine.active_ids = active_ids[:1]
-                actions.append(f"Pause strategies: keep only {strategy_engine.active_ids}")
+            if strategy_engine is not None:
+                active_ids = getattr(strategy_engine, "active_ids", [])
+                if len(active_ids) > 1:
+                    strategy_engine.active_ids = active_ids[:1]
+                    actions.append(
+                        f"Pause strategies: keep only {strategy_engine.active_ids}"
+                    )
 
         elif lvl == "EMERGENCY_STOP":
             try:
@@ -61,9 +65,12 @@ class InterventionManager:
             closed = 0
             for symbol in list((positions or {}).keys()):
                 try:
-                    broker.close_position(symbol)
+                    if broker is not None:
+                        broker.close_position(symbol)
+
                     if portfolio and hasattr(portfolio, "positions"):
                         portfolio.positions.pop(symbol, None)
+
                     closed += 1
                 except Exception:
                     continue
