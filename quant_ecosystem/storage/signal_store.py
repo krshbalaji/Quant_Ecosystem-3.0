@@ -7,7 +7,10 @@ from quant_ecosystem.storage.organism_db import dumps_json, get_connection, init
 
 def record_signal(signal_intent: SignalIntent | Dict[str, Any]) -> str:
     init_db()
-    data = signal_intent.to_dict() if hasattr(signal_intent, "to_dict") else SignalIntent.from_mapping(signal_intent).to_dict()
+    if isinstance(signal_intent, SignalIntent):
+        data = signal_intent.to_dict()
+    else:
+        data = SignalIntent.from_mapping(signal_intent).to_dict()
     row_id = str(uuid4())
     now = utc_now()
 
@@ -45,4 +48,9 @@ def get_recent_signals(limit: int = 100) -> List[Dict[str, Any]]:
             "SELECT * FROM signals ORDER BY created_at DESC LIMIT ?",
             (int(limit),),
         ).fetchall()
-    return [row_to_dict(row, json_fields=("metadata",)) for row in rows]
+    results: List[Dict[str, Any]] = []
+    for row in rows:
+        item = row_to_dict(row, json_fields=("metadata",))
+        if item is not None:
+            results.append(item)
+    return results
