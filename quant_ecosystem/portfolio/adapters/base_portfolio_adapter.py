@@ -7,18 +7,16 @@ from abc import ABC, abstractmethod
 
 class BasePortfolioAdapter(ABC):
 
-    @abstractmethod
-    def translate_positions(self, raw):
-        pass
+    from typing import Any
 
-    @abstractmethod
-    def translate_balances(self, raw):
-        pass
+    def translate_positions(self, raw: Any) -> list:
+        raise NotImplementedError
 
-    @abstractmethod
-    def translate_margin(self, raw):
-        pass
+    def translate_balances(self, raw: Any) -> CanonicalBalance:
+        raise NotImplementedError
 
-    @abstractmethod
-    def translate_portfolio_snapshot(self, raw):
-        pass
+    def translate_margin(self, raw: Any) -> dict:
+        raise NotImplementedError
+
+    def translate_portfolio_snapshot(self, raw: Any) -> dict:
+        raise NotImplementedError
