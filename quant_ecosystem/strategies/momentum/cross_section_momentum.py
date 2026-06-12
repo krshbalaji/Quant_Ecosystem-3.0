@@ -32,7 +32,18 @@ class CrossSectionMomentumStrategy(BaseStrategy):
 
     def _rank_symbols(self, market_data) -> List[Tuple[str, float]]:
         symbols = self.required_symbols or list(getattr(market_data, "symbols", []) or [])
-        lookback = int(max(5, float(self.params.get("lookback", 20))))
+        lookback_value = self.params.get("lookback", 20)
+
+        lookback = int(
+            max(
+                5,
+                float(
+                    lookback_value
+                    if isinstance(lookback_value, (int, float))
+                    else 20
+                ),
+            )
+        )
         ranks: List[Tuple[str, float]] = []
 
         feature_engine = getattr(market_data, "feature_engine", None)
@@ -70,8 +81,21 @@ class CrossSectionMomentumStrategy(BaseStrategy):
 
         side = "BUY" if momentum > 0 else "SELL"
 
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 1.0)) / 100.0
-        take_profit_pct = float(self.params.get("take_profit_pct", 2.0)) / 100.0
+        sl_value = self.params.get("stop_loss_pct", 1.0)
+
+        stop_loss_pct = float(
+            sl_value
+            if isinstance(sl_value, (int, float))
+            else 1.0
+        ) / 100.0
+
+        tp_value = self.params.get("take_profit_pct", 2.0)
+
+        take_profit_pct = float(
+            tp_value
+            if isinstance(tp_value, (int, float))
+            else 2.0
+        ) / 100.0
 
         if side == "BUY":
             stop_loss = price * (1.0 - stop_loss_pct)
