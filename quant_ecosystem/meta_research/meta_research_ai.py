@@ -238,7 +238,7 @@ class MetaResearchAI:
                 and not force
                 and (now - self._last_ts) < self._refresh_interval
             )
-            if cache_valid:
+            if cache_valid and self._cached is not None:
                 return self._cached
 
         try:
@@ -660,4 +660,4 @@ def _mode(values: List[str]) -> str:
     counts: Dict[str, int] = {}
     for v in values:
         counts[v] = counts.get(v, 0) + 1
-    return max(counts, key=counts.get)
+    return max(counts.items(), key=lambda kv: kv[1])[0]
