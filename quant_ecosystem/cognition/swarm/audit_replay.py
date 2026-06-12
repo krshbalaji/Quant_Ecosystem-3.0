@@ -84,7 +84,11 @@ class AuditReplayEngine:
             records=filtered_records,
         )
 
-    def _resolve_source_keys(self, query: AuditReplayQuery) -> (List[str], List[str]):
+    from typing import List, Tuple
+    def _resolve_source_keys(
+        self,
+        query: AuditReplayQuery,
+    ) -> tuple[List[str], List[str]]:
         keys: List[str] = []
         issues: List[str] = []
 
@@ -152,10 +156,26 @@ class AuditReplayEngine:
                 issues.append("SCHEMA_MISMATCH")
 
         if query.timestamp_from is not None:
-            filtered = [r for r in filtered if self._record_timestamp(r) is not None and self._record_timestamp(r) >= query.timestamp_from]
+            tmp: List[Any] = []
 
+            for r in filtered:
+                ts = self._record_timestamp(r)
+
+                if ts is not None and ts >= query.timestamp_from:
+                    tmp.append(r)
+
+            filtered = tmp
+            
         if query.timestamp_to is not None:
-            filtered = [r for r in filtered if self._record_timestamp(r) is not None and self._record_timestamp(r) <= query.timestamp_to]
+            tmp: List[Any] = []
+
+            for r in filtered:
+                ts = self._record_timestamp(r)
+
+                if ts is not None and ts <= query.timestamp_to:
+                    tmp.append(r)
+
+            filtered = tmp
 
         if query.namespace is not None:
             filtered = [
