@@ -1,15 +1,15 @@
 """FastAPI trading cockpit server."""
-
 from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from quant_ecosystem.cockpit.command_router import CockpitCommandRouter
 from quant_ecosystem.cockpit.control_api import register_control_routes
 from quant_ecosystem.dashboard.system_state_api import SystemStateAPI
 from quant_ecosystem.dashboard.websocket_stream import WebSocketStreamHub
+
 
 try:
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -18,6 +18,11 @@ try:
 except Exception as exc:  # pragma: no cover
     FastAPI = None
     _FASTAPI_IMPORT_ERROR = exc
+
+    if TYPE_CHECKING:
+        from fastapi import WebSocket, WebSocketDisconnect
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
 else:
     _FASTAPI_IMPORT_ERROR = None
 
@@ -54,7 +59,7 @@ def create_cockpit_app(
         return FileResponse(str(ui_dir / "index.html"))
 
     @app.websocket("/ws")
-    async def ws_endpoint(websocket: WebSocket):
+    async def ws_endpoint(websocket: "WebSocket"):
         await stream_hub.connect(websocket)
         try:
             while True:
