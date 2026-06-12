@@ -164,7 +164,10 @@ class EnsembleSignalEngine:
                 unrouted.append(sig)
 
         # Per-model meta-signals
-        model_meta: Dict[str, List[MetaSignal]] = defaultdict(list)
+        model_meta: Dict[
+            str,
+            List[Tuple[str, MetaSignal]]
+        ] = defaultdict(list)
         for model_id, sigs in model_signals.items():
             if not sigs:
                 continue
