@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 """Global Alpha Scanner core orchestration."""
+
 import logging
 
 logger = logging.getLogger(__name__)
-
-from __future__ import annotations
 
 import asyncio
 from datetime import datetime
@@ -130,6 +131,7 @@ class GlobalAlphaScanner:
         # Strategy Bank hook: update lightweight opportunity snapshot.
         layer = self.strategy_bank_layer
         if layer and hasattr(layer, "is_enabled") and layer.is_enabled():
+            candidates: List[dict] = []
             try:
                 registry = layer.bank_engine.registry
                 # Governance ownership:
@@ -192,7 +194,7 @@ class AlphaScannerCore:
     def __init__(self, **kwargs) -> None:
         import logging as _logging
         self._log = _logging.getLogger(__name__)
-        self._delegate = None
+        self._delegate: GlobalAlphaScanner | None = None
         try:
             self._delegate = GlobalAlphaScanner()
         except Exception as exc:  # noqa: BLE001
@@ -210,7 +212,9 @@ class AlphaScannerCore:
                 loop = _asyncio.new_event_loop()
                 try:
                     return loop.run_until_complete(
-                        self._delegate.scan_universe(symbols=universe or [], regime=regime)
+                        self._delegate.scan_once(
+                            groups=universe
+                        )
                     ) or []
                 finally:
                     loop.close()
