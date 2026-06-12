@@ -37,9 +37,28 @@ class BaseStrategy(ABC):
             return False
 
         try:
-            float(signal.get("strength", 0.0))
-            float(signal.get("stop_loss", 0.0))
-            float(signal.get("take_profit", 0.0))
+            strength = signal.get("strength", 0.0)
+            stop_loss = signal.get("stop_loss", 0.0)
+            take_profit = signal.get("take_profit", 0.0)
+
+            float(
+                strength
+                if isinstance(strength, (int, float, str))
+                else 0.0
+            )
+
+            float(
+                stop_loss
+                if isinstance(stop_loss, (int, float, str))
+                else 0.0
+            )
+
+            float(
+                take_profit
+                if isinstance(take_profit, (int, float, str))
+                else 0.0
+            )
+
         except (TypeError, ValueError):
             return False
 
