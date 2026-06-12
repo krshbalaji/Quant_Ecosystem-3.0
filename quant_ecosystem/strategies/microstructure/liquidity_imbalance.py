@@ -36,7 +36,18 @@ class LiquidityImbalanceStrategy(BaseStrategy):
             return None
 
         symbol = symbols[0]
-        lookback = int(max(5, float(self.params.get("lookback", 20))))
+        lookback_value = self.params.get("lookback", 20)
+
+        lookback = int(
+            max(
+                5,
+                float(
+                    lookback_value
+                    if isinstance(lookback_value, (int, float))
+                    else 20
+                ),
+            )
+        )
 
         feature_engine = getattr(market_data, "feature_engine", None)
         if feature_engine is None:
@@ -53,7 +64,13 @@ class LiquidityImbalanceStrategy(BaseStrategy):
         price_change = np.sign(np.diff(px_arr, prepend=px_arr[0]))
         pressure = float(np.mean(vol_norm * price_change))
 
-        thresh = float(self.params.get("threshold", 0.4))
+        threshold_value = self.params.get("threshold", 0.4)
+
+        thresh = float(
+            threshold_value
+            if isinstance(threshold_value, (int, float))
+            else 0.4
+        )
         side: Optional[str] = None
         if pressure > thresh:
             side = "BUY"
@@ -64,8 +81,19 @@ class LiquidityImbalanceStrategy(BaseStrategy):
             return None
 
         price = float(px_arr[-1])
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 0.8)) / 100.0
-        take_profit_pct = float(self.params.get("take_profit_pct", 1.5)) / 100.0
+        sl_value = self.params.get("stop_loss_pct", 0.8)
+        stop_loss_pct = float(
+            sl_value
+            if isinstance(sl_value, (int, float))
+            else 0.8
+        ) / 100.0
+
+        tp_value = self.params.get("take_profit_pct", 1.5)
+        take_profit_pct = float(
+            tp_value
+            if isinstance(tp_value, (int, float))
+            else 1.5
+        ) / 100.0
 
         if side == "BUY":
             stop_loss = price * (1.0 - stop_loss_pct)
