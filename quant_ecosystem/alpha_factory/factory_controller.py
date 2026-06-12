@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 """Alpha Factory controller."""
+
 import logging
 
 logger = logging.getLogger(__name__)
-
-from __future__ import annotations
 
 from typing import Dict, List, Optional
 
@@ -78,7 +79,7 @@ class AlphaFactoryController:
             for rep in reports:
                 rep["trade_count"] = int(rep.get("components", {}).get("shadow", {}).get("trades", 0) or 0)
             filtered = self.candidate_filter.apply(reports)
-            candidates = self.promotion_pipeline.promote(...)
+            candidates = self.promotion_pipeline.promote(filtered)
 
             # Sovereignty mode:
             # AlphaFactory no longer promotes strategies into StrategyBank / Registry.
@@ -141,7 +142,7 @@ class FactoryController:
         """
         if self._delegate is not None:
             try:
-                return self._delegate.run_research_cycle() or {}
+                return self._delegate.run_cycle() or {}
             except Exception as exc:  # noqa: BLE001
                 self._log.warning("FactoryController.create_alpha: delegate error (%s)", exc)
         return {"status": "stub", "genome_id": None, "idea": idea}
