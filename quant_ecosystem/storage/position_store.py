@@ -16,7 +16,17 @@ def get_all_positions() -> List[Dict[str, Any]]:
         rows = conn.execute(
             "SELECT * FROM positions ORDER BY updated_at DESC"
         ).fetchall()
-    return [row_to_dict(row, json_fields=("thesis", "metadata")) for row in rows]
+    results: List[Dict[str, Any]] = []
+
+    for row in rows:
+        item = row_to_dict(
+            row,
+            json_fields=("thesis", "metadata"),
+        )
+        if item is not None:
+            results.append(item)
+
+    return results
 
 
 def get_position(symbol: str, profile: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -37,7 +47,10 @@ def get_position(symbol: str, profile: Optional[str] = None) -> Optional[Dict[st
 
 def upsert_position(position: Position | Dict[str, Any]) -> str:
     init_db()
-    data = position.to_dict() if hasattr(position, "to_dict") else Position.from_mapping(position).to_dict()
+    if isinstance(position, Position):
+        data = position.to_dict()
+    else:
+        data = Position.from_mapping(position).to_dict()
     now = utc_now()
     existing = get_position(data["symbol"], data["profile"])
     row_id = existing["id"] if existing else str(uuid4())
