@@ -34,7 +34,18 @@ class BreakoutTrendStrategy(BaseStrategy):
             return None
 
         symbol = symbols[0]
-        lookback = int(max(5, float(self.params.get("lookback", 20))))
+        lookback_value = self.params.get("lookback", 20)
+
+        lookback = int(
+            max(
+                5,
+                float(
+                    lookback_value
+                    if isinstance(lookback_value, (int, float))
+                    else 20
+                ),
+            )
+        )
         closes = market_data.get_series(symbol=symbol, timeframe="5m", lookback=lookback + 2)
         if len(closes) < lookback + 1:
             return None
@@ -54,8 +65,21 @@ class BreakoutTrendStrategy(BaseStrategy):
         if not side:
             return None
 
-        stop_loss_pct = float(self.params.get("stop_loss_pct", 1.0)) / 100.0
-        take_profit_pct = float(self.params.get("take_profit_pct", 2.5)) / 100.0
+        sl_value = self.params.get("stop_loss_pct", 1.0)
+
+        stop_loss_pct = float(
+            sl_value
+            if isinstance(sl_value, (int, float))
+            else 1.0
+        ) / 100.0
+
+        tp_value = self.params.get("take_profit_pct", 2.5)
+
+        take_profit_pct = float(
+            tp_value
+            if isinstance(tp_value, (int, float))
+            else 2.5
+        ) / 100.0
 
         if side == "BUY":
             stop_loss = last * (1.0 - stop_loss_pct)
