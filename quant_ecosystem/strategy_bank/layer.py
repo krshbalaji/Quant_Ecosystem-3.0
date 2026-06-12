@@ -11,20 +11,29 @@ class StrategyBankLayer:
         return bool(self.bank_engine and getattr(self.bank_engine, "enabled", False))
 
     def active_strategies(self):
-        if not self.is_enabled():
+        bank = self.bank_engine
+        if bank is None:
             return []
-        return self.bank_engine.get_active_strategies()
+        return bank.get_active_strategies()
 
     def allocation(self, strategy_id):
-        if not self.is_enabled():
+        bank = self.bank_engine
+        if bank is None:
             return 0.0
-        return float(self.bank_engine.get_allocation(strategy_id))
+        return float(bank.get_allocation(strategy_id))
 
     def update_metrics(self, strategy_id, metrics):
-        if self.is_enabled():
-            self.bank_engine.update_performance(strategy_id, metrics)
+        bank = self.bank_engine
+        if bank is not None:
+            bank.update_performance(strategy_id, metrics)
 
     def registry_rows(self):
-        if not self.is_enabled():
+        bank = self.bank_engine
+        if bank is None:
             return []
-        return self.bank_engine.registry.all()
+
+        registry = getattr(bank, "registry", None)
+        if registry is None:
+            return []
+
+        return registry.all()
