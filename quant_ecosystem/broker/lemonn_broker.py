@@ -56,17 +56,20 @@ class LemonnBroker(BaseBroker):
             "order_id": order_id,
         }
 
+    from typing import Optional
     def modify_order(
         self,
         order_id: str,
-        qty: int = None,
-        price: float = None,
+        qty: int | None = None,
+        price: float | None = None,
     ):
+        new_qty = qty if qty is not None else 0
+        new_price = price if price is not None else 0.0
         return {
             "status": "MODIFIED",
             "order_id": order_id,
-            "qty": qty,
-            "price": price,
+            "qty": new_qty,
+            "price": new_price,
         }
 
     # =========================================================
