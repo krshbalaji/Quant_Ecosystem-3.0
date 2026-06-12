@@ -27,35 +27,34 @@ class ApiRouter:
         action=None,
         payload=None,
     ):
+        payload_dict = payload or {}
+
         if endpoint == "health":
             return health_endpoint.status()
 
         if endpoint == "runtime":
+            action_name = str(action or "")
             return getattr(
                 runtime_endpoint,
-                action,
+                action_name,
             )()
 
         if endpoint == "execution":
             return execution_endpoint.submit(
-                payload
+                payload_dict
             )
 
         if endpoint == "governance":
             return governance_endpoint.authorize(
-                payload["token"],
-                payload["role"],
-                payload["action"],
+                payload_dict["token"],
+                payload_dict["role"],
+                payload_dict["action"],
             )
 
         if endpoint == "orchestration":
             return orchestration_endpoint.execute(
-                payload["steps"]
+                payload_dict["steps"]
             )
-
-        raise ValueError(
-            f"Unknown endpoint: {endpoint}"
-        )
 
 
 api_router = ApiRouter()
