@@ -12,6 +12,7 @@ class GrowwBroker(BaseBroker):
     Router can safely reason about capabilities immediately.
     """
 
+    client: Any
     capabilities = GROWW_CAPABILITIES
 
     def __init__(self, config=None, **kwargs):
@@ -19,7 +20,7 @@ class GrowwBroker(BaseBroker):
         self.connected = True
         self.orders: List[Dict[str, Any]] = []
         self.positions: List[Dict[str, Any]] = []
-
+        self.client: Any = kwargs.get("client")
     # =========================================================
     # EXECUTION
     # =========================================================
@@ -59,15 +60,14 @@ class GrowwBroker(BaseBroker):
     def modify_order(
         self,
         order_id: str,
-        qty: int = None,
-        price: float = None,
+        qty: int | None = None,
+        price: float | None = None,
     ):
-        return {
-            "status": "MODIFIED",
-            "order_id": order_id,
-            "qty": qty,
-            "price": price,
-        }
+        return self.client.modify_order(
+            order_id=order_id,
+            qty=qty,
+            price=price,
+        )
 
     # =========================================================
     # RECONCILIATION
