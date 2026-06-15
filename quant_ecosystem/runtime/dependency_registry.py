@@ -1,3 +1,5 @@
+from typing import Optional
+
 from quant_ecosystem.core.registry_threading import (
     ThreadSafeRegistry,
 )
@@ -12,27 +14,27 @@ class DependencyRegistry(
 
     def register(
         self,
-        name,
-        service,
-    ):
+        key: str,
+        value: object,
+    ) -> None:
 
-        if self.exists(name):
+        if self.exists(key):
             return
 
         super().register(
-            name,
-            service,
+            key,
+            value,
         )
 
     def get(
         self,
-        name,
-    ):
+        key: str,
+    ) -> object | None:
 
-        if not self.exists(name):
+        if not self.exists(key):
             return None
 
-        return super().get(name)
+        return super().get(key)
 
     def all_services(self):
 
@@ -44,6 +46,4 @@ class DependencyRegistry(
             self._items.clear()
 
 
-dependency_registry = (
-    DependencyRegistry()
-)
+dependency_registry = DependencyRegistry()
