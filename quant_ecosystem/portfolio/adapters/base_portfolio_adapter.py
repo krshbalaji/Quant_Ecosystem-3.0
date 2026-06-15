@@ -3,7 +3,7 @@ Base portfolio adapter contract
 """
 
 from abc import ABC, abstractmethod
-
+from canonical.broker_models import CanonicalBalance
 
 class BasePortfolioAdapter(ABC):
 

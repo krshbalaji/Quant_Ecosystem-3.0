@@ -40,7 +40,7 @@ class CapitalAllocator:
             return {}
         return {sid: score / total for sid, score in top}
 
-class CapitalAllocator:
+class LegacyCapitalAllocator:
 
     def allocate(self, strategies):
 

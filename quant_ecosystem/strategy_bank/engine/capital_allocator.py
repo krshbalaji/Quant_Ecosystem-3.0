@@ -34,6 +34,9 @@ class CapitalAllocator:
 
         overflow = round(sum(out.values()) - 100.0, 4)
         if overflow > 0:
-            top = max(out, key=out.get)
+            top = max(
+                out.items(),
+                key=lambda x: x[1],
+            )[0]
             out[top] = round(max(0.0, out[top] - overflow), 4)
         return out

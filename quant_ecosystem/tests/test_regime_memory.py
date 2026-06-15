@@ -11,7 +11,10 @@ from quant_ecosystem.intelligence.regime_service import RegimeService
 from quant_ecosystem.profiles import get_profile
 from quant_ecosystem.contracts.profile_types import ProfileTypes
 from quant_ecosystem.contracts.signal_intent import SignalIntent
+from typing import cast
 
+from quant_ecosystem.market_regime.regime_detector import MarketRegimeDetector
+from quant_ecosystem.regime_transition.transition_detector import RegimeTransitionDetector
 
 class StubMarketRegimeDetector:
     def detect_regime(self, timeframe_data, extra_signals=None):
@@ -77,8 +80,14 @@ class RegimeMemoryTests(unittest.TestCase):
 
     def test_adaptive_confidence_decay(self):
         service = RegimeService(
-            market_regime_detector=StubMarketRegimeDetector(),
-            transition_detector=StubTransitionDetector(),
+            market_regime_detector=cast(
+                MarketRegimeDetector,
+                StubMarketRegimeDetector(),
+            ),
+            transition_detector=cast(
+                RegimeTransitionDetector,
+                StubTransitionDetector(),
+            ),
             regime_memory=self.memory,
         )
         payload = service.analyze(

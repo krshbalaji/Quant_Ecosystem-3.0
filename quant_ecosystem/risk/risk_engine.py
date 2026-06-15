@@ -218,7 +218,8 @@ class RiskEngine:
                 "EQUITY",
             )
 
-        if hasattr(asset_class, "value"):
+        from enum import Enum
+        if isinstance(asset_class, Enum):
             asset_class = asset_class.value
 
         return str(asset_class).upper()

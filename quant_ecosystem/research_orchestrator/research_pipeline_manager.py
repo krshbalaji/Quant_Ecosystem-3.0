@@ -270,6 +270,8 @@ class ResearchPipelineManager:
         import ray
         if not ray.is_initialized():
             ray.init(ignore_reinit_error=True)
+        if self._ray_eval_fn is None:
+            return self._sequential_evaluate(genomes, periods)
         futures = [self._ray_eval_fn.remote(g, periods) for g in genomes]
         results = ray.get(futures)
         return [r for r in results if r]

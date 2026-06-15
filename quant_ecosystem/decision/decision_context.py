@@ -9,7 +9,7 @@ from quant_ecosystem.profiles.base_profile import BaseProfile
 from quant_ecosystem.risk.capital_allocator_v2 import CapitalAllocatorV2
 from quant_ecosystem.risk.correlation_guard import CorrelationGuard
 from quant_ecosystem.risk.reserve_manager import ReserveManager
-
+from quant_ecosystem.contracts.signal_intent import SignalIntent
 
 @dataclass
 class DecisionContext:
@@ -33,6 +33,7 @@ class DecisionContext:
     reserve_allowed: bool = False
     is_premium_opportunity: bool = False
     metadata: Optional[Dict[str, Any]] = None
+    signal_intent: Optional[SignalIntent] = None
 
     @classmethod
     def from_regime_inputs(

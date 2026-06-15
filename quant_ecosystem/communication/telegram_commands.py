@@ -261,12 +261,15 @@ class ParseResult:
         self.error = error
     
     def is_dangerous(self) -> bool:
-        """Check if command has dangerous side effects."""
-        return self.schema and self.schema.dangerous
-    
+        return bool(
+            self.schema and self.schema.dangerous
+        )
+
     def is_query(self) -> bool:
-        """Check if command is read-only query."""
-        return self.schema and self.schema.cmd_type == CommandType.QUERY
+        return bool(
+            self.schema
+            and self.schema.cmd_type == CommandType.QUERY
+        )
     
     def __repr__(self) -> str:
         if self.valid:

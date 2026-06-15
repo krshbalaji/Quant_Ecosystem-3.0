@@ -97,9 +97,10 @@ class CollectiveLearningEngine:
     ) -> LearningPattern:
 
         timestamps = [
-            self._record_timestamp(record)
+            ts
             for record in records
-            if self._record_timestamp(record) is not None
+            for ts in [self._record_timestamp(record)]
+            if ts is not None
         ]
         first_seen = min(timestamps) if timestamps else None
         last_seen = max(timestamps) if timestamps else None
