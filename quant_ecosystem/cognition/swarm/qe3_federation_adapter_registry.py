@@ -16,28 +16,43 @@ class QE3FederationAdapterRegistry(
 
     def register(
         self,
+        key: str,
+        value: GovernanceAdapterContract,
+    ) -> None:
+        super().register(key, value)
+
+    def get(
+        self,
+        key: str,
+    ) -> GovernanceAdapterContract | None:
+        return super().get(key)
+
+    def register_contract(
+        self,
         contract: GovernanceAdapterContract,
     ) -> None:
 
-        super().register(
+        self.register(
             contract.subsystem_name,
             contract,
         )
 
-    def get(
+    def get_contract(
         self,
         subsystem_name: str,
-    ):
-        return super().get(
-            subsystem_name
-        )
+    ) -> GovernanceAdapterContract | None:
+
+        try:
+            return super().get(subsystem_name)
+        except Exception:
+            return None
 
     def enabled(
         self,
         subsystem_name: str,
     ) -> bool:
 
-        contract = self.get(
+        contract = self.get_contract(
             subsystem_name
         )
 
