@@ -16,27 +16,36 @@ class WorkflowRegistry(
 
     def register(
         self,
+        key: str,
+        value: WorkflowDefinition,
+    ) -> None:
+        super().register(key, value)
+
+    def get(
+        self,
+        key: str,
+    ) -> WorkflowDefinition:
+        return super().get(key)
+
+    def register_workflow(
+        self,
         workflow: WorkflowDefinition,
     ) -> None:
 
-        if self.exists(
-            workflow.workflow_id
-        ):
+        if self.exists(workflow.workflow_id):
             return
 
-        super().register(
+        self.register(
             workflow.workflow_id,
             workflow,
         )
 
-    def get(
+    def get_workflow(
         self,
         workflow_id: str,
-    ):
+    ) -> WorkflowDefinition | None:
 
-        if not self.exists(
-            workflow_id
-        ):
+        if not self.exists(workflow_id):
             return None
 
         return super().get(
