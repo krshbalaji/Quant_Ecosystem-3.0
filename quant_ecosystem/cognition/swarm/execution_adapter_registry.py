@@ -7,7 +7,7 @@ from .router_adapter_contract import (
 )
 
 
-class ExecutionAdapterRegistry(
+class RoueterAdapterRegistry(
     KeyedRegistry[
         str,
         RouterAdapterContract,
@@ -16,20 +16,22 @@ class ExecutionAdapterRegistry(
 
     def register(
         self,
-        contract: RouterAdapterContract,
+        key: str,
+        value: RouterAdapterContract,
     ) -> None:
 
         super().register(
-            contract.adapter_id,
-            contract,
+            key,
+            value,
         )
 
     def get(
         self,
-        adapter_id: str,
-    ):
+        key: str,
+    ) -> RouterAdapterContract | None:
+
         return super().get(
-            adapter_id
+            key
         )
 
     def enabled(

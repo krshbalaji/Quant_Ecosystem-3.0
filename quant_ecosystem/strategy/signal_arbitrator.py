@@ -79,14 +79,18 @@ class SignalArbitrator:
                 elif side == "SELL":
                     sell_score += conf
 
+            if best is None:
+                continue
+
+            best_dict = dict(best)
+
             if buy_score == sell_score:
-                if best:
-                    resolved.append(best)
+                resolved.append(best_dict)
 
             elif buy_score > sell_score:
                 resolved.append(
                     {
-                        **best,
+                        **best_dict,
                         "side": "BUY",
                     }
                 )
@@ -94,7 +98,7 @@ class SignalArbitrator:
             else:
                 resolved.append(
                     {
-                        **best,
+                        **best_dict,
                         "side": "SELL",
                     }
                 )
