@@ -132,7 +132,13 @@ class CapitalAllocatorV2:
         available = self.get_available_budget(profile)
         if amount <= available:
             return True
-        if allow_reserve and self.reserve_manager.can_consume(profile, amount - available):
+        normalized_profile = self._normalize_profile(profile)
+
+        if allow_reserve and self.reserve_manager.can_consume(
+            normalized_profile,
+            amount - available,
+        ):
+        
             return True
         return False
 
@@ -152,7 +158,10 @@ class CapitalAllocatorV2:
 
         if allow_reserve:
             remainder = amount - bucket.available
-            if self.reserve_manager.can_consume(profile, remainder):
+            if self.reserve_manager.can_consume(
+                self._normalize_profile(profile),
+                remainder,
+            ):
                 if bucket.available > 0:
                     bucket.used_capital += bucket.available
                 self.reserve_manager.consume(remainder)
