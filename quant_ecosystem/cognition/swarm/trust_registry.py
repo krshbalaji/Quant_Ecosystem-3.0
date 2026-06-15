@@ -14,21 +14,34 @@ class TrustRegistry(
 
     def register(
         self,
+        key: str,
+        value: FederationIdentity,
+    ) -> None:
+        super().register(key, value)
+
+    def get(
+        self,
+        key: str,
+    ) -> FederationIdentity:
+        return super().get(key)
+
+    def register_identity(
+        self,
         identity: FederationIdentity,
     ) -> None:
 
         if self.exists(identity.organism_id):
             return
 
-        super().register(
+        self.register(
             identity.organism_id,
             identity,
         )
 
-    def get(
+    def get_identity(
         self,
         organism_id: str,
-    ):
+    ) -> FederationIdentity | None:
 
         if not self.exists(organism_id):
             return None
@@ -52,7 +65,7 @@ class TrustRegistry(
         capability: str,
     ) -> bool:
 
-        identity = self.get(
+        identity = self.get_identity(
             organism_id,
         )
 
