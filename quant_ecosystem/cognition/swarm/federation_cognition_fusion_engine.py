@@ -33,14 +33,14 @@ class FederationCognitionFusionEngine:
         )
 
         strongest = max(
-            dimensions,
-            key=dimensions.get,
-        )
+            dimensions.items(),
+            key=lambda x: x[1],
+        )[0]
 
         weakest = min(
-            dimensions,
-            key=dimensions.get,
-        )
+            dimensions.items(),
+            key=lambda x: x[1],
+        )[0]
 
         return FederationCognitionReport(
             cognition_index=cognition_index,
