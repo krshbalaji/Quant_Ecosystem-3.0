@@ -42,12 +42,16 @@ class QuantTelegramBot:
         assert self.app is not None
         await self.app.initialize()
         await self.app.start()
-        await self.app.updater.start_polling()
+        updater = self.app.updater
+        if updater is not None:
+            await updater.start_polling()
 
     async def stop(self) -> None:
         if self.app is None:
             return
-        await self.app.updater.stop()
+        updater = self.app.updater
+        if updater is not None:
+            await updater.stop()
         await self.app.stop()
         await self.app.shutdown()
 

@@ -7,11 +7,10 @@ from quant_ecosystem.storage.organism_db import dumps_json, get_connection, init
 
 def record_decision(portfolio_decision: PortfolioDecision | Dict[str, Any]) -> str:
     init_db()
-    data = (
-        portfolio_decision.to_dict()
-        if hasattr(portfolio_decision, "to_dict")
-        else PortfolioDecision.from_mapping(portfolio_decision).to_dict()
-    )
+    if isinstance(portfolio_decision, PortfolioDecision):
+        data = portfolio_decision.to_dict()
+    else:
+        data = PortfolioDecision.from_mapping(portfolio_decision).to_dict()
     row_id = str(uuid4())
     now = utc_now()
 
