@@ -5,7 +5,7 @@ from __future__ import annotations
 import pickle
 from pathlib import Path
 from typing import Dict, List
-
+from typing import Any
 
 REGIMES = [
     "TRENDING_BULL",
@@ -69,6 +69,7 @@ class RegimeClassifier:
     def __init__(self, model_path: str = "quant_ecosystem/regime_ai/models/regime_model.pkl", **kwargs):
         self.model_path = Path(model_path)
         self.model = self._load_model()
+        self.model: Any = self._load_model()
 
     def predict_regime(self, feature_vector: List[float]) -> str:
         return str(self.model.predict([feature_vector])[0]).upper()
