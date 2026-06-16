@@ -14,7 +14,7 @@ class FederationRegistry(
     ]
 ):
 
-    def register(
+    def register_entity(
         self,
         entity: FederationEntity,
     ) -> None:

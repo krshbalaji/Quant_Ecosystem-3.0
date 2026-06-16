@@ -24,7 +24,7 @@ class FederationAuditRegistry(
     def _shadow_key(self) -> str:
         return "audit.execution.lineage_registry"
 
-    def register(
+    def register_lineage(
         self,
         lineage: ExecutionLineage,
     ) -> None:

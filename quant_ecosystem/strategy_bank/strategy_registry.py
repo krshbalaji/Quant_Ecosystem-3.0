@@ -14,9 +14,7 @@ class StrategyRegistry:
         self._strategies: Dict[str, Any] = {}
         logger.info("StrategyRegistry initialized")
 
-    def load(self):
-        return list(self._strategies.values())
-    
+      
     def register(self, name: str, strategy: Any) -> None:
         self._strategies[name] = strategy
         logger.info("Strategy registered: %s", name)

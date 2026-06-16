@@ -14,7 +14,7 @@ class FederationArchitectureRegistry(
     ]
 ):
 
-    def register(
+    def register_component(
         self,
         component: FederationComponent,
     ) -> None:

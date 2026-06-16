@@ -92,7 +92,12 @@ class KnowledgeReplayEngine:
             records=filtered,
         )
 
-    def _resolve_source_keys(self, query: KnowledgeReplayQuery) -> (List[str], List[str]):
+    from typing import Tuple
+
+    def _resolve_source_keys(
+        self,
+        query: KnowledgeReplayQuery,
+    ) -> Tuple[List[str], List[str]]:
         keys: List[str] = []
         issues: List[str] = []
         available = [key for key in self._store.keys() if key.startswith("audit.learning.pattern.")]

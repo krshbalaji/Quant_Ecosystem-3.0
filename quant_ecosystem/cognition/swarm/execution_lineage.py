@@ -26,11 +26,12 @@ class ExecutionLineage:
     ) -> None:
         # legacy write (primary)
         self.events.append(event)
-
+        store = self._shadow_store
         # shadow write to MultiMapStore for parity
         if getattr(self, "_shadow_store", None) is not None:
             try:
-                self._shadow_store.put(self._shadow_key(), event)
+                if store is not None:
+                    store.put(self._shadow_key(), event)
             except Exception:
                 # swallow to avoid changing behavior
                 pass

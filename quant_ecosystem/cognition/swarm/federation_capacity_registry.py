@@ -1,3 +1,4 @@
+from quant_ecosystem.cognition.swarm.federation_capability import FederationCapability
 from quant_ecosystem.core.append_registry import (
     AppendRegistry,
 )
@@ -12,9 +13,10 @@ class FederationCapacityRegistry(
         CapacityMetric
     ]
 ):
-
+                      
     def metrics(
         self,
     ) -> list[CapacityMetric]:
 
         return self.entries()
+    

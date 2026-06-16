@@ -151,12 +151,9 @@ class ShadowEngine:
         Falls back to empty list on error.
         """
         if self._delegate is not None:
-            try:
-                return self._delegate.process_signals(
-                    signals=signals, market_data=market_data or {}
-                )
-            except Exception as exc:  # noqa: BLE001
-                self._log.warning("ShadowEngine.mirror_trades: delegate error (%s)", exc)
+            self._log.debug(
+                "ShadowEngine.mirror_trades: direct signal processing is not supported"
+            )
         results = []
         for sig in signals:
             symbol = sig.get("symbol", "UNKNOWN") if isinstance(sig, dict) else str(sig)

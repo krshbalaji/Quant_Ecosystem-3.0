@@ -99,7 +99,12 @@ class KnowledgeGraphEngine:
         graph: KnowledgeGraph,
     ) -> None:
         for provenance_id in pattern.provenance:
+
+            if not pattern.pattern_id:
+                continue
+
             target = patterns.get(provenance_id)
+
             relationship = KnowledgeRelationship(
                 source_id=pattern.pattern_id,
                 target_id=provenance_id,

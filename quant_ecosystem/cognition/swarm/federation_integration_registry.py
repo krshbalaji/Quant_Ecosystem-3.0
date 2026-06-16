@@ -14,7 +14,7 @@ class FederationIntegrationRegistry(
     ]
 ):
 
-    def register(
+    def register_contract(
         self,
         contract: IntegrationContract,
     ) -> None:

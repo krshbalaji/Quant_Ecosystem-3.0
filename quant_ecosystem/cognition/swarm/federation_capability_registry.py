@@ -14,7 +14,7 @@ class FederationCapabilityRegistry(
     ]
 ):
 
-    def register(
+    def register_capability(
         self,
         capability: FederationCapability,
     ) -> None:

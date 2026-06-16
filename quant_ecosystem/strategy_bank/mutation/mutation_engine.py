@@ -173,7 +173,13 @@ class MutationEngine:
                 return "SELL"
             return "HOLD"
 
-        return self.backtest.run(synthetic_strategy)
+        result = self.backtest.run(
+            synthetic_strategy,
+            data=260,
+            symbol="MUTATION",
+        )
+
+        return dict(result.metrics)
 
     def _passes_gate(self, metrics: Dict, dna: StrategyDNA) -> bool:
         if not self._passes_safety_limits(dna):

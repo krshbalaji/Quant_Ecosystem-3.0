@@ -65,6 +65,11 @@ class StrategyBankEngine:
         regime = self.regime_mapper.normalize(intelligence_report or {})
         self._last_regime = regime
         normalized = [self._normalize_report(item) for item in strategy_reports]
+        ranked = sorted(
+            normalized,
+            key=lambda item: float(item.get("score", 0.0)),
+            reverse=True,
+        )
 
         correlation_penalties = self.correlation.penalize(normalized)
         for row in normalized:
@@ -78,7 +83,7 @@ class StrategyBankEngine:
             row["disabled_by_correlation"] = bool(payload.get("reduce", False))
 
             candidate_stage, reason = self.lifecycle.evaluate(row)
-
+                       
             final_stage = self.governor.decide_stage(
                 row=row,
                 candidate_stage=candidate_stage,
@@ -94,8 +99,8 @@ class StrategyBankEngine:
                 and not row["disabled_by_correlation"]
                 and self.regime_mapper.enabled_for_regime(row, regime)
             )
-
-        ranked = sorted(normalized, key=lambda item: float(item.get("score", 0.0)), reverse=True)
+        
+        
         # If all strategies are retired/rejected, keep one shadow candidate alive in PAPER mode.
         if self.config.mode.upper() == "PAPER" and (not any(item.get("active") for item in ranked)):
             for row in ranked:

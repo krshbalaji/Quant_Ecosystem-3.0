@@ -7,7 +7,7 @@ from .router_adapter_contract import (
 )
 
 
-class RoueterAdapterRegistry(
+class ExecutionAdapterRegistry(
     KeyedRegistry[
         str,
         RouterAdapterContract,

@@ -192,7 +192,7 @@ def _run_genome_backtest(payload: Dict[str, Any]) -> Dict[str, Any]:
 
             else:
                 try:
-                    from quant_ecosystem.core.market_engine import MarketDataEngine
+                    from quant_ecosystem.market_data.market_data_engine import MarketDataEngine
                     market_engine = MarketDataEngine()
 
                     symbol = payload.get("symbol", "RELIANCE.NS")
