@@ -17,7 +17,14 @@ class StrategyEvaluator:
     def evaluate(self, strategies):
         reports = []
         for strategy in strategies:
-            metrics = self.backtest.run(strategy["callable"])
+            result = self.backtest.run(
+                strategy["callable"],
+                data=260,
+                symbol=str(strategy.get("id", "UNKNOWN")),
+            )
+
+            metrics = dict(result.metrics)
+
             reports.append(
                 {
                     "id": strategy["id"],
@@ -42,7 +49,6 @@ class StrategyEvaluator:
             penalty_map[left] = penalty_map.get(left, 0.0) + penalty
             penalty_map[right] = penalty_map.get(right, 0.0) + penalty
 
-        reports.sort(key=lambda item: item["metrics"].get("expectancy_rolling_100", 0.0), reverse=True)
         selected = set()
         for report in reports:
             report_id = report["id"]

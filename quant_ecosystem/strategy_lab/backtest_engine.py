@@ -17,7 +17,15 @@ class BacktestEngine:
     def run_strategy(self, strategy: Dict, periods: int = 260) -> Dict:
         """Run a single strategy backtest and return metrics."""
         callable_strategy = self._build_callable(strategy)
-        metrics = self.core_engine.run(callable_strategy, periods=periods)
+
+        result = self.core_engine.run(
+            callable_strategy,
+            data=periods,
+            symbol=str(strategy.get("id", "LAB")),
+        )
+
+        metrics = dict(result.metrics)
+        
         if self.microstructure_simulator:
             params = dict(strategy.get("parameters", {}))
             metrics = self.microstructure_simulator.apply_to_backtest_metrics(
