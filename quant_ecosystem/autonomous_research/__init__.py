@@ -39,7 +39,8 @@ from quant_ecosystem.autonomous_research.autonomous_research_loop_controller imp
 
 __all__ = [
     "AutonomousResearchLoop",
-    "CycleState", "LoopConfig"
+    "CycleState",
+    "LoopConfig",
     "SignalDecayEngine",
     "signal_decay_engine",
     "OpportunityAgingEngine",

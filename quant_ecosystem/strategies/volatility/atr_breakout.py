@@ -36,7 +36,11 @@ class ATRBreakoutStrategy(BaseStrategy):
 
         symbol = symbols[0]
 
-    def _to_float(value: object, default: float) -> float:
+    @staticmethod
+    def _to_float(
+        value: object,
+        default: float,
+    ) -> float:
         return float(value) if isinstance(value, (int, float)) else default    
         
         length = int(max(5, _to_float(self.params.get("atr_length"), 14.0)))

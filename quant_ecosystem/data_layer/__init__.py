@@ -4,6 +4,7 @@ from quant_ecosystem.data_layer.factor_dataset_builder import (
 )    
 
 __all__ = [
-    "ResearchDatasetBuilder", "ResearchSample",
-    "FactorDatasetBuilder", "FactorRow", "FACTOR_CATALOG",
+    "ResearchDatasetBuilder",
+    "ResearchSample",
+    "FactorDatasetBuilder",
 ]
