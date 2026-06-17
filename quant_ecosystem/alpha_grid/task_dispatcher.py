@@ -5,7 +5,15 @@ from __future__ import annotations
 import threading
 import time
 from typing import Dict
+from typing import Protocol, cast
 
+class SupportsExecute(Protocol):
+    def execute(
+        self,
+        task_type: str,
+        payload: dict,
+    ) -> dict:
+        ...
 
 class TaskDispatcher:
     """Dispatches queued tasks to available workers using worker threads."""
@@ -38,24 +46,58 @@ class TaskDispatcher:
     def stop(self) -> None:
         self._running = False
 
-    def _worker_loop(self, node_id: str) -> None:
-        worker = self._workers.get(node_id)
+    def _worker_loop(
+        self,
+        node_id: str,
+    ) -> None:
+
+        worker = cast(
+            SupportsExecute | None,
+            self._workers.get(node_id),
+        )
+
         if worker is None:
             return
+
         while self._running:
-            task = self.task_queue.get(timeout_sec=0.2)
+
+            task = self.task_queue.get(
+                timeout_sec=0.2
+            )
+
             if task is None:
                 time.sleep(0.02)
                 continue
+
             task.assigned_worker = node_id
-            result = worker.execute(task.task_type, task.payload)
+
+            result = worker.execute(
+                task.task_type,
+                task.payload,
+            )
+
             result["task_id"] = task.task_id
             result["assigned_worker"] = node_id
+
             self.result_aggregator.accept(result)
+
             if result.get("ok"):
-                self.task_queue.mark_done(task.task_id, status="DONE")
+
+                self.task_queue.mark_done(
+                    task.task_id,
+                    status="DONE",
+                )
+
             else:
-                retried = self.task_queue.requeue(task)
+
+                retried = self.task_queue.requeue(
+                    task
+                )
+
                 if not retried:
-                    self.task_queue.mark_done(task.task_id, status="FAILED")
+
+                    self.task_queue.mark_done(
+                        task.task_id,
+                        status="FAILED",
+                    )
 

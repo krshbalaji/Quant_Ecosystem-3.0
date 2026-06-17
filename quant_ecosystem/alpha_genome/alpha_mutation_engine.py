@@ -189,15 +189,31 @@ class AlphaMutationEngine:
 
     def _inject_random_gene(self, genome: Dict[str, Any]) -> None:
         """Replace one random gene slot with a fresh pool gene for diversity."""
+
+        gene_pool = self.gene_pool
+        if gene_pool is None:
+            return
+
         gene_slots = [
-            "market_filter_gene", "signal_gene", "entry_gene",
-            "exit_gene", "risk_gene", "execution_gene",
+            "market_filter_gene",
+            "signal_gene",
+            "entry_gene",
+            "exit_gene",
+            "risk_gene",
+            "execution_gene",
         ]
+
         slot = random.choice(gene_slots)
-        sampled = self.gene_pool.sample(n=1)
+
+        sampled = gene_pool.sample(n=1)
+
         if sampled:
             g = sampled[0]
-            genome[slot] = {"gene_type": g.gene_type, "family": g.family, **g.params}
+            genome[slot] = {
+                "gene_type": g.gene_type,
+                "family": g.family,
+                **g.params,
+            }
 
     # ------------------------------------------------------------------
     # Stats

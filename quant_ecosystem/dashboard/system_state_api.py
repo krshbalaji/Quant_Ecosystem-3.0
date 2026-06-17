@@ -116,8 +116,10 @@ class SystemStateAPI:
         positions = getattr(getattr(router, "portfolio_engine", None), "positions", {}) or {}
         exposure = 0.0
         try:
-            if hasattr(router, "_portfolio_exposure_pct"):
-                exposure = self._f(router._portfolio_exposure_pct())
+            fn = getattr(router, "_portfolio_exposure_pct", None)
+
+            if callable(fn):
+                exposure = self._f(fn())
         except Exception:
             exposure = 0.0
         return {"positions": positions, "exposure_pct": exposure}

@@ -43,7 +43,7 @@ class TokenCaptureHandler(BaseHTTPRequestHandler):
 
 class FyersTokenManager:
     def __init__(self):
-        self.client_id = Env.FYERS_CLIENT_ID or Env.FYERS_APP_ID
+        self.client_id = Env.FYERS_CLIENT_ID or getattr(Env, "FYERS_APP_ID", "")
         self.secret_key = Env.FYERS_SECRET_KEY
         self.redirect_uri = Env.FYERS_REDIRECT_URI
 

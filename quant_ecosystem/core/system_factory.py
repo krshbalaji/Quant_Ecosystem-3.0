@@ -1231,9 +1231,9 @@ class SystemFactory:
     def _boot_market_pulse(self, router: SystemRouter) -> None:
         try:
             from quant_ecosystem.market_pulse.pulse_engine import (  # noqa: PLC0415
-                PulseEngine,
+                MarketPulseEngine,
             )
-            router.market_pulse_engine = PulseEngine(
+            router.market_pulse_engine = MarketPulseEngine(
                 config=self._config,
                 min_strength=getattr(self._config, "market_pulse_min_strength", 0.2),
             )
@@ -1244,16 +1244,16 @@ class SystemFactory:
     def _boot_event_driven_orchestrator(self, router: SystemRouter) -> None:
         try:
             from quant_ecosystem.event_engine.event_orchestrator import (  # noqa: PLC0415
-                EventOrchestrator,
+                EventDrivenOrchestrator,
             )
-            router.event_driven_orchestrator = EventOrchestrator(
+            router.event_driven_orchestrator = EventDrivenOrchestrator(
                 config=self._config,
                 event_bus=router.event_bus,
                 execution_router=router._execution_router,
             )
-            logger.debug("EventOrchestrator initialized.")
+            logger.debug("EventDrivenOrchestrator initialized.")
         except Exception:
-            logger.warning("EventOrchestrator unavailable.", exc_info=True)
+            logger.warning("EventDrivenOrchestrator unavailable.", exc_info=True)
 
     def _boot_adaptive_learning(self, router: SystemRouter) -> None:
         try:

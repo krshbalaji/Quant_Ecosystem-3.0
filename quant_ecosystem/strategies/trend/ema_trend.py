@@ -70,7 +70,9 @@ class EMATrendStrategy(BaseStrategy):
         stop_loss_pct = float(
             cast(int | float, self.params.get("stop_loss_pct", 1.0))
         )
-        take_profit_pct = float(self.params.get("take_profit_pct", 2.0)) / 100.0
+        take_profit_pct = float(
+            cast(int | float, self.params.get("take_profit_pct", 2.0))
+        ) / 100.0
 
         if side == "BUY":
             stop_loss = price * (1.0 - stop_loss_pct)

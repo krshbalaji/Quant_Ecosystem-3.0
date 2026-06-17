@@ -89,12 +89,7 @@ class AccountingEngine:
             return accounting_registry.get_snapshot(fill.symbol)
 
         snapshot = accounting_registry.get_snapshot(fill.symbol)
-
-        try:
-            snapshot.multiplier = getattr(fill, "multiplier", 1.0)
-        except Exception:
-            pass
-
+       
         lot_matcher.apply_fill(
             snapshot=snapshot,
             fill=fill,

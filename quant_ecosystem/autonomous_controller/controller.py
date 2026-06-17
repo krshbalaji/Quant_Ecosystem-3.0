@@ -50,7 +50,9 @@ class AutonomousController:
             return f"Strategy not found: {sid}"
 
         if bank and getattr(bank, "enabled", False):
-            row = bank.registry.get(sid) or {"id": sid}
+            from typing import Any
+
+            row: dict[str, Any] = bank.registry.get(sid) or {"id": sid}
             row["stage"] = "LIVE"
             row["active"] = True
             # Governance ownership:

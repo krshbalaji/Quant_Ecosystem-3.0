@@ -77,7 +77,7 @@ def _candidate_strength(signal: SignalIntent) -> float:
     return max(0.0, min(1.0, (normalized_score * 0.6) + (confidence * 0.3) + (profile_bonus * 0.1)))
 
 
-class RotationEngine:
+class RecommendRotationEngine:
     def rank_existing_positions(
         self,
         snapshot: PortfolioSnapshot,
@@ -166,14 +166,14 @@ class RotationEngine:
         return decisions
 
 
-_rotation_engine = RotationEngine()
+_recommend_rotation_engine = RecommendRotationEngine()
 
 
 def rank_existing_positions(
     snapshot: PortfolioSnapshot,
     trend_proxy_map: Optional[Dict[str, float]] = None,
 ) -> List[Tuple[Position, float]]:
-    return _rotation_engine.rank_existing_positions(snapshot, trend_proxy_map=trend_proxy_map)
+    return _recommend_rotation_engine.rank_existing_positions(snapshot, trend_proxy_map=trend_proxy_map)
 
 
 def compare_opportunity(
@@ -181,7 +181,7 @@ def compare_opportunity(
     candidate_signal: Any,
     trend_proxy: float = 0.0,
 ) -> Dict[str, Any]:
-    return _rotation_engine.compare_opportunity(current_position, candidate_signal, trend_proxy=trend_proxy)
+    return _recommend_rotation_engine.compare_opportunity(current_position, candidate_signal, trend_proxy=trend_proxy)
 
 
 def recommend_rotation(
@@ -189,4 +189,4 @@ def recommend_rotation(
     candidates: Iterable[Union[SignalIntent, Dict[str, Any]]],
     trend_proxy_map: Optional[Dict[str, float]] = None,
 ) -> List[PortfolioDecision]:
-    return _rotation_engine.recommend_rotation(snapshot, candidates, trend_proxy_map=trend_proxy_map)
+    return _recommend_rotation_engine.recommend_rotation(snapshot, candidates, trend_proxy_map=trend_proxy_map)

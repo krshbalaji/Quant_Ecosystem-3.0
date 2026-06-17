@@ -5,7 +5,7 @@ FIX:   Constructor now accepts config=None, **kwargs.
 from collections import defaultdict
 
 
-class EventOrchestrator:
+class EventDrivenOrchestrator:
     """
     Internal event bus. Engines publish events here; subscribers
     receive them asynchronously (sync stub for PAPER mode).

@@ -753,6 +753,7 @@ class _MinimalBacktestEngine:
             test = candles[i*step + int(step*train_frac): (i+1)*step]
             if len(test) < 10: continue
             r = self.run(strategy_fn, test)
-            sharpes.append(r.metrics.get("sharpe", 0.0))
+            metrics = getattr(r, "metrics", {})
+            sharpes.append(float(metrics.get("sharpe", 0.0)))
         avg = sum(sharpes) / len(sharpes) if sharpes else 0.0
         return {"oos_metrics": {"sharpe": avg}, "summary": {"avg_sharpe": avg}, "windows": []}

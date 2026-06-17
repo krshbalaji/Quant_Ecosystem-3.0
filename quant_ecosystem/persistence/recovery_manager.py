@@ -9,7 +9,7 @@ class RecoveryManager:
         self,
         snapshot_name,
     ):
-        return durable_snapshot_repository.load(
+        return durable_snapshot_repository.load_snapshot(
             snapshot_name
         )
 

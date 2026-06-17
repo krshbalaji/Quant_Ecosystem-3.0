@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 from quant_ecosystem.strategies.base.base_strategy import BaseStrategy
 
@@ -14,7 +14,11 @@ class StrategyFactory:
     def __init__(self, registry=None, **kwargs):
         self.registry = registry
 
-    def create_from_class(self, cls: Type[BaseStrategy], params: Dict[str, object] | None = None) -> BaseStrategy:
+    def create_from_class(
+        self,
+        cls: Type[Any],
+        params: Dict[str, object] | None = None,
+    ) -> BaseStrategy:
         """
         Instantiate a new strategy from a concrete strategy class and params.
         """

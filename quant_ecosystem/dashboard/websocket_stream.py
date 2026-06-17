@@ -5,21 +5,34 @@ from __future__ import annotations
 import asyncio
 import json
 from typing import Set
+from typing import Protocol
 
+class SupportsWebSocket(Protocol):
+    async def accept(self) -> None: ...
+    async def send_text(self, data: str) -> None: ...
+    
 
+   
 class WebSocketStreamHub:
     """Fan-out hub for dashboard event/state messages."""
 
     def __init__(self, **kwargs):
-        self._clients: Set[object] = set()
+        
         self._lock = asyncio.Lock()
+        self._clients: Set[SupportsWebSocket] = set()
 
-    async def connect(self, websocket) -> None:
+    async def connect(
+        self,
+        websocket: SupportsWebSocket,
+    ) -> None:
         await websocket.accept()
         async with self._lock:
             self._clients.add(websocket)
 
-    async def disconnect(self, websocket) -> None:
+    async def disconnect(
+        self,
+        websocket: SupportsWebSocket,
+    ) -> None:
         async with self._lock:
             self._clients.discard(websocket)
 

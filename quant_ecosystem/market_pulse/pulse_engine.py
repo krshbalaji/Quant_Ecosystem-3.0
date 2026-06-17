@@ -4,7 +4,7 @@ FIX:   Constructor now accepts config=None, **kwargs.
 """
 
 
-class PulseEngine:
+class MarketPulseEngine:
     """
     Monitors system health and market micro-structure pulse
     (latency, fill rates, spread widening, etc.).

@@ -55,7 +55,12 @@ class RegimeFilter:
         self.regime = str(regime).upper()
 
     def passes(self, signal: RawSignal) -> bool:
-        rule = self._strat_rule_map.get(signal.strategy_id, signal.metadata.get("rule_type", ""))
+        strategy_id = signal.strategy_id or ""
+
+        rule = self._strat_rule_map.get(
+            strategy_id,
+            str(signal.metadata.get("rule_type", "") or "")
+        )
         allowed = self._REGIME_MAP.get(rule)
         if allowed is None:
             return not self._strict

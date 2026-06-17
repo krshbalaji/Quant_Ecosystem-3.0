@@ -371,5 +371,8 @@ class TelegramControlCenter:
 
     def consume_webhook_events(self):
         """Fallback polling loop."""
-        if hasattr(self, "controller"):
-            self.controller.consume_webhook_events()
+        controller = getattr(self, "controller", None)
+
+        if controller is not None:
+            controller.consume_webhook_events()
+          

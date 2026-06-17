@@ -119,7 +119,7 @@ class CircuitBreaker:
 
 
 def execute_with_retry(fn, retries=3, base_delay=1.0):
-    last_exc = None
+    last_exc: Exception | None = None
 
     for attempt in range(retries):
         try:
@@ -128,16 +128,10 @@ def execute_with_retry(fn, retries=3, base_delay=1.0):
         except Exception as exc:
             last_exc = exc
 
-            if is_fatal_error(exc):
-                raise
+            if attempt < retries - 1:
+                time.sleep(base_delay)
 
-            if not is_transient_error(exc):
-                raise
+    if last_exc is not None:
+        raise last_exc
 
-            if attempt == retries - 1:
-                raise
-
-            delay = base_delay * (2 ** attempt)
-            time.sleep(delay)
-
-    raise last_exc
+    raise RuntimeError("retry policy exhausted")

@@ -11,6 +11,9 @@ class MutationEngineLayer:
         return bool(self.mutation_engine and getattr(self.mutation_engine, "enabled", False))
 
     def run(self, strategy_rows):
-        if not self.is_enabled():
+        engine = self.mutation_engine
+
+        if engine is None:
             return []
-        return self.mutation_engine.run_daily(strategy_rows)
+
+        return engine.run_daily(strategy_rows)

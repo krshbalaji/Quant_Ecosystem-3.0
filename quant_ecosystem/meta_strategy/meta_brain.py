@@ -90,17 +90,16 @@ class MetaStrategyBrain:
         final_rows = []
 
         for row in rows:
-            decision = self.parliament.vote(row)
+            proposals = row.get("_lifecycle_votes", [])
 
-            row["stage"] = decision.get("stage", row.get("stage"))
-            row["allocation_pct"] = decision.get(
-                "allocation_pct",
-                row.get("allocation_pct", 0),
+            decision = self.parliament.decide_stage(
+                strategy_id=str(row.get("id", "")),
+                proposals=proposals,
             )
-            row["executable"] = decision.get("executable", True)
 
+            row["stage"] = decision
             final_rows.append(row)
-
+         
         return final_rows
 
     def score_strategies(self, strategy_rows: Iterable[Dict]) -> List[Dict]:

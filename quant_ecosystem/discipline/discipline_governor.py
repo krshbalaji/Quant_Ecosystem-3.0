@@ -93,14 +93,14 @@ class DisciplineGovernor:
             )
 
         if transition_alert and transition_type in {"TRENDING_TO_REVERSAL", "VOLATILITY_TRANSITION", "LOW_VOL_TO_HIGH_VOL"}:
-            if signal_intent.confidence < 0.7 or signal_intent.metadata.get("aggressive"):
+            if signal_intent.confidence < 0.7 or (signal_intent.metadata or {}).get("aggressive"):
                 return DisciplineDecision(
                     action=DisciplineAction.LOCK,
                     reason=f"transition caution lock ({transition_type})",
                     confidence=0.85,
                     details={
                         "transition_type": transition_type,
-                        "transition_score": float(market_data.get("transition_score", 0.0)),
+                        "transition_score": float((market_data or {}).get("transition_score", 0.0)),
                     },
                 )
 

@@ -13,7 +13,10 @@ class RetryController:
             except Exception as e:
                 last_error = e
 
-        raise last_error
+        if last_error is not None:
+            raise last_error
+
+        raise RuntimeError("retry controller exhausted")
 
 
 retry_controller = RetryController()
