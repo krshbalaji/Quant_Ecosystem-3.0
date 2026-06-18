@@ -15,7 +15,7 @@ class DependencyRegistry(
     def register(
         self,
         key: str,
-        value: object,
+        value: object | None = None,
     ) -> None:
 
         if self.exists(key):

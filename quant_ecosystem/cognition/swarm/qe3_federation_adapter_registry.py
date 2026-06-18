@@ -6,6 +6,7 @@ from .governance_adapter_contract import (
     GovernanceAdapterContract,
 )
 
+from typing import cast
 
 class QE3FederationAdapterRegistry(
     KeyedRegistry[
@@ -14,15 +15,20 @@ class QE3FederationAdapterRegistry(
     ]
 ):
 
+    from typing import cast
+
     def register(
         self,
-        item_or_key,
-        value=None,
+        key: str | GovernanceAdapterContract,
+        value: GovernanceAdapterContract | None = None,
     ) -> None:
 
         if value is None:
 
-            contract = item_or_key
+            contract = cast(
+                GovernanceAdapterContract,
+                key,
+            )
 
             super().register(
                 contract.subsystem_name,
@@ -32,7 +38,7 @@ class QE3FederationAdapterRegistry(
         else:
 
             super().register(
-                item_or_key,
+                key,
                 value,
             )
             

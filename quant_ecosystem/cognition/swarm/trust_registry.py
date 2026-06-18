@@ -14,17 +14,17 @@ class TrustRegistry(
 
     def register(
         self,
-        identity_or_key,
+        key,
         value=None,
     ):
         if value is None:
             super().register(
-                identity_or_key.organism_id,
-                identity_or_key,
+                key.organism_id,
+                key,
             )
         else:
             super().register(
-                identity_or_key,
+                key,
                 value,
             )
 

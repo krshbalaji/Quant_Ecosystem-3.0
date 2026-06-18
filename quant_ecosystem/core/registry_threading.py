@@ -25,8 +25,10 @@ class ThreadSafeRegistry(
 
         if value is None:
 
-            value = key
+            from typing import cast
 
+            value = cast(V, key)
+            
             inferred_key = (
                 getattr(value, "adapter_id", None)
                 or getattr(value, "organism_id", None)
@@ -49,7 +51,7 @@ class ThreadSafeRegistry(
                     f"Unable to infer registry key from {type(value).__name__}"
                 )
 
-            key = inferred_key
+            key = cast(K, inferred_key)
 
         with self._lock:
             self._items[key] = value

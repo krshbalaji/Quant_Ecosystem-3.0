@@ -1,4 +1,5 @@
 from typing import Generic, TypeVar
+from typing import cast
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -21,7 +22,7 @@ class KeyedRegistry(
 
         if value is None:
 
-            value = key
+            value = cast(V, key)
 
             inferred_key = (
                 getattr(value, "adapter_id", None)
@@ -45,9 +46,12 @@ class KeyedRegistry(
                     f"Unable to infer registry key from {type(value).__name__}"
                 )
 
-            key = inferred_key
+            key = cast(K, inferred_key)
 
-        self._items[key] = value
+        resolved_key = cast(K, key)
+        resolved_value = cast(V, value)
+
+        self._items[resolved_key] = resolved_value
 
     def get(
         self,

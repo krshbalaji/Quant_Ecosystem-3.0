@@ -13,16 +13,29 @@ class FederationCapabilityRegistry(
         FederationCapability,
     ]
 ):
+    
+    
+
     def register(
         self,
-        item_or_key,
-        value=None,
+        key: str | FederationCapability,
+        value: FederationCapability | None = None,
     ) -> None:
 
+        from typing import cast
+        
         if value is None:
-            super().register(item_or_key)
+            capability = cast(FederationCapability, key)
+
+            super().register(
+                capability.capability_id,
+                capability,
+            )
         else:
-            super().register(item_or_key, value)
+            super().register(
+                cast(str, key),
+                value,
+            )
             
     def register_capability(
         self,

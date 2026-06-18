@@ -16,18 +16,25 @@ class ExecutionAdapterRegistry(
 
     def register(
         self,
-        contract_or_key,
+        key,
         value=None,
     ) -> None:
 
+        from typing import cast
+
         if value is None:
+
+            adapter = cast(RouterAdapterContract, key)
+
             super().register(
-                contract_or_key.adapter_id,
-                contract_or_key,
+                adapter.adapter_id,
+                adapter,
             )
+
         else:
+
             super().register(
-                contract_or_key,
+                key,
                 value,
             )
 

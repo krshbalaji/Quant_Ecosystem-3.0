@@ -23,14 +23,22 @@ class FederationAuditRegistry(
 
     def _shadow_key(self) -> str:
         return "audit.execution.lineage_registry"
+        
     def register(
         self,
-        item_or_key,
+        key,
         value=None,
     ) -> None:
+        from typing import cast
+
+        lineage = cast(ExecutionLineage, key)
 
         if value is None:
-            lineage = item_or_key
+
+            lineage = cast(
+                ExecutionLineage,
+                key,
+            )
 
             super().register(lineage)
 
@@ -43,8 +51,7 @@ class FederationAuditRegistry(
                 pass
 
         else:
-
-            super().register(item_or_key, value)
+            super().register(key, value)
             
     def register_lineage(
         self,

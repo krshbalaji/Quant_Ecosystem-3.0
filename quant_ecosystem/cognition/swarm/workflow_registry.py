@@ -13,13 +13,27 @@ class WorkflowRegistry(
         WorkflowDefinition,
     ]
 ):
+   
+    def register(
+        self,
+        key: str | WorkflowDefinition,
+        value: WorkflowDefinition | None = None,
+    ) -> None:
 
-    def register(self, item_or_key, value=None):
+        from typing import cast
 
         if value is None:
-            super().register(item_or_key)
+            workflow = cast(WorkflowDefinition, key)
+
+            super().register(
+                workflow.workflow_id,
+                workflow,
+            )
         else:
-            super().register(item_or_key, value)
+            super().register(
+                cast(str, key),
+                value,
+            )
 
     def get(
         self,
