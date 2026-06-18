@@ -56,5 +56,9 @@ class ApiRouter:
                 payload_dict["steps"]
             )
 
+        raise ValueError(
+            f"Unknown endpoint: {endpoint}"
+        )
+
 
 api_router = ApiRouter()

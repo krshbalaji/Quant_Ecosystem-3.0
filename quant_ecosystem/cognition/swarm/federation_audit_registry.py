@@ -23,7 +23,29 @@ class FederationAuditRegistry(
 
     def _shadow_key(self) -> str:
         return "audit.execution.lineage_registry"
+    def register(
+        self,
+        item_or_key,
+        value=None,
+    ) -> None:
 
+        if value is None:
+            lineage = item_or_key
+
+            super().register(lineage)
+
+            try:
+                self._shadow_store.put(
+                    self._shadow_key(),
+                    lineage.lineage_id,
+                )
+            except Exception:
+                pass
+
+        else:
+
+            super().register(item_or_key, value)
+            
     def register_lineage(
         self,
         lineage: ExecutionLineage,

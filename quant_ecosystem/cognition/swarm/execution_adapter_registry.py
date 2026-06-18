@@ -16,15 +16,22 @@ class ExecutionAdapterRegistry(
 
     def register(
         self,
-        key: str,
-        value: RouterAdapterContract,
+        contract_or_key,
+        value=None,
     ) -> None:
 
-        super().register(
-            key,
-            value,
-        )
+        if value is None:
+            super().register(
+                contract_or_key.adapter_id,
+                contract_or_key,
+            )
+        else:
+            super().register(
+                contract_or_key,
+                value,
+            )
 
+        
     def get(
         self,
         key: str,

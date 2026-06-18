@@ -14,12 +14,12 @@ class WorkflowRegistry(
     ]
 ):
 
-    def register(
-        self,
-        key: str,
-        value: WorkflowDefinition,
-    ) -> None:
-        super().register(key, value)
+    def register(self, item_or_key, value=None):
+
+        if value is None:
+            super().register(item_or_key)
+        else:
+            super().register(item_or_key, value)
 
     def get(
         self,

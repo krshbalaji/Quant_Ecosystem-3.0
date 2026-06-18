@@ -14,10 +14,19 @@ class TrustRegistry(
 
     def register(
         self,
-        key: str,
-        value: FederationIdentity,
-    ) -> None:
-        super().register(key, value)
+        identity_or_key,
+        value=None,
+    ):
+        if value is None:
+            super().register(
+                identity_or_key.organism_id,
+                identity_or_key,
+            )
+        else:
+            super().register(
+                identity_or_key,
+                value,
+            )
 
     def get(
         self,

@@ -11,11 +11,41 @@ class KeyedRegistry(
     def __init__(self):
         self._items: dict[K, V] = {}
 
+    from typing import Any
+
     def register(
         self,
-        key: K,
-        value: V,
+        key: K | V,
+        value: V | None = None,
     ) -> None:
+
+        if value is None:
+
+            value = key
+
+            inferred_key = (
+                getattr(value, "adapter_id", None)
+                or getattr(value, "organism_id", None)
+                or getattr(value, "entity_id", None)
+                or getattr(value, "capability_id", None)
+                or getattr(value, "workflow_id", None)
+                or getattr(value, "dependency_id", None)
+                or getattr(value, "integration_id", None)
+                or getattr(value, "lineage_id", None)
+                or getattr(value, "strategy_id", None)
+                or getattr(value, "router_id", None)
+                or getattr(value, "id", None)
+                or getattr(value, "name", None)
+                or getattr(value, "component_id", None)
+                or getattr(value, "target_system", None)
+            )
+
+            if inferred_key is None:
+                raise ValueError(
+                    f"Unable to infer registry key from {type(value).__name__}"
+                )
+
+            key = inferred_key
 
         self._items[key] = value
 

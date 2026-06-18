@@ -16,11 +16,26 @@ class QE3FederationAdapterRegistry(
 
     def register(
         self,
-        key: str,
-        value: GovernanceAdapterContract,
+        item_or_key,
+        value=None,
     ) -> None:
-        super().register(key, value)
 
+        if value is None:
+
+            contract = item_or_key
+
+            super().register(
+                contract.subsystem_name,
+                contract,
+            )
+
+        else:
+
+            super().register(
+                item_or_key,
+                value,
+            )
+            
     def get(
         self,
         key: str,

@@ -13,7 +13,17 @@ class FederationCapabilityRegistry(
         FederationCapability,
     ]
 ):
+    def register(
+        self,
+        item_or_key,
+        value=None,
+    ) -> None:
 
+        if value is None:
+            super().register(item_or_key)
+        else:
+            super().register(item_or_key, value)
+            
     def register_capability(
         self,
         capability: FederationCapability,
